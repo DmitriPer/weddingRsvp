@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Before doing any non-trivial work, read `docs/claude-workflow.md`** — it defines the required process (PRD first, clarify by asking, Plan Mode before coding) and hard rules (no automated WhatsApp sending, function/data before styling, mock data until told otherwise) for this project. Also check `docs/` for the current phase's PRD.
+
 ## Commands
 
 ```bash
