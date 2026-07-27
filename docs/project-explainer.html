@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>What This Project Actually Does</title>
+<style>
+  :root {
+    --paper: #f1ead9;
+    --paper-raised: #e9e0cb;
+    --ink: #262a20;
+    --ink-soft: #4a4e40;
+    --moss: #4b5d3a;
+    --moss-deep: #384529;
+    --rust: #a8572a;
+    --stone: #8b8372;
+    --line: #d9cfb8;
+    --card-bg: #f8f4ea;
+    --code-bg: #eae1cd;
+    --shadow: 0 1px 0 rgba(38, 42, 32, 0.06);
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #1b1d16;
+    --paper-raised: #24261d;
+    --ink: #ece4d2;
+    --ink-soft: #c3bba6;
+    --moss: #8fae72;
+    --moss-deep: #a9c98c;
+    --rust: #d98a54;
+    --stone: #948c78;
+    --line: #3a3c30;
+    --card-bg: #22241b;
+    --code-bg: #2a2c20;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1b1d16;
+      --paper-raised: #24261d;
+      --ink: #ece4d2;
+      --ink-soft: #c3bba6;
+      --moss: #8fae72;
+      --moss-deep: #a9c98c;
+      --rust: #d98a54;
+      --stone: #948c78;
+      --line: #3a3c30;
+      --card-bg: #22241b;
+      --code-bg: #2a2c20;
+      --shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 96px;
+  }
+
+  .display {
+    font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  }
+
+  .label, .term, code.term {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+    font-size: 0.85em;
+    letter-spacing: 0.01em;
+  }
+
+  code.term {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.1em 0.45em;
+    color: var(--moss-deep);
+    white-space: nowrap;
+  }
+
+  a { color: var(--moss); }
+
+  h1, h2, h3 { text-wrap: balance; }
+
+  /* ---------- Header ---------- */
+  header.hero {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 64px 0 32px;
+  }
+
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin: 0 0 14px;
+  }
+
+  h1.title {
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    font-weight: 400;
+    font-style: italic;
+    margin: 0 0 16px;
+    color: var(--ink);
+  }
+
+  .dek {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .rule {
+    height: 1px;
+    background: var(--line);
+    border: none;
+    margin: 40px 0;
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ---------- Nav ---------- */
+  nav.toc {
+    max-width: 760px;
+    margin: 0 auto 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    padding: 14px 18px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    position: sticky;
+    top: 12px;
+    z-index: 10;
+  }
+  nav.toc a {
+    font-size: 0.82rem;
+    text-decoration: none;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  nav.toc a:hover { color: var(--moss); }
+
+  /* ---------- Sections (prose width) ---------- */
+  section.prose {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  section.wide {
+    max-width: 980px;
+    margin: 0 auto;
+  }
+
+  h2.section-title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  h2.section-title .num {
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    color: var(--rust);
+  }
+
+  .section-intro {
+    color: var(--ink-soft);
+    margin: 0 0 28px;
+    max-width: 64ch;
+  }
+
+  /* ---------- Journey steps ---------- */
+  .journey {
+    display: grid;
+    gap: 10px;
+    margin: 20px 0 8px;
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 14px;
+    align-items: start;
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .step .n {
+    font-family: ui-monospace, monospace;
+    font-size: 0.85rem;
+    color: var(--paper);
+    background: var(--moss);
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .step h4 {
+    margin: 0 0 4px;
+    font-size: 0.98rem;
+    font-weight: 600;
+  }
+  .step p {
+    margin: 0;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+  }
+
+  /* ---------- Diagram panel ---------- */
+  .diagram-panel {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px;
+    margin: 22px 0;
+    overflow-x: auto;
+  }
+  .diagram-panel .mermaid { min-width: 480px; }
+  .diagram-caption {
+    font-size: 0.8rem;
+    color: var(--stone);
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  /* ---------- DB table cards ---------- */
+  .table-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 22px 0;
+  }
+  .table-card {
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .table-card h3 {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+  }
+  .table-card .subtitle {
+    font-size: 0.82rem;
+    color: var(--stone);
+    margin: 0 0 14px;
+  }
+  .field-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .field-list li { font-size: 0.88rem; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; }
+  .field-list .fname { color: var(--moss-deep); white-space: nowrap; }
+  .field-list .fdesc { color: var(--ink-soft); }
+
+  /* ---------- Status lifecycle ---------- */
+  .lifecycle {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 24px 0;
+    font-family: ui-monospace, monospace;
+    font-size: 0.9rem;
+  }
+  .lifecycle .pill {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--card-bg);
+  }
+  .lifecycle .pill.terminal { border-color: var(--rust); color: var(--rust); }
+  .lifecycle .arrow { color: var(--stone); padding: 0 2px; }
+
+  /* ---------- Function directory ---------- */
+  .func-group { margin: 18px 0 34px; }
+  .func-group-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin: 0 0 12px;
+  }
+  .func-row {
+    display: grid;
+    grid-template-columns: minmax(160px, 220px) 1fr;
+    gap: 4px 20px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+  }
+  .func-row:last-child { border-bottom: 1px solid var(--line); }
+  .func-name { font-weight: 600; font-size: 0.95rem; }
+  .func-trigger { font-size: 0.78rem; color: var(--stone); margin-top: 2px; }
+  .func-desc { font-size: 0.9rem; color: var(--ink-soft); }
+  @media (max-width: 620px) {
+    .func-row { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- Callout boxes ---------- */
+  .callout {
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin: 24px 0;
+    border: 1px solid var(--line);
+  }
+  .callout.now {
+    background: var(--card-bg);
+    border-left: 4px solid var(--moss);
+  }
+  .callout.missing {
+    background: var(--card-bg);
+    border-left: 4px solid var(--rust);
+  }
+  .callout h3 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+  }
+  .callout ul { margin: 0; padding-left: 20px; }
+  .callout li { margin-bottom: 8px; font-size: 0.92rem; color: var(--ink-soft); }
+  .callout li:last-child { margin-bottom: 0; }
+  .callout li b { color: var(--ink); }
+
+  /* ---------- Glossary ---------- */
+  .glossary { display: grid; gap: 16px; margin: 20px 0; }
+  .glossary dt {
+    font-family: ui-monospace, monospace;
+    font-weight: 600;
+    color: var(--moss-deep);
+    font-size: 0.92rem;
+  }
+  .glossary dd {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+
+  footer {
+    max-width: 760px;
+    margin: 48px auto 0;
+    font-size: 0.8rem;
+    color: var(--stone);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <p class="eyebrow">Field Guide · Wedding RSVP App</p>
+  <h1 class="title display">What This Project Actually Does</h1>
+  <p class="dek">No code, no jargon walls — just the shape of the thing: what data it keeps, what happens when a guest opens their link, what the admin dashboard can do, and what's still missing.</p>
+</header>
+
+<nav class="toc">
+  <a href="#journeys">The two journeys</a>
+  <a href="#database">The database</a>
+  <a href="#lifecycle">Invite lifecycle</a>
+  <a href="#functions">Every function</a>
+  <a href="#now">Current mode</a>
+  <a href="#missing">What's missing</a>
+  <a href="#glossary">Glossary</a>
+</nav>
+
+<hr class="rule" />
+
+<section class="prose" id="journeys">
+  <h2 class="section-title"><span class="num">01</span> The two journeys</h2>
+  <p class="section-intro">Everything in this app happens inside one of two separate journeys, and they never overlap. A guest never sees a login screen. An admin never sees the RSVP form.</p>
+
+  <h3 class="display" style="font-size:1.15rem;font-weight:600;font-style:italic;">Guest journey — no login, ever</h3>
+  <div class="journey">
+    <div class="step"><div class="n">1</div><div><h4>Guest gets a personal link</h4><p>Every invite has its own secret code baked into the URL — that code <em>is</em> the guest's password. No account, no login screen for guests, ever.</p></div></div>
+    <div class="step"><div class="n">2</div><div><h4>They open it</h4><p>The app quietly notes "this invite has been opened" the first time — unless it detects the visit came from a bot (link-preview crawlers, WhatsApp's own preview fetcher), so a shared preview card doesn't falsely mark it opened.</p></div></div>
+    <div class="step"><div class="n">3</div><div><h4>They answer: coming or not?</h4><p>A short form: attending or not, how many adults, how many kids.</p></div></div>
+    <div class="step"><div class="n">4</div><div><h4>Their answer is saved twice</h4><p>Once as "their current answer" (overwritten if they change it later), and once as a permanent line in a history log that's never erased — so a change of heart is visible, not lost.</p></div></div>
+    <div class="step"><div class="n">5</div><div><h4>If they come back</h4><p>Same link shows their previous answer pre-filled, ready to edit. Submitting again is recorded as a correction, not a fresh answer.</p></div></div>
+  </div>
+
+  <h3 class="display" style="font-size:1.15rem;font-weight:600;font-style:italic;margin-top:36px;">Admin journey — behind a login</h3>
+  <div class="journey">
+    <div class="step"><div class="n">1</div><div><h4>Log in at a private page</h4><p>Nothing under the admin area loads until you're signed in — you're bounced to the login screen first.</p></div></div>
+    <div class="step"><div class="n">2</div><div><h4>See everyone at a glance</h4><p>Every guest, their status, their current answer if they've given one.</p></div></div>
+    <div class="step"><div class="n">3</div><div><h4>Manage the guest list</h4><p>Add a guest by hand, delete one, or upload a spreadsheet to add a whole batch at once.</p></div></div>
+    <div class="step"><div class="n">4</div><div><h4>Read every answer, and its history</h4><p>Open any guest to see their current RSVP plus every previous version of it.</p></div></div>
+    <div class="step"><div class="n">5</div><div><h4>Check the running totals</h4><p>How many pending, how many answered, total adults and kids coming, how many declined.</p></div></div>
+  </div>
+
+  <div class="diagram-panel">
+    <pre class="mermaid">
+flowchart LR
+    A["Guest opens\ntheir personal link"] --> B["App marks the\ninvite as opened"]
+    B --> C["Guest fills in\nthe RSVP form"]
+    C --> D["Answer saved as\ncurrent + permanent history"]
+    D -->|"comes back later"| E["Form reopens\npre-filled, ready to edit"]
+    E --> D
+
+    F["Admin logs in"] --> G["Sees every guest\n+ status + totals"]
+    G --> H["Adds / deletes /\nimports guests"]
+    G --> I["Reads answers\n+ full history"]
+    </pre>
+    <p class="diagram-caption">The only two ways anyone ever touches this app.</p>
+  </div>
+</section>
+
+<hr class="rule" />
+
+<section class="wide" id="database">
+  <h2 class="section-title"><span class="num">02</span> The database — three tables, in plain English</h2>
+  <p class="section-intro">Nothing fancier than three lists. Here's what each one is <em>for</em>, not just what columns it has.</p>
+
+  <div class="table-grid">
+    <div class="table-card">
+      <h3 class="display">Invites</h3>
+      <p class="subtitle">one row per guest household you've invited</p>
+      <ul class="field-list">
+        <li><span class="fname">name</span><span class="fdesc">who they are</span></li>
+        <li><span class="fname">phone</span><span class="fdesc">for the WhatsApp link (not required)</span></li>
+        <li><span class="fname">token</span><span class="fdesc">their secret link code</span></li>
+        <li><span class="fname">status</span><span class="fdesc">pending → opened → submitted → edited</span></li>
+        <li><span class="fname">created_at</span><span class="fdesc">when they were added</span></li>
+      </ul>
+    </div>
+    <div class="table-card">
+      <h3 class="display">Responses</h3>
+      <p class="subtitle">each guest's <em>current</em> answer — one row, gets overwritten</p>
+      <ul class="field-list">
+        <li><span class="fname">attending</span><span class="fdesc">yes or no</span></li>
+        <li><span class="fname">adult_count</span><span class="fdesc">adults coming</span></li>
+        <li><span class="fname">kid_count</span><span class="fdesc">kids coming</span></li>
+        <li><span class="fname">updated_at</span><span class="fdesc">last time they changed it</span></li>
+      </ul>
+    </div>
+    <div class="table-card">
+      <h3 class="display">Response History</h3>
+      <p class="subtitle">every answer ever given — nothing is ever erased here</p>
+      <ul class="field-list">
+        <li><span class="fname">attending / adult_count / kid_count</span><span class="fdesc">a snapshot of one submission</span></li>
+        <li><span class="fname">submitted_at</span><span class="fdesc">when that particular submission happened</span></li>
+      </ul>
+      <p style="font-size:0.85rem;color:var(--ink-soft);margin-top:12px;">Why keep both this and Responses? Responses answers "what did they say <em>right now</em>", this answers "what did they say <em>over time</em>" — e.g. seeing they first said 4 people, then changed it to 2.</p>
+    </div>
+  </div>
+
+  <div class="diagram-panel">
+    <pre class="mermaid">
+flowchart TB
+    Invite["One Invite\n(one guest household)"]
+    Current["Their current answer"]
+    Log["Their full answer history\n(every submission, kept forever)"]
+    Invite -- "has at most one" --> Current
+    Invite -- "has many entries in" --> Log
+    </pre>
+    <p class="diagram-caption">Deleting an invite deletes its answer and its history with it — nothing is left orphaned.</p>
+  </div>
+</section>
+
+<hr class="rule" />
+
+<section class="prose" id="lifecycle">
+  <h2 class="section-title"><span class="num">03</span> The invite lifecycle</h2>
+  <p class="section-intro">Every invite moves through these states in one direction only — it never goes backwards.</p>
+  <div class="lifecycle">
+    <span class="pill">pending</span><span class="arrow">→</span>
+    <span class="pill">opened</span><span class="arrow">→</span>
+    <span class="pill">submitted</span><span class="arrow">→</span>
+    <span class="pill terminal">edited</span>
+  </div>
+  <p style="font-size:0.9rem;color:var(--ink-soft);">
+    <b>pending</b> — added, hasn't clicked their link yet · <b>opened</b> — clicked it, hasn't answered · <b>submitted</b> — answered once · <b>edited</b> — changed their answer at least once, and stays "edited" from then on even if they change it a third or fourth time.
+  </p>
+</section>
+
+<hr class="rule" />
+
+<section class="wide" id="functions">
+  <h2 class="section-title"><span class="num">04</span> Every function, and what it does</h2>
+  <p class="section-intro">Every piece of logic in the app, grouped by who triggers it. Nothing here needs a login except the "Behind the login" group.</p>
+
+  <div class="func-group">
+    <p class="func-group-label">Guest-facing — no login required</p>
+    <div class="func-row">
+      <div><div class="func-name">Load my invite page</div><div class="func-trigger">runs when a guest opens their link</div></div>
+      <div class="func-desc">Looks up the invite by its secret token, flips pending → opened (skipping known bot/preview visits), then shows the form — pre-filled if they've already answered.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Submit my RSVP</div><div class="func-trigger">runs when the guest hits submit</div></div>
+      <div class="func-desc">Saves their answer as the current one, appends it to the permanent history log, and moves their status to submitted (or edited, if this isn't their first time).</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Mark my link as opened</div><div class="func-trigger">a small backup check on page load</div></div>
+      <div class="func-desc">A second, independent check that flips pending → opened — belt-and-suspenders in case the main page load didn't catch it.</div>
+    </div>
+  </div>
+
+  <div class="func-group">
+    <p class="func-group-label">Behind the login — admin only</p>
+    <div class="func-row">
+      <div><div class="func-name">See every guest</div><div class="func-trigger">loading the Invitees tab</div></div>
+      <div class="func-desc">Lists every invite with its current answer attached, newest guest first.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Add a guest</div><div class="func-trigger">submitting the "add invite" form</div></div>
+      <div class="func-desc">Creates a new invite with a fresh, unique secret link, starting at "pending".</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Open one guest's detail</div><div class="func-trigger">clicking into a guest</div></div>
+      <div class="func-desc">Pulls that one invite plus their current answer and their entire history, most recent submission first.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Delete a guest</div><div class="func-trigger">clicking delete on a guest</div></div>
+      <div class="func-desc">Removes the invite — and, along with it, their current answer and their whole history. Permanent.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Bulk import</div><div class="func-trigger">uploading a spreadsheet (.xlsx)</div></div>
+      <div class="func-desc">Reads every row, requires at least a name per row, and turns each valid row into a new guest in one go.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">See the numbers</div><div class="func-trigger">loading the Stats tab</div></div>
+      <div class="func-desc">Counts guests in each status, totals up adults/kids attending, and counts how many declined.</div>
+    </div>
+  </div>
+
+  <div class="func-group">
+    <p class="func-group-label">Security &amp; plumbing — happen automatically</p>
+    <div class="func-row">
+      <div><div class="func-name">The checkpoint</div><div class="func-trigger">before <span class="label">/admin</span> pages ever load</div></div>
+      <div class="func-desc">Checks you're logged in before the page is even allowed to render; not logged in → bounced to the login screen.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">The second check</div><div class="func-trigger">on every single admin action, again</div></div>
+      <div class="func-desc">Each admin action independently re-checks you're logged in, even though the checkpoint above already did — so a request can't sneak past the front gate directly.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Log in</div><div class="func-trigger">submitting the login form</div></div>
+      <div class="func-desc">Verifies your credentials and starts a session so the checkpoint above lets you through.</div>
+    </div>
+    <div class="func-row">
+      <div><div class="func-name">Sign out</div><div class="func-trigger">clicking sign out</div></div>
+      <div class="func-desc">Ends the session — the checkpoint starts bouncing you to login again immediately.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="rule" />
+
+<section class="prose" id="now">
+  <h2 class="section-title"><span class="num">05</span> What's actually running right now</h2>
+  <div class="callout now">
+    <h3>Mock mode is on</h3>
+    <ul>
+      <li><b>No real database is connected yet</b> — the credentials in the project are still placeholders.</li>
+      <li>Everything above is running against <b>one made-up guest</b>, sitting in the app's memory, not a real database — restarting the app resets it back to that one guest.</li>
+      <li>The admin login currently <b>accepts literally any email and password</b> — it's a stand-in so the dashboard is reachable for testing, not real security.</li>
+      <li>Nothing about how the screens work or how the data is shaped changes once a real database is connected — only the flip of one setting.</li>
+    </ul>
+  </div>
+</section>
+
+<hr class="rule" />
+
+<section class="prose" id="missing">
+  <h2 class="section-title"><span class="num">06</span> What's planned but not built yet</h2>
+  <p class="section-intro">From the project's own scoping notes — things that don't exist in the app at all right now.</p>
+  <div class="callout missing">
+    <h3>Not built yet</h3>
+    <ul>
+      <li><b>Editable wedding details</b> — the couple's names, date, venue, and message wording are hardcoded in the code today; there's no admin screen to change them without a code change.</li>
+      <li><b>Editing an existing guest</b> — you can add or delete a guest, but there's no way to fix a typo in their name or phone number yet.</li>
+      <li><b>One-tap WhatsApp send button</b> — a planned button per guest that would open WhatsApp with their invite message pre-filled, so a human still taps "send" themselves. Doesn't exist yet.</li>
+      <li><b>Tracking who's been contacted</b> — no record yet of how many times a guest has been messaged, or a flag for "tried 5 times, call them instead."</li>
+      <li><b>Day-of reminder prep</b> — no screen yet to generate a venue/time reminder message for confirmed guests.</li>
+      <li><b>Post-wedding thank-you prep</b> — same idea, for after the wedding — not built.</li>
+      <li><b>Bride/groom side &amp; relation tags</b> — no way yet to mark a guest as bride's side/groom's side, or family/friend/coworker.</li>
+    </ul>
+  </div>
+  <p style="font-size:0.85rem;color:var(--stone);">One hard rule that <em>is</em> already locked in for all of the above: no message ever gets sent automatically or in bulk — every send stays a manual, human tap, to protect the couple's WhatsApp number from being flagged as spam.</p>
+</section>
+
+<hr class="rule" />
+
+<section class="prose" id="glossary">
+  <h2 class="section-title"><span class="num">07</span> Glossary — the confusing words, plainly</h2>
+  <dl class="glossary">
+    <div><dt>token</dt><dd>A long, hard-to-guess code built into each guest's personal link. It works like a password, except the guest never has to type one — having the exact link is proof enough.</dd></div>
+    <div><dt>upsert</dt><dd>"Update it if it already exists, otherwise create it." Used so a guest can submit their RSVP more than once without ending up with duplicate rows.</dd></div>
+    <div><dt>RLS / "deny all"</dt><dd>A rule set directly on the database saying "by default, nobody can read or write anything." The app deliberately locks every door and only opens them through its own secure server code — never directly from a browser.</dd></div>
+    <div><dt>service role key vs. public key</dt><dd>Two different database passwords the app can use. The public one can only do what's explicitly allowed (safe to expose). The other can do anything, and is only ever used in secure server-side code — never sent to a browser.</dd></div>
+    <div><dt>the checkpoint (proxy)</dt><dd>A guard that runs before a page is even allowed to load, used here to protect everything under the admin area.</dd></div>
+    <div><dt>mock mode</dt><dd>A stand-in for the real database — pretend data living only in memory, used so the app can be built and tested before a real database exists.</dd></div>
+  </dl>
+</section>
+
+<footer>Field guide for a project in progress — last written to match the codebase as of today.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      background: 'transparent',
+      primaryColor: 'transparent',
+      primaryBorderColor: '#4b5d3a',
+      primaryTextColor: '#262a20',
+      lineColor: '#8b8372',
+      fontFamily: 'ui-monospace, monospace',
+      fontSize: '13px'
+    }
+  });
+</script>
+</body>
+</html>
