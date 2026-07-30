@@ -4,17 +4,17 @@
  * Stats live here as tiles rather than on their own page: they are four numbers
  * and read better beside the list.
  *
- * Still to come (Phase 5): search, sort, expandable people rows, edit/delete,
- * the history modal, copy-link, and the wa.me button.
+ * Still to come (Phase 5): search, sort, the history modal, copy-link, and the
+ * wa.me button.
  */
 
 import { redirect } from 'next/navigation'
 import { verifyAdmin } from '@/lib/auth'
 import { listInvites } from '@/lib/data'
 import { computeStats } from '@/lib/stats'
-import { countAttending } from '@/lib/headcount'
 import { needsPhoneCall } from '@/lib/status'
 import { AddInviteForm } from '@/components/admin/add-invite-form'
+import { InviteRow } from '@/components/admin/invite-row'
 import { EmptyState } from '@/components/ui/states'
 import { strings } from '@/lib/strings'
 
@@ -55,47 +55,9 @@ export default async function InviteesPage() {
         />
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border">
-          {invites.map((invite) => {
-            const { total } = countAttending(invite.attendees)
-            const namedPeople = invite.attendees.filter((person) => !person.is_placeholder)
-            const extras = invite.attendees.length - namedPeople.length
-
-            return (
-              <li key={invite.id} className="px-4 py-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="truncate">{invite.name}</p>
-                    <p className="ltr-nums truncate text-sm text-muted">{invite.phone ?? '—'}</p>
-                  </div>
-                  <div className="shrink-0 text-left text-sm text-muted">
-                    <p>{strings.status[invite.status]}</p>
-                    <p>{total > 0 ? strings.guests.people(total) : strings.guests.noPeople}</p>
-                  </div>
-                </div>
-
-                {invite.attendees.length > 0 ? (
-                  <ul className="mt-2 space-y-0.5 border-t border-border pt-2 text-sm">
-                    {namedPeople.map((person) => (
-                      <li key={person.id} className="flex justify-between gap-3 text-muted">
-                        <span className="truncate">
-                          {person.name}
-                          {person.is_child ? ` (${strings.inviteForm.child})` : ''}
-                        </span>
-                        <span className="shrink-0">
-                          {person.is_attending ? '✓' : '—'}
-                        </span>
-                      </li>
-                    ))}
-                    {extras > 0 ? (
-                      <li className="text-muted">
-                        + {strings.guests.people(extras)} ({strings.guests.placeholder})
-                      </li>
-                    ) : null}
-                  </ul>
-                ) : null}
-              </li>
-            )
-          })}
+          {invites.map((invite) => (
+            <InviteRow key={invite.id} invite={invite} />
+          ))}
         </ul>
       )}
     </div>

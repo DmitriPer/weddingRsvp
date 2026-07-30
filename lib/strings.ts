@@ -68,13 +68,37 @@ export const strings = {
 
   guests: {
     people: (count: number) => (count === 1 ? 'אורח אחד' : `${count} אורחים`),
-    noPeople: 'אין אורחים',
     adults: 'מבוגרים',
     kids: 'ילדים',
     placeholder: 'אורח לא מזוהה',
     needsPhoneCall: 'צריך טלפון',
     declined: 'לא מגיע',
     noAnswer: 'אין תשובה',
+
+    /** Matches AttendanceSummary in lib/headcount.ts. */
+    summary: {
+      noPeople: 'אין אנשים בהזמנה',
+      awaiting: (invited: number) => `${invited} מוזמנים · טרם ענו`,
+      declined: (invited: number) => `${invited} מוזמנים · לא מגיעים`,
+      coming: (coming: number, invited: number) =>
+        coming === invited ? `${coming} מגיעים` : `${coming} מגיעים מתוך ${invited}`,
+    },
+  },
+
+  row: {
+    edit: 'עריכה',
+    delete: 'מחיקה',
+    confirmDelete: (name: string) =>
+      `למחוק את "${name}"? כל האנשים בהזמנה וכל היסטוריית התשובות יימחקו לצמיתות.`,
+    deleted: 'ההזמנה נמחקה',
+    saved: 'נשמר',
+    deleteFailed: 'המחיקה נכשלה',
+    saveFailed: 'השמירה נכשלה',
+    addPerson: 'הוספת אדם',
+    removePerson: 'הסרת אדם',
+    renamePlaceholder: 'מי זה?',
+    attending: 'מגיע',
+    notAttending: 'לא מגיע',
   },
 
   inviteForm: {

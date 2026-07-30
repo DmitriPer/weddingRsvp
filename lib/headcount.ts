@@ -24,6 +24,33 @@ export function countAttending(attendees: Attendee[]): Headcount {
   return { adults, kids, total: adults + kids }
 }
 
+/**
+ * What a row should say about attendance.
+ *
+ * Showing only the attending count is misleading before anyone answers: a
+ * freshly added invite with three people listed would read "0 guests", because
+ * the admin adds people and the *guest* ticks them. So the answer state decides
+ * which number is worth showing.
+ *
+ * Returns structure, not text — Hebrew lives in lib/strings.ts.
+ */
+export type AttendanceSummary =
+  | { kind: 'noPeople' }
+  | { kind: 'awaiting'; invited: number }
+  | { kind: 'declined'; invited: number }
+  | { kind: 'coming'; coming: number; invited: number }
+
+export function summarizeAttendance(
+  attending: boolean | null,
+  attendees: Attendee[]
+): AttendanceSummary {
+  const invited = attendees.length
+  if (invited === 0) return { kind: 'noPeople' }
+  if (attending === null) return { kind: 'awaiting', invited }
+  if (attending === false) return { kind: 'declined', invited }
+  return { kind: 'coming', coming: countAttending(attendees).total, invited }
+}
+
 export function sumHeadcounts(counts: Headcount[]): Headcount {
   return counts.reduce<Headcount>(
     (total, one) => ({

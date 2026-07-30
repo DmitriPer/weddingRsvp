@@ -1,0 +1,126 @@
+'use client'
+
+/**
+ * One invitation in the list: summary, expand, edit, delete.
+ *
+ * The attendance line shows how many are INVITED before anyone answers, and how
+ * many are COMING after — showing only the attending count made every new
+ * invite read "0 guests" (lib/headcount.ts summarizeAttendance).
+ */
+
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { AttendeeList } from '@/components/admin/attendee-list'
+import { InviteEditForm } from '@/components/admin/invite-edit-form'
+import { summarizeAttendance } from '@/lib/headcount'
+import { needsPhoneCall } from '@/lib/status'
+import { strings } from '@/lib/strings'
+import type { InviteWithPeople } from '@/lib/types'
+
+function attendanceLabel(invite: InviteWithPeople): string {
+  const summary = summarizeAttendance(invite.attending, invite.attendees)
+  const labels = strings.guests.summary
+
+  switch (summary.kind) {
+    case 'noPeople':
+      return labels.noPeople
+    case 'awaiting':
+      return labels.awaiting(summary.invited)
+    case 'declined':
+      return labels.declined(summary.invited)
+    case 'coming':
+      return labels.coming(summary.coming, summary.invited)
+  }
+}
+
+export function InviteRow({ invite }: { invite: InviteWithPeople }) {
+  const router = useRouter()
+  const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const flagged = needsPhoneCall(invite.status, invite.contact_attempts)
+
+  function refresh() {
+    router.refresh()
+  }
+
+  async function handleDelete() {
+    // Cascades to every person and the whole history, with no undo (PRD §6.6).
+    if (!window.confirm(strings.row.confirmDelete(invite.name))) return
+
+    setDeleting(true)
+    const response = await fetch(`/api/invites/${invite.id}`, { method: 'DELETE' })
+    const body = await response.json()
+    setDeleting(false)
+
+    if (!body.success) {
+      toast.error(body.error || strings.row.deleteFailed)
+      return
+    }
+    toast.success(strings.row.deleted)
+    refresh()
+  }
+
+  return (
+    <li className="px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="flex min-w-0 flex-1 items-start gap-2 text-right"
+          aria-expanded={expanded}
+        >
+          <span className="mt-0.5 shrink-0 text-muted">{expanded ? '▾' : '▸'}</span>
+          <span className="min-w-0">
+            <span className="block truncate">{invite.name}</span>
+            <span className="ltr-nums block truncate text-sm text-muted">
+              {invite.phone ?? '—'}
+            </span>
+          </span>
+        </button>
+
+        <div className="shrink-0 text-left text-sm">
+          <p className="text-muted">{strings.status[invite.status]}</p>
+          <p className="text-muted">{attendanceLabel(invite)}</p>
+          {flagged ? <p className="text-warning">{strings.guests.needsPhoneCall}</p> : null}
+        </div>
+
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setEditing((value) => !value)
+              setExpanded(true)
+            }}
+            className="rounded border border-border px-2 py-1 text-xs hover:bg-surface"
+          >
+            {strings.row.edit}
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="rounded border border-border px-2 py-1 text-xs text-danger hover:bg-surface disabled:opacity-50"
+          >
+            {strings.row.delete}
+          </button>
+        </div>
+      </div>
+
+      {editing ? (
+        <InviteEditForm invite={invite} onDone={() => setEditing(false)} onSaved={refresh} />
+      ) : null}
+
+      {expanded ? (
+        <AttendeeList
+          inviteId={invite.id}
+          attendees={invite.attendees}
+          editable={editing}
+          onChanged={refresh}
+        />
+      ) : null}
+    </li>
+  )
+}
