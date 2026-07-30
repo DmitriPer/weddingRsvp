@@ -15,6 +15,41 @@
   --accent: #1f6f54;
   --danger: #b42318;
   --warning: #b54708;
+
+  /*
+   * Guest surface only (PRD §6.1–§6.4). The five accents below are the
+   * "Hortênsia" palette supplied by the designer, used verbatim. The admin
+   * tokens above are untouched: admin is desktop-first and a separate pass.
+   *
+   * NOT ONE of the five passes as body text on white — the best, the green, is
+   * 2.83:1 against a 4.5:1 requirement. So the two ink values are DERIVED from
+   * the palette green: same hue (100°), darkened until they pass.
+   *
+   *   --bloom-display  #7FA46D  2.83:1  the palette green. LARGE TEXT ONLY.
+   *   --bloom-ink      #567348  5.33:1  AA. Labels, buttons, body.
+   *                              — also 4.55:1 on butter, which is why it is
+   *                                this exact value: the lightest green that
+   *                                still passes as text on the butter buttons.
+   *   --bloom-strong   #475F3B  7.08:1  AAA.
+   *
+   * Using --bloom-display for a form label is the one mistake to avoid: it
+   * looks right on a monitor and vanishes on a phone outdoors.
+   */
+  --paper: #ffffff;
+  --bloom-display: #7fa46d;
+  --bloom-ink: #567348;
+  --bloom-strong: #475f3b;
+
+  /*
+   * The palette's pastels. Contrast of --bloom-strong text ON each:
+   *   butter 6.04:1 ✓   blush 4.79:1 ✓   sky 4.12:1 ✗   lilac 3.83:1 ✗
+   * So butter and blush may sit behind text; sky and lilac are decoration
+   * only — borders, rules, ornament. Never a text background.
+   */
+  --bloom-butter: #ffecb5;
+  --bloom-sky: #b7c6e6;
+  --bloom-lilac: #cdb7d9;
+  --bloom-blush: #fac6df;
 }
 
 @theme inline {
@@ -26,6 +61,16 @@
   --color-accent: var(--accent);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
+
+  --color-paper: var(--paper);
+  --color-bloom-display: var(--bloom-display);
+  --color-bloom-ink: var(--bloom-ink);
+  --color-bloom-strong: var(--bloom-strong);
+  --color-bloom-butter: var(--bloom-butter);
+  --color-bloom-sky: var(--bloom-sky);
+  --color-bloom-lilac: var(--bloom-lilac);
+  --color-bloom-blush: var(--bloom-blush);
+
   --font-sans: var(--font-hebrew);
 }
 
@@ -39,4 +84,29 @@ body {
 .ltr-nums {
   direction: ltr;
   unicode-bidi: embed;
+}
+
+/*
+ * Frosted glass over the invitation artwork.
+ *
+ * 88% white, not less. The sheet rises over the bottom florals — the most
+ * saturated part of the image — and at this opacity --bloom-strong text still
+ * measures 7.46:1 against the pink beneath. At 50% it fails outright.
+ *
+ * The blur is the part that makes it read as glass rather than a flat panel;
+ * where it is unsupported the 88% white alone still keeps every text legible,
+ * so this degrades safely.
+ */
+.frosted {
+  background-color: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(12px) saturate(115%);
+  -webkit-backdrop-filter: blur(12px) saturate(115%);
+}
+
+/*
+ * Panels sit above the fixed artwork layer, and the bottom bar clears the
+ * iPhone home indicator. Both are easy to forget and obvious once wrong.
+ */
+.safe-bottom {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
 }

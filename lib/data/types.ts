@@ -25,12 +25,13 @@ import type {
   WeddingConfig,
 } from '@/lib/types'
 
-/** What POST /api/rsvp needs back to build the confirmation screen. */
-export interface RsvpResult {
-  invite: InviteWithPeople
-  adults: number
-  kids: number
-}
+/**
+ * Defined in lib/types.ts beside RsvpSubmission and re-exported here, so the
+ * DataStore interface below still reads as one complete contract. The guest's
+ * confirmation screen needs this type and may not import from lib/data.
+ */
+export type { RsvpResult } from '@/lib/types'
+import type { RsvpResult } from '@/lib/types'
 
 export interface DataStore {
   // --- invites -------------------------------------------------------------

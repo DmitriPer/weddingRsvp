@@ -35,10 +35,11 @@ export default async function InviteesPage() {
   return (
     <div className="space-y-6">
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label={strings.admin.tabs.invitees} value={stats.totalInvites} />
+        {/* People, not invitations: a household of two counts as two. */}
+        <Tile label={strings.admin.tabs.invitees} value={stats.totalInvitedPeople} />
         <Tile label={strings.guests.adults} value={stats.totalAdults} />
         <Tile label={strings.guests.kids} value={stats.totalKids} />
-        <Tile label={strings.guests.declined} value={stats.totalDeclined} />
+        <Tile label={strings.guests.declined} value={stats.totalDeclinedPeople} />
       </section>
 
       {flaggedCount > 0 ? (

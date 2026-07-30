@@ -32,3 +32,19 @@ export function buildWhatsAppLink(phone: string, message: string): string {
   const digits = phone.replace(/[^\d]/g, '')
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
 }
+
+/**
+ * Navigation to the venue, searched by name and address.
+ *
+ * `waze.com/ul` rather than the `waze://` scheme: the https form opens the app
+ * when it is installed and falls back to the web map when it isn't, so it never
+ * dead-ends on a desktop or a phone without Waze.
+ *
+ * Returns null when there is no venue to search for, which is how the action bar
+ * knows not to render a button that would go nowhere.
+ */
+export function buildNavigationLink(venue: string): string | null {
+  const query = venue.trim()
+  if (!query) return null
+  return `https://waze.com/ul?q=${encodeURIComponent(query)}&navigate=yes`
+}

@@ -155,6 +155,65 @@ export const strings = {
     lastContacted: (when: string) => `פנייה אחרונה: ${when}`,
   },
 
+  /** The guest-facing side (PRD §6.1–§6.4). The only screens a guest ever sees. */
+  rsvp: {
+    greeting: (name: string) => `שלום ${name}`,
+    intro: 'נשמח לדעת אם תגיעו',
+    yes: 'מגיעים',
+    no: 'לא נגיע',
+
+    whoIsComing: 'מי מגיע?',
+    whoIsComingHint: 'סמנו את מי שמגיע',
+    extras: 'אורחים נוספים',
+    extrasHint: 'אפשר להוסיף אורחים שלא מופיעים ברשימה',
+    extraAdults: 'מבוגרים נוספים',
+    extraKids: 'ילדים נוספים',
+    fewer: 'פחות',
+    more: 'עוד',
+
+    submit: 'שליחת התשובה',
+    submitting: 'שולח…',
+    chooseAnswer: 'בחרו אם אתם מגיעים',
+    pickSomeone: 'סמנו לפחות אדם אחד, או ענו שאינכם מגיעים',
+    failed: 'השליחה נכשלה. נסו שוב.',
+
+    confirmation: {
+      titleAttending: 'תודה! נרשמתם',
+      titleDeclined: 'תודה שעדכנתם',
+      declined: 'רשמנו שלא תגיעו. חבל, נתגעגע!',
+      attending: 'מגיע',
+      extraGuest: 'אורח נוסף',
+      total: (count: number) => `סה״כ ${count === 1 ? 'אורח אחד' : `${count} אורחים`}`,
+      breakdown: (adults: number, kids: number) =>
+        kids === 0 ? '' : `${adults} מבוגרים · ${kids} ילדים`,
+      changeAnswer: 'שינוי התשובה',
+    },
+
+    closed: {
+      title: 'אישורי ההגעה נסגרו',
+      /** The number renders beside this as its own LTR element, not inline. */
+      callInstead: 'לשינויים אפשר להתקשר אלינו:',
+      callInsteadNoPhone: 'לשינויים אפשר ליצור איתנו קשר.',
+      yourAnswer: 'התשובה שלכם',
+      noAnswer: 'לא נרשמה תשובה',
+    },
+
+    landing: {
+      /** Deliberately says nothing about tokens: an unknown link lands here too. */
+      invitation: 'מתחתנים!',
+      seeYou: 'נשמח לראותכם',
+    },
+
+    /** The bottom action bar. Buttons without data to point at don't render. */
+    nav: {
+      rsvp: 'אישור הגעה',
+      yourAnswer: 'התשובה שלכם',
+      navigate: 'ניווט לאולם',
+      addToCalendar: 'הוספה ליומן',
+      closeSheet: 'סגירה',
+    },
+  },
+
   emptyStates: {
     noInvites: 'עדיין אין מוזמנים',
     noInvitesHint: 'הוסיפו מוזמן ראשון כדי להתחיל',

@@ -105,13 +105,24 @@ export interface Headcount {
   total: number
 }
 
+/**
+ * Note which of these count INVITATIONS and which count PEOPLE. A household of
+ * two is one invitation and two people, and the tiles show people — mixing the
+ * two is how a caterer gets the wrong number.
+ */
 export interface Stats {
   byStatus: Record<InviteStatus, number>
+  /** Invitations sent. */
   totalInvites: number
+  /** People listed across every invitation, answered or not. */
+  totalInvitedPeople: number
   totalAdults: number
   totalKids: number
   totalAttending: number
+  /** Invitations that answered no. */
   totalDeclined: number
+  /** People who answered no. */
+  totalDeclinedPeople: number
   totalUnanswered: number
 }
 
@@ -124,6 +135,17 @@ export interface RsvpSubmission {
   /** Unnamed guests to add. Ignored when attending is false. */
   extraAdults: number
   extraKids: number
+}
+
+/**
+ * What POST /api/rsvp answers with — the submission's counterpart, which is why
+ * it sits beside it rather than in the data layer. The guest's confirmation
+ * screen is a Client Component and may not import from lib/data at all.
+ */
+export interface RsvpResult {
+  invite: InviteWithPeople
+  adults: number
+  kids: number
 }
 
 export interface CreateInviteInput {

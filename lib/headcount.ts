@@ -51,6 +51,30 @@ export function summarizeAttendance(
   return { kind: 'coming', coming: countAttending(attendees).total, invited }
 }
 
+/**
+ * Everyone listed on an invitation, answered or not — the "how many people did
+ * we invite" number, as opposed to how many invitations were sent.
+ *
+ * Trivial on its own, and here anyway: counting people is this file's job, and
+ * the alternative is a bare `.length` in a component that nobody recognises as
+ * a headcount until it disagrees with one.
+ */
+export function countInvited(attendees: Attendee[]): number {
+  return attendees.length
+}
+
+/**
+ * People who answered no. Placeholders are excluded: an unnamed "+1" only
+ * exists while it is coming, and declining deletes them outright.
+ *
+ * Nobody has declined until the invitation itself has answered — before that
+ * `is_attending` is merely its `false` default, not a decision.
+ */
+export function countDeclined(attending: boolean | null, attendees: Attendee[]): number {
+  if (attending === null) return 0
+  return attendees.filter((person) => !person.is_attending && !person.is_placeholder).length
+}
+
 export function sumHeadcounts(counts: Headcount[]): Headcount {
   return counts.reduce<Headcount>(
     (total, one) => ({
@@ -66,7 +90,15 @@ export function isSeated(person: Attendee): boolean {
   return person.table_id !== null
 }
 
+/**
+ * Everyone actually coming. The `is_attending` filter lives here and nowhere
+ * else, for the same reason the arithmetic above does.
+ */
+export function attendingPeople(attendees: Attendee[]): Attendee[] {
+  return attendees.filter((person) => person.is_attending)
+}
+
 /** Only attending people take a seat. Declined people free theirs (PRD §6.17). */
 export function seatableAttendees(attendees: Attendee[]): Attendee[] {
-  return attendees.filter((person) => person.is_attending)
+  return attendingPeople(attendees)
 }
