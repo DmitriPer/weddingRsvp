@@ -8,9 +8,18 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## Project state
 
-This is a **greenfield rebuild**, started 2026-07-30 on the `greenfield` orphan branch. The app was previously an adaptation of `amirgal/wedding-rsvp`; that approach was abandoned (reasons in `docs/carry-over.md`). Right now the repo is a bare `create-next-app` scaffold plus the docs — **no feature code exists yet.**
+This is a **greenfield rebuild**, started 2026-07-30 on the `greenfield` orphan branch. The app was previously an adaptation of `amirgal/wedding-rsvp`; that approach was abandoned (reasons in `docs/carry-over.md`). Right now the repo has docs, migrations, and the admin script — **no feature code exists yet.**
 
-`docs/architecture.md` and `docs/project-explainer.html` still describe the *old* app. Treat them as historical until regenerated.
+Read these before building anything:
+
+| Doc | What it is |
+|---|---|
+| `docs/wedding-rsvp-PRD.md` | **The spec.** What gets built. |
+| `docs/architecture.md` | File tree, module responsibilities, request flows. |
+| `docs/conventions.md` | How code is written here. Small functions, layering, single source of truth. |
+| `docs/setup-database.md` | Creating the Supabase project and running migrations. |
+
+`docs/project-explainer.html` still describes the *old* app — historical until regenerated.
 
 ## Commands
 
@@ -28,7 +37,7 @@ No test suite configured yet.
   - middleware is **`proxy.ts`** and must export `proxy`, not `middleware`
   - **`searchParams` and `params` are Promises** — always `await` them, including inside `generateMetadata`
 - **Tailwind v4** — CSS-based config via `@theme` in `app/globals.css`. There is no `tailwind.config.ts`.
-- **Supabase** (not yet installed) — Postgres + Auth.
+- **Supabase** — Postgres + Auth + Storage. Uses the **new key format** (`sb_publishable_…` / `sb_secret_…`), not the legacy `anon` / `service_role` JWTs.
 - **shadcn/ui** — add on demand with `npx shadcn@latest add <name>`. **Do not add `shadcn` as a devDependency**: it pulls ~201 packages including an HTTP server stack and the MCP SDK.
 - **`exceljs`** for spreadsheet import — **never `xlsx`**. SheetJS stopped publishing to npm at 0.18.5, which carries permanently unfixable prototype-pollution and ReDoS advisories.
 
@@ -46,13 +55,13 @@ Three clients, each with a strict usage rule. Using the wrong one causes auth or
 
 | File | Key | Use in | Never |
 |---|---|---|---|
-| `lib/supabase/client.ts` | anon | Client Components | mutations |
-| `lib/supabase/server.ts` | anon + cookies | Server Components, auth checks | bypassing RLS |
-| `lib/supabase/admin.ts` | **service role** | API routes doing data work | anything client-rendered |
+| `lib/supabase/client.ts` | publishable | Client Components | mutations |
+| `lib/supabase/server.ts` | publishable + cookies | Server Components, auth checks | bypassing RLS |
+| `lib/supabase/admin.ts` | **secret** | API routes doing data work | anything client-rendered |
 
 All tables get RLS `deny all`. Every data operation goes through the admin client in an API route. Auth verification uses the server client — call `getUser()`, **never `getSession()`** (it isn't guaranteed to revalidate the token, and a cookie is controlled by whoever sends the request).
 
-`SUPABASE_SERVICE_ROLE_KEY` is server-only. Never prefix it `NEXT_PUBLIC_` — that prefix means "ship this to the browser", which would open the whole database.
+`SUPABASE_SECRET_KEY` is server-only. Never prefix it `NEXT_PUBLIC_` — that prefix means "ship this to the browser", which would open the whole database.
 
 ### Defense in depth on `/admin`
 
@@ -86,15 +95,23 @@ WhatsApp and every other messenger fetches invite links to build preview cards, 
 ### Headcount is derived, never stored
 
 ```
-adults = count(attendees where is_attending and not is_child) + invites.extra_adults
-kids   = count(attendees where is_attending and     is_child) + invites.extra_kids
+adults = count(attendees where is_attending and not is_child)
+kids   = count(attendees where is_attending and     is_child)
 ```
 
-Guests tick named people and add unnamed extras — they never type a total, so the inputs cannot contradict each other. The only stored counts are the snapshots in `response_history`.
+**Every attending person is a row in `attendees`** — including guest-added "+1"s, which are rows with `is_placeholder = true`. There are no count columns anywhere, so nothing can drift out of sync, and the guest never types a total. The only stored counts are the snapshots in `response_history`.
+
+Lives in `lib/headcount.ts` and nowhere else.
 
 ### Data model
 
-Four tables: `invites`, `attendees`, `response_history`, `wedding_config`. There is deliberately **no `responses` table** — it would be strictly 1:1 with `invites`. Full schema and rationale in PRD §5 and §10.
+Five tables: `invites`, `attendees`, `tables`, `response_history`, `wedding_config`.
+
+- **No `responses` table** — it would be strictly 1:1 with `invites`, so its columns live on `invites`.
+- **Seating is `attendees.table_id`**, not a join table — one person sits at one table, same 1:1 reasoning.
+- **`wedding_config.id` is `boolean primary key check (id)`** — only `true` is valid, so a second row is rejected by the database.
+
+Full schema and rationale in PRD §5 and §10; SQL in `supabase/migrations/`.
 
 ## Hard rules
 
@@ -108,8 +125,8 @@ Four tables: `invites`, `attendees`, `response_history`, `wedding_config`. There
 
 ```
 NEXT_PUBLIC_SUPABASE_URL        # public
-NEXT_PUBLIC_SUPABASE_ANON_KEY   # public
-SUPABASE_SERVICE_ROLE_KEY       # server-only — never NEXT_PUBLIC_
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY   # public
+SUPABASE_SECRET_KEY       # server-only — never NEXT_PUBLIC_
 NEXT_PUBLIC_SITE_URL            # builds invite links and absolute OG image URLs
 NEXT_PUBLIC_MOCK_MODE           # 'true' to use the in-memory data layer
 ```

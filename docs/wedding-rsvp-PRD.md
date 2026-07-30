@@ -1,38 +1,40 @@
-# Wedding RSVP App — Product Requirements (Greenfield)
+# Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v1 — greenfield spec. Supersedes `wedding-app-brownfield-PRD.md` (v3), which described adapting `amirgal/wedding-rsvp`.
+**Status:** v2 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
-**Companion docs:** `claude-workflow.md` (process + hard rules), `carry-over.md` (what was worth learning from the base repo)
+**Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
+
+**v2 changes:** seating is in scope · unnamed +1s are now real person rows, removing `extra_adults`/`extra_kids` entirely · assets upload through the admin panel · RSVP deadline with a hard close · thank-you list redefined · search, sort, export, copy-link, confirmation screen added.
 
 ---
 
 ## 1. Mission
 
-A wedding RSVP app for one wedding. Guests receive a personal link by WhatsApp and confirm who is coming. The couple manages the guest list, tracks who has responded, and sends every message by hand.
+A wedding RSVP app for one wedding. Guests receive a personal link by WhatsApp and confirm who is coming. The couple manages the guest list, tracks who has responded, sends every message by hand, and arranges the seating.
 
-This phase delivers a **working, guest-data-safe MVP — function and data only.** Visual design is a later phase.
-
-**Why greenfield:** the app was originally being adapted from a friend's repo (`amirgal/wedding-rsvp`, informal verbal permission, no LICENSE). Understanding someone else's structure before being able to change it cost more time than it saved. Rebuilding from this spec also makes ownership unambiguous. Patterns and ideas carry over (see `carry-over.md`); code does not.
+This phase delivers a **working, guest-data-safe MVP — function and data first.** Deliberate visual design comes later.
 
 ## 2. Scope Boundaries
 
 | In scope | Out of scope |
 |---|---|
 | Full data model and schema | Real Supabase project (mock data only — §8) |
-| API routes / server logic | Visual design and styling polish |
-| Guest RSVP flow end to end | Automated or bulk WhatsApp sending of any kind |
-| Admin dashboard: list, add, edit, delete, import | Seating / floor-plan tool |
-| Manual `wa.me` send + contact tracking | Multi-admin access |
-| Config-driven wedding details | Guest-facing accounts or logins |
+| API routes and server logic | Deliberate visual design |
+| Guest RSVP flow end to end | Automated or bulk WhatsApp sending, ever |
+| Admin: list, search, add, edit, delete, import, export | Multi-admin access |
+| Manual `wa.me` send + contact tracking | Guest-facing accounts or logins |
+| Config-driven wedding details and templates | |
+| Asset upload | |
+| Seating / table arrangement | |
 
-**On styling:** the brownfield PRD froze an existing design. There is no existing design now, so the rule translates to: **build the function and the data first; make it work before making it beautiful.** Screens should be plain, legible, and Hebrew/RTL-correct. Deliberate visual design is a separate later phase.
+**On styling:** build the function and the data first. Screens should be plain, legible, and Hebrew/RTL-correct. Deliberate design is a separate later phase.
 
 ## 3. Hard Rules
 
 Carried from `claude-workflow.md`. Not to be relitigated.
 
-1. **No automated, scheduled, or bulk WhatsApp/SMS sending — ever.** Every outbound message is a manual human tap on a per-row `wa.me` button. Reason: risk of the couple's number being flagged or banned for spam-like behaviour. The app's job is to *prepare* messages and *flag who needs one*; a human always decides when to send.
+1. **No automated, scheduled, or bulk WhatsApp/SMS sending — ever.** Every outbound message is a manual human tap on a per-row `wa.me` button. Reason: risk of the couple's number being flagged or banned. The app *prepares* messages and *flags who needs one*; a human always decides when to send.
 2. **Function and data before styling.**
 3. **Mock data until explicitly told otherwise.** No real guest data anywhere until Dmitri deliberately points the app at his own Supabase project.
 4. **Data access stays swappable.** Mock vs. real is a backing-store swap behind one set of functions — never mock logic scattered through components or routes.
@@ -42,13 +44,13 @@ Carried from `claude-workflow.md`. Not to be relitigated.
 
 They never overlap. A guest never sees a login. An admin never sees the RSVP form.
 
-**Guest — no login, ever.** Opens their personal link → sees their own household → ticks who is coming, optionally adds unnamed extras → submits → can return via the same link to edit.
+**Guest — no login, ever.** Opens their personal link → sees their own household → ticks who is coming, optionally adds guests the admin doesn't know about → submits → sees confirmation → can return via the same link to edit, until the deadline.
 
-**Admin — behind a login.** Signs in → sees every invite with status and headcount → adds/edits/deletes guests or imports a spreadsheet → taps `wa.me` per row to send → tracks who hasn't responded → reads answers and history → checks totals → edits wedding details and message templates.
+**Admin — behind a login.** Signs in → sees every invite with status and headcount → adds/edits/deletes guests, imports or exports a spreadsheet → taps `wa.me` per row to send → tracks who hasn't responded → reads answers and history → edits wedding details and templates → arranges seating.
 
 ## 5. Data Model
 
-Four tables.
+Five tables.
 
 ```
 invites  (one row per invitation)
@@ -70,19 +72,24 @@ invites  (one row per invitation)
   responded_at  timestamptz               -- first submission
   updated_at    timestamptz               -- most recent change
 
-  -- unnamed extras the guest added on top of the ticked names
-  extra_adults  int not null default 0 check (extra_adults >= 0)
-  extra_kids    int not null default 0 check (extra_kids  >= 0)
-
   created_at    timestamptz not null default now()
 
-attendees  (one row per named person; ONLY the admin ever creates these)
-  id            uuid pk
-  invite_id     uuid not null references invites(id) on delete cascade
-  name          text not null             -- always known: guests never type names
-  is_child      boolean not null default false
-  is_attending  boolean not null default false   -- the guest's per-person tick
-  created_at    timestamptz not null default now()
+attendees  (one row per PERSON — the only place people exist)
+  id             uuid pk
+  invite_id      uuid not null references invites(id) on delete cascade
+  name           text not null
+  is_child       boolean not null default false
+  is_attending   boolean not null default false   -- the guest's per-person tick
+  is_placeholder boolean not null default false   -- a guest-added "+1"; renameable by admin
+  table_id       uuid references tables(id) on delete set null
+  created_at     timestamptz not null default now()
+
+tables  (seating)
+  id          uuid pk
+  name        text not null              -- "שולחן 1"
+  capacity    int not null check (capacity > 0)
+  sort_order  int not null default 0
+  created_at  timestamptz not null default now()
 
 response_history  (append-only; never updated, never deleted)
   id            uuid pk
@@ -92,25 +99,29 @@ response_history  (append-only; never updated, never deleted)
   kid_count     int not null default 0
   submitted_at  timestamptz not null default now()
 
-wedding_config  (exactly one row, editable from the admin panel, no redeploy)
+wedding_config  (exactly one row, seeded by migration, editable from the admin panel)
   couple_names
-  wedding_date_time
+  wedding_date_time            timestamptz
   venue_name
-  invite_message_template       ({{name}} / {{link}})
-  day_of_message_template       ({{name}} / {{link}})
-  thank_you_message_template    ({{name}} / {{link}})
+  rsvp_deadline                timestamptz null   -- null = no deadline, form always open
+  contact_phone                text               -- shown when RSVP has closed
+  invite_message_template      ({{name}} / {{link}})
+  day_of_message_template      ({{name}} / {{link}})
+  thank_you_message_template   ({{name}} / {{link}})
 ```
 
-**Indexes:** `token`, `status`, and every foreign key (`attendees.invite_id`, `response_history.invite_id`), plus `response_history.submitted_at desc`.
+**Indexes:** `invites.token`, `invites.status`, `attendees.invite_id`, `attendees.table_id`, `response_history.invite_id`, `response_history.submitted_at desc`.
 
-### 5.1 Headcount is always derived, never stored
+**Seating lives on `attendees.table_id`, not a join table.** One person sits at one table — strictly 1:1, so it is a column. The same reasoning that ruled out a separate `responses` table, applied consistently.
+
+### 5.1 Headcount is derived, never stored
 
 ```
-adults = count(attendees where is_attending and not is_child) + invites.extra_adults
-kids   = count(attendees where is_attending and     is_child) + invites.extra_kids
+adults = count(attendees where is_attending and not is_child)
+kids   = count(attendees where is_attending and     is_child)
 ```
 
-Single source of truth for every headcount in the app — row totals, stats, exports, the caterer number. The guest ticks names and adds extras but **never types a total**, so the two inputs cannot contradict each other. The only place counts are *stored* is `response_history`, which snapshots the totals computed by this formula at each submission.
+Every attending person — named by the admin or added by the guest as a +1 — is a row. There are no count columns to drift out of sync, and the guest never types a total. This is the single source of truth for every headcount: row totals, stats, exports, seating, the caterer number. The only place counts are *stored* is `response_history`, which snapshots these totals at each submission.
 
 ### 5.2 Status state machine
 
@@ -123,147 +134,212 @@ added → pending → opened → submitted → edited
 | Status | Meaning | Advanced by |
 |---|---|---|
 | `added` | on the guest list, **no message sent yet** | admin taps `wa.me` |
-| `pending` | invite sent, waiting for them to open it | guest opens their link (client-side, §6.10) |
+| `pending` | invite sent, waiting for them to open it | guest opens their link (client-side — §6.15) |
 | `opened` | link opened, not yet answered | guest submits the form |
 | `submitted` | answered once | guest submits again |
-| `edited` | changed at least once — **terminal**, stays `edited` forever | — |
+| `edited` | changed at least once — **terminal** | — |
 
-The `added → pending` transition is the same action that increments `contact_attempts` and sets `last_contacted_at`. The follow-up flag (§6.5) applies to invites sitting in `pending` or `opened`.
+The `added → pending` transition is the same action that increments `contact_attempts` and sets `last_contacted_at`. The follow-up flag (§6.10) applies to invites in `pending` or `opened`.
+
+### 5.3 Placeholder lifecycle
+
+A guest adding a +1 creates a real `attendees` row with `is_placeholder = true`, named `אורח של {invite.name}` (numbered when there is more than one). The guest chooses adult or child; they never type a name.
+
+- **On submit**, placeholder rows are reconciled to match the requested number — create or delete the difference. The guest is not editing rows directly, they are choosing a count.
+- **On decline**, every placeholder is **deleted** and every named person set `is_attending = false`. A placeholder represents nobody, so it must not survive a decline.
+- **The admin can rename a placeholder** if they later learn who it is, which clears `is_placeholder`. This is what makes seating complete.
 
 ## 6. Functional Requirements
 
 ### 6.1 Guest RSVP flow
-Guest opens `/?token=…`. The page resolves the invite, shows the invitation label and any named people the admin added, and lets the guest:
+Guest opens `/?token=…`. The page shows the invitation label and the people the admin listed, and lets the guest:
 - answer attending yes/no for the invitation as a whole;
-- **tick each named person individually** — so declining Tolik while approving Nastya is expressible, and the admin learns *who* dropped out rather than inferring it from a falling number;
-- **add unnamed extras** (adults and/or kids), available on every invite including ones that already have named people, so a guest can swap a listed person for someone the admin doesn't know;
-- return later via the same link and edit, with previous answers pre-filled.
+- **tick each named person individually** — declining Tolik while approving Nastya must be expressible, so the admin learns *who* dropped out rather than inferring it from a falling number;
+- **add guests the admin doesn't know about** (adult or child), creating placeholder rows per §5.3;
+- return via the same link and edit, with previous answers pre-filled, until the deadline.
 
-Only the admin ever types a name. Guests never enter names.
+Only the admin ever types a real name. **No cap on added guests** — an unexpected headcount surfaces in the total rather than being blocked at entry.
 
-**No cap on extras.** Trade-off accepted knowingly: an unexpected headcount surfaces via the derived total rather than being blocked at entry.
+**Declining zeroes everything.** Answering "not coming" sets `is_attending = false` on every named person and deletes every placeholder. An invite showing "3 people" becomes **"0 people · declined"**. Switching back to yes starts from a blank form. No contradictory state can exist.
 
-### 6.2 Config-driven wedding details
-Couple names, date/time, venue, and all three message templates live in `wedding_config` and are editable from the admin panel. No hardcoded string literals, no redeploy to change the date.
+### 6.2 Guest confirmation screen
+After submitting, the guest sees what was saved — who is coming and the total — plus the wedding date and venue from `wedding_config`. Without it a guest cannot tell the submission worked.
 
-Three **separate, independently-editable** templates (invite / day-of / thank-you) — each keeps its own saved content, so switching between them never means re-typing or losing what was there.
+### 6.3 RSVP deadline — hard close
+Past `rsvp_deadline` the guest sees their answer **read-only**, with a message to call `contact_phone` instead. A null deadline means always open. The admin is never restricted by it.
 
-### 6.3 Admin guest management
-Add, **edit**, and delete an invite (name, phone, side, relation). Add, edit, and remove named people under an invite. Bulk import from `.xlsx` — each row needs at least a name.
+**Enforced server-side in `POST /api/rsvp`, not only by disabling the form.** A disabled form is bypassed with one `curl`, and the entire point is that numbers cannot move after the caterer has been committed to.
 
-**Admin table shape:** one row per invite with its derived total ("3 people"). Named people appear as indented sub-rows behind an expand/collapse toggle, each showing approved/declined, plus a final `+N guest(s)` line for unnamed extras. Invites with no named people have no toggle. Keeps a 150-row list scannable with no new screens.
+### 6.4 Public landing page
+The site root with no token, or a token that doesn't resolve, shows a public page with couple names, date, and venue from `wedding_config`. It exposes no guest data and offers no way to RSVP.
 
-**Delete is permanent and cascades** — removing an invite destroys its attendees and its entire history with no undo. Requires a confirmation dialog; the database will not save you.
+### 6.5 Config-driven wedding details
+Couple names, date/time, venue, deadline, contact phone, and all three templates live in `wedding_config`, editable from the admin panel. No hardcoded strings, no redeploy to change the date.
 
-### 6.4 Per-row `wa.me` send button
-Each invite row gets a button opening `wa.me` with that guest's phone and the rendered message pre-filled, from the **shared editable template** with `{{name}}`/`{{link}}` substituted. One tap opens WhatsApp ready to send; the admin still taps send inside WhatsApp.
+Three **separate, independently-editable** templates (invite / day-of / thank-you) — each keeps its own content, so switching never means re-typing.
+
+### 6.6 Admin guest management
+Add, edit, and delete an invite (name, phone, side, relation). Add, edit, rename, and remove people under an invite, including renaming a placeholder.
+
+**Table shape:** one row per invite with its derived total ("3 people"). People appear as indented sub-rows behind an expand toggle, each showing approved/declined, with placeholders visibly marked and renameable. Invites with no people have no toggle.
+
+**Search** by name or phone. **Sort** by name, status, headcount, or last-contacted. **Filter** by all five statuses.
+
+**Duplicate phone warning** on add/edit when the number already exists — a warning, never a block.
+
+**Delete is permanent and cascades**, destroying that invite's people and entire history. Requires a confirmation dialog; the database will not save you.
+
+### 6.7 Import and export
+Import from `.xlsx` — each row needs at least a name. Export the guest list (for the caterer) and a seating/arrival list. Both via **`exceljs`**.
+
+### 6.8 Copy invite link
+A row action copying that guest's raw invite URL, for guests not reachable on WhatsApp.
+
+### 6.9 Per-row `wa.me` send button
+Opens `wa.me` with that guest's phone and the rendered message from the shared editable template, `{{name}}`/`{{link}}` substituted. One tap opens WhatsApp ready to send; the admin still taps send inside WhatsApp.
 
 Never bulk. Never automatic. Never scheduled.
 
-Phone numbers are used **as-is** — no auto-formatting or country-code logic. The admin's phone input carries a visible hint showing the expected international format (e.g. `+972501234567`). Validation is explicitly not being built.
+Phone numbers are used **as-is** — no formatting or country-code logic. The phone input carries a hint showing the expected international format (e.g. `+972501234567`). Validation is explicitly not built.
 
-### 6.5 Manual non-responder tracking
-Tapping the `wa.me` button is the **only** thing that marks a guest as contacted: it increments `contact_attempts`, sets `last_contacted_at`, and moves `added → pending`. No separate "mark contacted" toggle.
+### 6.10 Manual non-responder tracking
+Tapping `wa.me` is the **only** thing that marks a guest contacted: it increments `contact_attempts`, sets `last_contacted_at`, and moves `added → pending`. No separate toggle.
 
-Invites reaching **5 contact attempts with still no response** get a distinct badge — "needs a phone call" — on top of the existing status filters. The app counts and flags; the couple decides if and when to send again.
+Invites reaching **5 attempts with still no response** get a "needs a phone call" badge. The app counts and flags; the couple decides whether to send again.
 
-### 6.6 Stats
-Counts per status, total adults and kids attending, total declined, total invited — all from the §5.1 formula.
+### 6.11 Stats
+Counts per status, total adults and kids attending, total declined, total invited — all from §5.1.
 
-### 6.7 Answers and history
-Open any invite to see its current answer plus every previous submission, newest first. History is counts-only (no per-person snapshot) — see §10.
+### 6.12 Answers and history
+Open any invite to see its current answer plus every previous submission, newest first. History is counts-only — see §10.
 
-### 6.8 Day-of-wedding reminder — prep only
-Generate the reminder message (venue/time, via the template mechanism) and list confirmed guests, each with a `wa.me` button. No scheduling, no auto-send.
+### 6.13 Day-of reminder — prep only
+Generate the reminder message and list confirmed guests, each with a `wa.me` button. No scheduling, no auto-send.
 
-### 6.9 Post-wedding thank-you — prep only
-Same shape, for guests who attended.
+### 6.14 Thank-you — prep only
+Same shape, for **everyone who said yes**. The app has no attendance data — it knows who confirmed, not who turned up — so "attended" is deliberately not the criterion.
 
-### 6.10 WhatsApp preview image, and client-side `opened` marking
+### 6.15 WhatsApp preview image, and client-side `opened` marking
 
-`wa.me` prefills **text only** — click-to-chat supports no media parameter. A real attachment would mean manual per-message work or the Business Cloud API (rejected: automated sending, violates §3.1). The supported path is the **link preview card** WhatsApp renders from OpenGraph tags.
+`wa.me` prefills **text only** — click-to-chat supports no media parameter. A real attachment would mean manual per-message work or the Business Cloud API (rejected: automated sending, violates §3.1). The supported path is the **link preview card** WhatsApp builds from OpenGraph tags.
 
 - The invite page emits `og:image`, `og:title`, `og:description`.
-- The image is **generated per guest** (`next/og` `ImageResponse`) so the card carries that guest's name. No per-person design work.
-- A **static fallback** covers generation failure and the no-token landing page.
+- The image is **generated per guest** (`next/og` `ImageResponse`) so the card carries that guest's name.
+- A **static fallback** covers generation failure and the landing page.
 - Constraints: publicly reachable, absolute URL, JPG/PNG, ~1200×630, well under ~600 KB, fast — WhatsApp drops the preview after a few seconds.
 
 **Companion requirement — `opened` is marked from client-side JavaScript, never during server rendering.**
 
-Every invite triggers **two** non-human fetches: the page's meta tags and the generated image. Server-side marking would flip every invite to `opened` the moment it's *sent*, destroying the "who hasn't looked yet" filter that §6.5 depends on entirely. Crawlers fetch HTML but don't execute JavaScript; real browsers do.
+Every invite triggers **two** non-human fetches: the meta tags and the generated image. Server-side marking would flip every invite to `opened` the moment it is *sent*, destroying the "who hasn't looked yet" filter that §6.10 depends on entirely. Crawlers fetch HTML but don't run JavaScript; real browsers do.
 
-- Primary: a client-side call that fires only in a real browser session.
-- Backstop: User-Agent checks for known crawlers (`WhatsApp`, `facebookexternalhit`, `Twitterbot`, `TelegramBot`, `Slackbot`) — a heuristic, not a guarantee.
-- **The OG image route must never mutate invite status.** It is crawler-facing by definition.
+- Primary: a client-side call firing only in a real browser session.
+- Backstop only: User-Agent checks for `WhatsApp`, `facebookexternalhit`, `Twitterbot`, `TelegramBot`, `Slackbot`.
+- **The OG image route must never mutate status.** It is crawler-facing by definition.
 
-### 6.11 Not building
-Dietary tracking — decided against, not relevant to this wedding.
+### 6.16 Asset upload
+An admin screen uploading images to a Supabase Storage bucket — the invitation picture and the OG card artwork — so they can be changed without touching code. Admin writes, public reads. Mock mode stores locally so the flow works without a real project.
+
+### 6.17 Seating
+- Manage tables: name, capacity, ordering.
+- Assign any attending person — named or placeholder — to a table via `attendees.table_id`.
+- Show per-table occupancy against capacity, and a list of unseated people.
+- Export/print the seating list.
+
+Only attending people are seatable. Declining a guest frees their seats.
+
+### 6.18 Admin authentication
+Supabase Auth, with the single admin account created by a one-off script (§9). The app ships a login form only — no signup route, no password reset, no user management. A signup endpoint would be a door that has to be locked; not building one removes the problem.
+
+### 6.19 Empty, loading, and error states
+Cross-cutting, not a feature. Every list and every form has all three. First run has zero guests and nothing should render blank.
+
+### 6.20 Not building
+- Dietary tracking — not relevant to this wedding.
+- Attendance / day-of check-in — see §6.14.
+- A "needs re-confirmation" flag for people added after a guest responded. Handled by creating a separate invite or phoning them.
 
 ## 7. Security Architecture
 
-Non-negotiable, and the reason the base repo was worth studying at all.
+Non-negotiable.
 
-1. **Token-as-credential.** The UUID in the invite URL *is* the guest's password. No guest accounts, no logins, no password resets. Also what makes each link an individual landing page showing that guest's own household.
-2. **RLS `deny all` on every table.** The anon key ships to browsers by design; RLS makes it powerless. Every real operation goes through server code holding the service-role key.
+1. **Token-as-credential.** The UUID in the invite URL *is* the guest's password. No guest accounts, no logins. Also what makes each link an individual landing page showing that guest's own household.
+2. **RLS `deny all` on every table.** The publishable key ships to browsers by design; RLS makes it powerless. Every real operation goes through server code holding the secret key.
 3. **Three clients, one strict rule each** — browser (anon) / server (anon + cookies, auth checks only) / admin (service role, API routes only). The service-role key is server-only and **never** prefixed `NEXT_PUBLIC_`; importing it into anything client-rendered ships it to browsers and opens the whole database.
-4. **Defense in depth on `/admin`.** A proxy gates `/admin/*` before any admin page renders, **and** every admin API route independently re-verifies the session. Redundant on purpose: API routes are separate URLs reachable by `curl` without ever touching a page, and middleware/proxy bypass CVEs are real and recurring. Two locks turn a critical bug into a cosmetic one.
-5. **`getUser()`, never `getSession()`** for anything deciding access. A cookie is controlled by whoever sends the request; `getSession()` isn't guaranteed to revalidate the token, `getUser()` verifies it against the auth server.
-6. **Bot-aware status transitions** — see §6.10.
+4. **Defense in depth on `/admin`.** A proxy gates `/admin/*` before any admin page renders, **and** every admin API route independently re-verifies the session. Redundant on purpose: API routes are separate URLs reachable by `curl` without touching a page, and middleware bypass CVEs are real and recurring. Two locks turn a critical bug into a cosmetic one.
+5. **`getUser()`, never `getSession()`** for anything deciding access. A cookie is controlled by whoever sends the request; `getSession()` isn't guaranteed to revalidate the token.
+6. **Bot-aware status transitions** — §6.15.
+7. **Deadline enforced server-side** — §6.3.
 
 ## 8. Mock Data First
 
-Build and test against an **in-memory data layer with the same function signatures as the real Supabase calls**, switched by a flag. Never mock logic scattered through components or routes. Swapping to a real Supabase project must be a backing-store change only — not a rewrite of routes, components, or business logic.
+Build and test against an **in-memory data layer with the same function signatures as the real calls**, switched by a flag. Never mock logic scattered through components or routes. Swapping to a real Supabase project must be a backing-store change only.
 
-Seed ~10–15 invites spanning all five statuses, both sides, several relations, and some with 5+ `contact_attempts`. To exercise §6.1 specifically, include at least one of each:
+Seed ~12 invites spanning all five statuses, both sides, several relations, and some at 5+ `contact_attempts`. Include at least one of each:
 
 - several named people, all approved
 - some approved and some declined
-- named people **plus** unnamed extras
-- no named people, with an extra added
-- no named people, no extras
+- named people **plus** placeholder +1s
+- no named people, with a placeholder added
+- no named people, nobody added
 - declined entirely (`attending = false`)
 - no answer yet (`attending = null`)
-- at least two with multiple `response_history` rows, including one that went **declined → attending** (the case that is otherwise invisible — see §10)
+- two with multiple `response_history` rows, one going **declined → attending**
+- several people pre-assigned to tables, and some left unseated
 
 ## 9. Stack
 
-- **Next.js (App Router, TypeScript)** — note the version's specifics: middleware is `proxy.ts` exporting `proxy`; `searchParams` and `params` are Promises and must be awaited.
-- **Supabase** — Postgres + Auth, three clients per §7.3.
-- **Tailwind v4** — CSS-based config via `@theme`, no `tailwind.config.ts`.
-- **shadcn/ui** — added on demand with `npx shadcn@latest add <name>`. **Not** a devDependency: it drags in ~201 packages including an HTTP server stack and the MCP SDK.
+- **Next.js 16** (App Router, TypeScript) — middleware is `proxy.ts` exporting `proxy`; `searchParams` and `params` are Promises and must be awaited, including in `generateMetadata`.
+- **Supabase** — Postgres, Auth, Storage. Three clients per §7.3.
+- **Tailwind v4** — CSS-based config via `@theme`; no `tailwind.config.ts`.
+- **shadcn/ui** — added on demand with `npx shadcn@latest add <name>`. **Not** a devDependency: it pulls ~201 packages including an HTTP server stack and the MCP SDK.
 - **Sonner** for toasts.
-- **`exceljs`** for spreadsheet import — **not `xlsx`**. SheetJS stopped publishing to npm at 0.18.5, which carries unfixable prototype-pollution and ReDoS advisories.
+- **`exceljs`** for spreadsheets — **never `xlsx`**. SheetJS stopped publishing to npm at 0.18.5, leaving unfixable prototype-pollution and ReDoS advisories.
+
+**First admin account:** created by `scripts/create-admin.ts` using `supabase.auth.admin.createUser()` with the service-role key. Supabase Auth users cannot be created reliably by plain SQL — `auth.users` is managed, with password hashing and a linked `identities` row.
 
 ## 10. Resolved Decisions
 
-- **Who types names:** the admin, only. Keeps `attendees.name` `NOT NULL` and needs no "added by" column.
-- **Per-person approve/decline:** yes — a declined person is identifiable by name, which is what makes a later seating tool and name cards possible.
-- **Unnamed extras:** allowed on every invite, stored as adult/kid counts. Split by age because the caterer prices them differently.
-- **No cap on extras.**
+- **Who types names:** the admin. Guests choose a *count* of extra guests, never a name.
+- **Every attending person is a row.** Extras are placeholder `attendees`, not count columns — which is what makes seating possible and removes any chance of counts drifting.
+- **Per-person approve/decline:** yes — a declined person is identifiable by name, which is what makes seating and name cards work.
+- **No cap on added guests.**
 - **Guest never types a total** — headcount is computed, making contradictory input structurally impossible rather than something to validate.
-- **No separate `responses` table.** It would be strictly 1:1 with `invites` and always read alongside it; once counts are derived it would hold three columns. Not worth a table, an FK, a unique constraint, a cascade rule and an index. Cost accepted: `attending` is nullable, with `status` already signalling whether an answer exists.
-- **History kept, counts only.** No per-person snapshot — the extra fidelity isn't worth the complexity for a one-off event. Its value is catching the money-relevant change, especially **declined → attending**, which is otherwise invisible: an "edited" badge says *something* changed, never that a no became a yes. That matters because the caterer is paid per plate against a fixed deadline.
-- **New `added` status** so "on the list" and "message sent" are distinguishable, making `pending` mean *invited and waiting* — the thing worth filtering on.
-- **Three separate message templates**, not one reused.
-- **Seating deferred, but its data shape is being built now.** `attendees` is what a seating tool needs; building it now makes the later work UI-only, with no migration against a populated real guest list.
+- **No separate `responses` table.** Strictly 1:1 with `invites` and always read alongside it. Cost accepted: `attending` is nullable, with `status` signalling whether an answer exists.
+- **Seating is a column on `attendees`, not a join table** — same 1:1 reasoning.
+- **History kept, counts only.** Its value is catching the money-relevant change, especially **declined → attending**, which is otherwise invisible: an "edited" badge says *something* changed, never that a no became a yes. The caterer is paid per plate against a fixed deadline.
+- **`added` status** so "on the list" and "message sent" are distinguishable, making `pending` mean *invited and waiting*.
+- **Declining zeroes everything** rather than hiding ticks and keeping them. A declined invite must read 0 with no stored state contradicting it, even at the cost of re-ticking if the guest changes their mind.
+- **Deadline hard-closes**, enforced server-side.
+- **Thank-you = everyone who said yes.** No attendance tracking.
+- **Admin auth:** Supabase Auth, one account created by script. No signup route to defend.
+- **`is_child` boundary:** adults 7+, children 2–7, under-2 not counted. A caterer convention.
+- **Assets upload through the admin panel**, not committed to the repo.
+
+### Declined, with consequences recorded
+
+- **Import duplicate detection** — importing the same spreadsheet twice creates duplicate invites with different tokens, so one household can receive two links and RSVP twice. Mitigation is checking the list after importing.
+- **Token rotation** — a link forwarded to the wrong person cannot be invalidated.
+- **Audit log, response notifications, rate limiting, analytics** — rate limiting is unnecessary because UUIDv4 tokens make guessing impractical; the rest are not worth the weight for one wedding.
 
 ## 11. Explicitly Deferred
 
-- Deliberate visual design (colors, layout, animation, typography) — beyond making screens legible and RTL-correct.
+- Deliberate visual design, beyond legible and RTL-correct.
 - Real Supabase project setup and data migration.
-- Seating / floor-plan tool.
 - Multi-admin access.
-- Any form of automated or scheduled message sending — permanently, not just this phase.
+- Any form of automated or scheduled sending — permanently, not just this phase.
 
 ## 12. Definition of Done
 
 - Every requirement in §6 works against mock data.
-- Per-person tracking works end to end: admin adds/edits named people, guest sees them with per-person ticks, can decline individuals, and can add unnamed extras.
-- Every headcount in the app comes from the single §5.1 formula — no stored counts outside `response_history`.
-- Status moves `added → pending` only on a `wa.me` tap, and never moves backwards.
-- Sending an invite produces a WhatsApp preview card carrying the guest's name, with a static fallback on failure.
-- **Sending an invite does not move it to `opened`** — verified by loading the page with a crawler User-Agent and with JavaScript disabled and confirming the status is unchanged. The OG image route never mutates status.
-- All four security rules in §7 hold: RLS denies all, the service-role key appears in no client bundle, `/admin` is double-gated, and no access decision uses `getSession()`.
+- Every headcount comes from the single §5.1 count — no stored counts outside `response_history`.
+- Guests can tick individuals and add +1s; +1s exist as real rows and are seatable.
+- Declining deletes placeholders, unticks everyone, and reads 0.
+- Status moves `added → pending` only on a `wa.me` tap, and never backwards.
+- **Sending an invite does not move it to `opened`** — verified with a crawler User-Agent and with JavaScript disabled. The OG route never mutates status.
+- **Past the deadline, `POST /api/rsvp` is rejected server-side**, not merely hidden in the UI.
+- All security rules in §7 hold: RLS denies all, the service-role key appears in no client bundle, `/admin` is double-gated, no access decision uses `getSession()`.
 - No automated or bulk sending exists anywhere in the code.
-- Mock seed data covers every case in §8.
-- Swapping mock for real Supabase requires changing only the data layer's backing store.
+- Every list and form has empty, loading, and error states.
+- Seating assigns named and placeholder people, tracks occupancy against capacity, and lists the unseated.
+- Mock seed covers every case in §8.
+- Swapping mock for real Supabase changes only the data layer's backing store.

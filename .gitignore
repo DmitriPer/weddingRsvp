@@ -34,6 +34,9 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
+env.local
+env
+# ^ dotless variants: easy to create by accident, must never be committed
 
 # vercel
 .vercel
