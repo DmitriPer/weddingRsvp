@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>בקשת קבצים למעצב/ת — אתר אישורי הגעה</title>
+<style>
+  :root{
+    --paper:#fff; --ink:#2c3a25; --muted:#5e7f4c; --line:#dfe6d9;
+    --display:#7da169; --strong:#475f39; --warn:#b54708; --bg:#f7f9f5;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px; background:var(--bg); color:var(--ink);
+    font-family:"Heebo","Arial Hebrew",Arial,sans-serif; line-height:1.75;
+  }
+  main{max-width:820px; margin:0 auto; background:var(--paper);
+       border:1px solid var(--line); border-radius:16px; padding:40px 36px}
+  h1{font-size:1.7rem; margin:0 0 4px; color:var(--strong)}
+  .sub{color:var(--muted); margin:0 0 28px; font-size:.95rem}
+  h2{font-size:1.2rem; margin:36px 0 10px; color:var(--strong);
+     border-bottom:2px solid var(--line); padding-bottom:6px}
+  h3{font-size:1rem; margin:22px 0 6px; color:var(--strong)}
+  p,li{font-size:.98rem}
+  ul{padding-inline-start:22px}
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:.94rem}
+  th,td{border:1px solid var(--line); padding:9px 11px; text-align:right}
+  th{background:var(--bg); font-weight:600; color:var(--strong)}
+  code{background:var(--bg); border:1px solid var(--line); border-radius:5px;
+       padding:1px 6px; font-family:ui-monospace,Menlo,Consolas,monospace;
+       font-size:.88em; direction:ltr; display:inline-block}
+  .note{background:#fdf6ec; border-inline-start:4px solid var(--warn);
+        padding:12px 16px; border-radius:8px; margin:16px 0; font-size:.94rem}
+  .ok{background:#f2f7ef; border-inline-start:4px solid var(--display)}
+  .swatches{display:flex; flex-wrap:wrap; gap:10px; margin:14px 0}
+  .sw{width:104px; border:1px solid var(--line); border-radius:9px; overflow:hidden; font-size:.76rem}
+  .sw .chip{height:52px}
+  .sw .lbl{padding:5px 7px; direction:ltr; text-align:center; background:#fff}
+  .diagram{display:flex; justify-content:center; margin:18px 0}
+  .phone{width:190px; height:412px; border:2px solid var(--strong); border-radius:22px;
+         position:relative; overflow:hidden; background:linear-gradient(#eef4ea,#fbfcfa)}
+  .zone{position:absolute; inset-inline:0; background:rgba(180,71,8,.13);
+        border-block:1px dashed var(--warn); font-size:.7rem; color:var(--warn);
+        display:flex; align-items:center; justify-content:center; text-align:center; padding:0 6px}
+  .zone.top{top:0; height:47px}
+  .zone.bottom{bottom:0; height:74px}
+  .zone.free{position:absolute; top:47px; bottom:74px; background:transparent;
+             border:none; color:var(--muted); font-size:.78rem}
+  .foot{margin-top:34px; padding-top:14px; border-top:1px solid var(--line);
+        color:var(--muted); font-size:.86rem}
+</style>
+</head>
+<body>
+<main>
+
+  <h1>בקשת קבצים לאתר אישורי ההגעה</h1>
+  <p class="sub">ההזמנה שעיצבת כבר בשימוש באתר כדמו. כדי שהיא תיראה נכון בטלפון ובוואטסאפ, צריך כמה גרסאות נוספות.</p>
+
+  <div class="note ok">
+    <strong>בקצרה — ארבעה קבצים:</strong>
+    תמונת רקע לנייד ·
+    תמונה לתצוגה בוואטסאפ ·
+    הלוגו (המונוגרמה) כקובץ וקטורי ·
+    ההזמנה עם השעות האמיתיות.
+    <br>
+    <span style="color:var(--display)">פלטת הצבעים כבר התקבלה ✓</span>
+  </div>
+
+  <h2>1. תמונת רקע לנייד — הכי חשוב</h2>
+
+  <p>הקובץ הנוכחי הוא <code>597 × 843</code> פיקסלים. המסך של טלפון הוא הרבה יותר מוארך,
+  ולכן כשמותחים את ההזמנה על כל המסך <strong>נחתכים בערך שליש מהרוחב</strong> — בדיוק הפרחים שבצדדים.</p>
+
+  <table>
+    <tr><th>מה</th><th>הערך</th></tr>
+    <tr><td>גודל</td><td><code>1290 × 2796</code> פיקסלים (יחס 9:19.5)</td></tr>
+    <tr><td>פורמט</td><td>JPEG</td></tr>
+    <tr><td>משקל קובץ</td><td>עד 400KB — נטען על חבילת גלישה</td></tr>
+  </table>
+
+  <h3>אזורים שחייבים להישאר פנויים</h3>
+  <p>מעל התמונה מופיעים שני אלמנטים של האתר: ברכה אישית למעלה ("שלום משפחת כהן")
+  וכפתורי הפעולה למטה. <strong>אסור שיהיה שם טקסט או פרט חשוב מהעיצוב</strong> — הוא יוסתר.</p>
+
+  <div class="diagram">
+    <div class="phone">
+      <div class="zone top">≈ 320px — ברכה אישית</div>
+      <div class="zone free">כאן העיצוב שלך<br>(שמות, תאריך, מקום)</div>
+      <div class="zone bottom">≈ 520px — כפתורים</div>
+    </div>
+  </div>
+
+  <p>הפרחים והמסגרת <em>כן</em> יכולים להיכנס לאזורים האלה — הם רק לא צריכים לשאת מידע.</p>
+
+  <h2>2. תמונה לתצוגה בוואטסאפ</h2>
+
+  <p>כששולחים את הקישור בוואטסאפ נוצרת תצוגה מקדימה, והיא <strong>לרוחב</strong> — ההזמנה
+  הקיימת לאורך לא מתאימה לה.</p>
+
+  <table>
+    <tr><th>מה</th><th>הערך</th></tr>
+    <tr><td>גודל</td><td><code>1200 × 630</code> פיקסלים (לרוחב)</td></tr>
+    <tr><td>פורמט</td><td>JPEG או PNG</td></tr>
+    <tr><td>משקל קובץ</td><td>עד 600KB — מעבר לזה וואטסאפ פשוט לא מציג את התמונה</td></tr>
+  </table>
+
+  <p>השמות והתאריך צריכים להיות גדולים מספיק כדי להיקרא בתמונה ממוזערת ברשימת הצ'אטים.</p>
+
+  <h2>3. הלוגו — המונוגרמה</h2>
+
+  <p>נשמח להשתמש במונוגרמה גם בתוך האתר עצמו, בגדלים משתנים.</p>
+
+  <ul>
+    <li><strong>קובץ וקטורי — <code>SVG</code></strong> (או <code>AI</code> / <code>EPS</code> ונמיר).</li>
+    <li>רקע שקוף, בלי מסגרת סביב.</li>
+    <li>אם אפשר, גם גרסה בצבע אחד — לשימוש על רקע כהה או בהיר.</li>
+  </ul>
+
+  <div class="note">
+    <strong>למה וקטור ולא חיתוך מהתמונה:</strong> בקובץ הקיים המונוגרמה תופסת בערך
+    100×100 פיקסלים. בהגדלה היא תיראה מטושטשת, והמרה אוטומטית לוקטור הורסת את קווי הכתב.
+  </div>
+
+  <h2>4. פלטת הצבעים — התקבלה ✓</h2>
+
+  <p>פלטת <strong>Hortênsia</strong> התקבלה ומיושמת באתר. אלה הערכים:</p>
+
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#FFECB5"></div><div class="lbl">#FFECB5</div></div>
+    <div class="sw"><div class="chip" style="background:#B7C6E6"></div><div class="lbl">#B7C6E6</div></div>
+    <div class="sw"><div class="chip" style="background:#CDB7D9"></div><div class="lbl">#CDB7D9</div></div>
+    <div class="sw"><div class="chip" style="background:#FAC6DF"></div><div class="lbl">#FAC6DF</div></div>
+    <div class="sw"><div class="chip" style="background:#7FA46D"></div><div class="lbl">#7FA46D</div></div>
+  </div>
+
+  <div class="note">
+    <strong>הערה אחת שכדאי להכיר — לא לשינוי בעיצוב, רק להסבר:</strong>
+    כל חמשת הצבעים בפלטה בהירים מדי מכדי לשמש כטקסט על רקע לבן. הירוק,
+    שהוא הכהה מביניהם, נותן יחס ניגודיות של <code>2.83:1</code> מול
+    <code>4.5:1</code> שנדרש בתקן הנגישות לטקסט רגיל.
+    <br><br>
+    לכן באתר הטקסטים הקטנים משתמשים בגרסה כהה יותר של <em>אותו גוון בדיוק</em>
+    (<code>#5E7E4F</code> ו-<code>#475F3B</code>), והפלטה המקורית משמשת
+    לכותרות גדולות, לרקעים ולעיטור. הצבעים שלך לא הוחלפו — רק נוספו להם
+    שתי דרגות כהות לטקסט.
+  </div>
+
+  <div class="note ok">
+    <strong>נקודה מעניינת:</strong> דגימה של הירוק מתוך קובץ ההזמנה עצמו נתנה
+    <code>#7DA169</code> — כמעט זהה ל-<code>#7FA46D</code> שבפלטה. ההזמנה והפלטה
+    הן אותה מערכת צבעים, וזה בדיוק מה שרצינו.
+  </div>
+
+  <h2>5. שני דברים קטנים</h2>
+
+  <ul>
+    <li><strong>השעות בהזמנה עדיין <code>00:00</code></strong> — צריך גרסה עם השעות האמיתיות.</li>
+    <li><strong>כל שינוי בפרטים = קובץ חדש.</strong> התאריך, השעה, המקום והשמות מוטמעים
+        בתוך התמונה ולא נכתבים באתר, כך שעדכון שלהם דורש ייצוא מחדש ולא שינוי באתר.</li>
+  </ul>
+
+  <h2>סיכום — מה לשלוח</h2>
+
+  <table>
+    <tr><th>#</th><th>קובץ</th><th>גודל</th><th>פורמט</th></tr>
+    <tr><td>1</td><td>רקע לנייד</td><td><code>1290 × 2796</code></td><td>JPEG · עד 400KB</td></tr>
+    <tr><td>2</td><td>תמונה לוואטסאפ</td><td><code>1200 × 630</code></td><td>JPEG/PNG · עד 600KB</td></tr>
+    <tr><td>3</td><td>מונוגרמה</td><td>וקטור</td><td>SVG · רקע שקוף</td></tr>
+    <tr><td>4</td><td>הזמנה עם השעות האמיתיות</td><td>כמו הקיים</td><td>JPEG</td></tr>
+  </table>
+
+  <p class="foot">מסמך זה נוצר עבור פרויקט אתר אישורי ההגעה. קובץ הדמו הנוכחי: 597×843, ‎84KB.</p>
+
+</main>
+</body>
+</html>
