@@ -45,6 +45,38 @@ export const strings = {
     noHistory: 'אין עדיין תשובות',
   },
 
+  /** The settings tab (PRD §6.5) — wedding details and the three templates. */
+  settings: {
+    detailsTitle: 'פרטי החתונה',
+    detailsHint: 'הפרטים האלה מופיעים בעמוד האורחים, בקובץ היומן ובכפתור הניווט.',
+    coupleNames: 'שמות בני הזוג',
+    weddingDateTime: 'תאריך ושעה',
+    weddingDateTimeHint: 'שעון ישראל. זו השעה שתיכנס ליומן של האורחים.',
+    venue: 'מקום האירוע',
+    venueHint: 'שם האולם והכתובת — לפי זה עובד כפתור הניווט.',
+    deadline: 'תאריך אחרון לאישור',
+    deadlineHint: 'אחרי התאריך הזה האורחים רואים את התשובה שלהם בלבד, ללא אפשרות לשנות. השאירו ריק כדי להשאיר את הטופס פתוח תמיד.',
+    contactPhone: 'טלפון ליצירת קשר',
+    contactPhoneHint: 'מוצג לאורחים אחרי שהאישורים נסגרו.',
+
+    templatesTitle: 'הודעות WhatsApp',
+    templatesHint:
+      'ההודעות נפתחות ב-WhatsApp מוכנות לשליחה — הן לעולם לא נשלחות אוטומטית. אתם לוחצים שלח.',
+    inviteTemplate: 'הזמנה',
+    dayOfTemplate: 'תזכורת ביום האירוע',
+    thankYouTemplate: 'תודה אחרי האירוע',
+
+    variablesHint: 'אפשר להשתמש ב:',
+    variableName: '{{name}} — שם ההזמנה',
+    variableLink: '{{link}} — הקישור האישי של המוזמן',
+    preview: 'תצוגה מקדימה',
+    unknownVariable: (names: string[]) =>
+      `לא מזוהה ולא יוחלף: ${names.map((one) => `{{${one}}}`).join(', ')}`,
+
+    saved: 'ההגדרות נשמרו',
+    saveFailed: 'השמירה נכשלה',
+  },
+
   status: {
     added: 'נוסף',
     pending: 'הוזמן',

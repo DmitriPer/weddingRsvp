@@ -1,11 +1,63 @@
-/** Placeholder. Built in a later phase — see docs/wedding-rsvp-PRD.md. */
+/**
+ * Settings (PRD §6.5): the wedding details and the three WhatsApp templates.
+ *
+ * The point of this screen is that nothing about the wedding is hardcoded — the
+ * date, venue and wording change here, with no redeploy and no trip to the
+ * database. Until it existed, every one of those values could only be edited in
+ * the Supabase table editor.
+ */
 
 import { redirect } from 'next/navigation'
 import { verifyAdmin } from '@/lib/auth'
-import { EmptyState } from '@/components/ui/states'
+import { getConfig } from '@/lib/data'
+import { ConfigForm } from '@/components/admin/config-form'
+import { TemplateEditor } from '@/components/admin/template-editor'
 import { strings } from '@/lib/strings'
 
-export default async function Page() {
+export const dynamic = 'force-dynamic'
+
+export default async function SettingsPage() {
+  // proxy.ts already gated this (lock #1); re-checking costs nothing and keeps
+  // the page safe even if the matcher is ever misconfigured.
   if (!(await verifyAdmin())) redirect('/admin/login')
-  return <EmptyState title={strings.admin.tabs.settings} hint={strings.admin.comingSoon} />
+
+  const config = await getConfig()
+
+  return (
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">{strings.settings.detailsTitle}</h2>
+          <p className="text-sm text-muted">{strings.settings.detailsHint}</p>
+        </div>
+        <ConfigForm config={config} />
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">{strings.settings.templatesTitle}</h2>
+          <p className="text-sm text-muted">{strings.settings.templatesHint}</p>
+        </div>
+
+        {/* Three independent editors, each saving on its own (PRD §6.5). */}
+        <div className="space-y-4">
+          <TemplateEditor
+            label={strings.settings.inviteTemplate}
+            field="invite_message_template"
+            initial={config.invite_message_template}
+          />
+          <TemplateEditor
+            label={strings.settings.dayOfTemplate}
+            field="day_of_message_template"
+            initial={config.day_of_message_template}
+          />
+          <TemplateEditor
+            label={strings.settings.thankYouTemplate}
+            field="thank_you_message_template"
+            initial={config.thank_you_message_template}
+          />
+        </div>
+      </section>
+    </div>
+  )
 }
