@@ -1,6 +1,6 @@
 # Progress & Handoff
 
-**Last updated:** 2026-07-30 · branch `main` · 9 commits, none pushed
+**Last updated:** 2026-07-30 · branch `main` · pushed to `DmitriPer/weddingRsvp`
 
 The purpose of this file is that a different machine, or a different session, can pick this up with no gaps. **Update it whenever a phase lands** — if it drifts from reality it is worse than not existing.
 
@@ -11,10 +11,49 @@ Companion docs: `wedding-rsvp-PRD.md` (what to build) · `architecture.md` (how 
 ## 1. Getting running on a fresh machine
 
 ```bash
-git clone <repo> && cd weddingRsvp
-git checkout main                # the rebuild. The abandoned brownfield app is on `old`
+git clone git@github-personal:DmitriPer/weddingRsvp.git && cd weddingRsvp
 npm install
 ```
+
+### ⚠️ The remote host is `github-personal`, not `github.com`
+
+There are two GitHub accounts on Dmitri's machine, and this repo must use the personal one:
+
+| | |
+|---|---|
+| `DmitriPer` | **personal** — owns this repo |
+| `Dimitri-Pereimak` | **work** — the default SSH key (`~/.ssh/id_ed25519`, labelled `dimitrip@PRES.global`) |
+
+`~/.ssh/config` defines a `github-personal` alias pointing at `github.com` but forcing `~/.ssh/id_ed25519_personal` with `IdentitiesOnly yes`, so it can never fall back to the work key.
+
+**Cloning with a plain `github.com` URL authenticates as the work account.** If a remote is ever wrong:
+
+```bash
+git remote set-url origin git@github-personal:DmitriPer/weddingRsvp.git
+ssh -T git@github-personal      # must answer "Hi DmitriPer!"
+```
+
+On a *new* machine, recreate the alias in `~/.ssh/config` and add that machine's public key to the **DmitriPer** account:
+
+```
+Host github-personal
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519_personal
+  IdentitiesOnly yes
+```
+
+Commit *authorship* is separate and already handled: an `includeIf "gitdir:~/TestAndLearningENV/"` rule in `~/.gitconfig` sets `Dmitri.P <Dimitri.pereimak@gmail.com>` for everything under that directory, with `useConfigOnly = true` so git refuses to commit rather than silently using the work email.
+
+### Branches
+
+| Branch | What it is |
+|---|---|
+| `main` | **the rebuild** — this work |
+| `old` | the abandoned brownfield adaptation of `amirgal/wedding-rsvp`, preserved intact |
+| `feat/*`, `design/*`, `claude/*` | leftovers from the old app, untouched |
+
+`main` and `old` share **no history** — `main` began as an orphan branch. Don't try to merge them.
 
 Create `.env.local` (gitignored, never committed):
 
@@ -132,7 +171,6 @@ Each of these cost real time or was found by testing. They are all live decision
 
 - **`app/page.tsx` is scaffold boilerplate** and references `/next.svg`, which was deleted — the site root renders a broken Next.js welcome page. Fixed by building the guest page.
 - **`docs/project-explainer.html` describes the old brownfield app.** Historical; regenerate once the app is complete.
-- **Nothing is pushed.** All 8 commits are local on `greenfield`. `origin/main` still holds the abandoned brownfield app. Pushing, and whether `greenfield` replaces `main`, is an open decision.
 - **Free-tier Supabase projects pause after ~a week of inactivity** — a paused project means guests clicking their link see errors. Must be addressed before real invitations go out. See `setup-database.md` §1.
 - **`NEXT_PUBLIC_SITE_URL` must be the real domain before sending anything.** Left on localhost, every invite link sent is dead, and you'd only find out from a guest.
 
@@ -141,6 +179,8 @@ Each of these cost real time or was found by testing. They are all live decision
 ## 7. Commit history
 
 ```
+c882674  Rename branches: the rebuild is now main, the old app is on old
+c9b2737  Add docs/progress.md as the handoff document
 4668f1a  Confirm a WhatsApp was sent before counting it
 e12678a  Complete the invitee table: search, sort, WhatsApp, copy link, history
 12f80ca  Add edit and delete on invite rows; fix the attendance label
