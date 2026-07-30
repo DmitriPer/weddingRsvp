@@ -8,12 +8,11 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## Project state
 
-This is a **greenfield rebuild**, started 2026-07-30 on the `greenfield` orphan branch. The app was previously an adaptation of `amirgal/wedding-rsvp`; that approach was abandoned (reasons in `docs/carry-over.md`). Built so far: migrations, the admin script, the whole backend (`lib/`, `lib/data/`, 11 API routes, `proxy.ts`), and admin login + shell. Still to build: the real invitee table with search/sort/wa.me, the guest RSVP page, asset upload, message-template editing, and seating.
-
-Read these before building anything:
+This is a **greenfield rebuild**, started 2026-07-30 on the `greenfield` orphan branch. The app was previously an adaptation of `amirgal/wedding-rsvp`; that approach was abandoned (reasons in `docs/carry-over.md`). **Read `docs/progress.md` first.** It holds what is built, what is not, what to do next, and the decisions that cost time to reach. Keep it current — a stale progress file is worse than none.
 
 | Doc | What it is |
 |---|---|
+| `docs/progress.md` | **Start here.** Status, next steps, gotchas, handoff. |
 | `docs/wedding-rsvp-PRD.md` | **The spec.** What gets built. |
 | `docs/architecture.md` | File tree, module responsibilities, request flows. |
 | `docs/conventions.md` | How code is written here. Small functions, layering, single source of truth. |
