@@ -95,6 +95,7 @@ Verified against the real database, not just compiled:
 - **RLS is real.** With a row present, the publishable key reads 0 rows and its inserts are rejected by policy. The secret key appears in no client bundle.
 - **Full RSVP lifecycle** through `POST /api/rsvp`: submit → edit → decline, placeholder reconciliation, cascade deletes, append-only history, crawler rejection on `opened`.
 - **Admin panel**: log in, add households with their people, edit, delete, search, sort, filter, WhatsApp, copy link, history.
+- **Settings tab** (2026-07-30): wedding details and the three WhatsApp templates, each saving independently, with a live preview and a warning for placeholders the renderer won't understand. `wedding_config` no longer needs the Supabase table editor.
 - **The guest page, styled for mobile** (2026-07-30): the invitation artwork fills the screen, a frosted greeting sits at the top and a frosted action bar at the bottom (RSVP · ניווט · יומן), with the form rising in a sheet over the art. Landing, confirmation and deadline close all work. Verified end to end against the database — submit, edit, decline, placeholder reconciliation up and down, `edited` staying terminal, history appending each time, and a WhatsApp User-Agent failing to move the status while a browser moves it.
 
 ## 3. Requirement status
@@ -105,7 +106,7 @@ Verified against the real database, not just compiled:
 | §6.2 | Guest confirmation screen | ✅ | `components/guest/confirmation.tsx` |
 | §6.3 | RSVP deadline hard close | ✅ | `app/api/rsvp/route.ts` enforces; `components/guest/rsvp-closed.tsx` shows |
 | §6.4 | Public landing page | ✅ | the no-token branch of `app/page.tsx` — artwork only, no card |
-| §6.5 | Config-driven details | ⚠️ **backend only** | `/api/config` works; no Settings UI |
+| §6.5 | Config-driven details | ✅ | `app/admin/settings`, `components/admin/config-form.tsx`, `template-editor.tsx` |
 | §6.6 | Admin guest management | ✅ | `components/admin/invite-*.tsx`, `attendee-list.tsx` |
 | §6.7 | Import / export | ❌ | `exceljs` installed, unused |
 | §6.8 | Copy invite link | ✅ | `copy-link-button.tsx` |
@@ -115,21 +116,21 @@ Verified against the real database, not just compiled:
 | §6.12 | History | ✅ | `history-modal.tsx` |
 | §6.13 | Day-of reminder prep | ❌ | — |
 | §6.14 | Thank-you prep | ❌ | — |
-| §6.15 | OG image + client-side `opened` | ⚠️ **half** | `opened` now wired from `components/guest/mark-opened.tsx`; the OG image itself is not built |
+| §6.15 | OG image + client-side `opened` | ⚠️ **half** | `opened` wired from `mark-opened.tsx`. **The app exports NO OpenGraph metadata at all** — `generateMetadata` appears nowhere, so a shared link previews as a bare title and URL |
 | §6.16 | Asset upload | ❌ | bucket exists (migration 003) |
 | §6.17 | Seating | ⚠️ **API only** | `/api/tables` CRUD done; `app/admin/seating` is a placeholder |
 | §6.18 | Admin auth | ✅ | `lib/auth.ts`, `proxy.ts`, `app/admin/login` |
 | §6.19 | Empty / loading / error states | ⚠️ partial | `components/ui/states.tsx` exists, used in some places |
 
-**Backend is complete and the guest side is now built.** What remains is admin-side UI: import/export, settings, seating, and the OG image.
+**Backend is complete; the guest side and settings are built.** What remains is import/export, seating, and the WhatsApp preview card.
 
 ---
 
 ## 4. What to do next, in order
 
-### Next: fill in `wedding_config` — small, and everything visible depends on it
+### Next: fill in `wedding_config` — now a two-minute job in the UI
 
-The guest page is built, but the database row behind it is nearly empty: no `wedding_date_time`, no `venue_name`, no `contact_phone`, and `couple_names` is still `"דמיטרי ו..."`. So the landing page renders a name and little else, and the confirmation shows no date or venue. Until the Settings UI (§6.5) exists this is edited directly in the Supabase table editor.
+Go to **`/admin/settings`** and set the real ceremony time, the couple's names and the contact phone. As of 2026-07-30 these are still a placeholder, `"דמיטרי ו..."` and empty — the venue is correct. The time is the urgent one: it is **19:00, invented**, and it is what every guest who taps הוספה ליומן gets in their calendar.
 
 The demo invitation card in `public/assets/demo-invitation.jpeg` carries the real details: **08/10/2026**, "החצר של רוז", המלאכה 27, נתניה. The ceremony times on it are still `00:00` placeholders.
 
@@ -148,11 +149,11 @@ Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 
 ### Then, in rough priority
 
-1. **Swap in the final artwork** when the designer delivers — see the spec in §5. One constant in `components/guest/invitation-backdrop.tsx`, nothing else.
-2. **Import** (§6.7) — hand-typing 150 households is the next real pain. `exceljs` is already installed.
-3. **Settings tab** (§6.5) — config and the three templates are only editable in Supabase today.
-4. **Seating** (§6.17) — API is done, needs the board UI. `attendees.table_id` is the assignment.
-5. **OG preview image** (§6.15) — invites currently send as bare text cards. Needs the 1200×630 asset.
+1. **Deploy to a public domain.** This has become the gate rather than a finishing step: the WhatsApp preview card cannot be verified at all without it, because WhatsApp fetches the URL from its own servers. It also retires the two LAN-only settings in §6. Set `NEXT_PUBLIC_SITE_URL` to the real domain at the same time.
+2. **OpenGraph metadata and the preview card** (§6.15) — currently *nothing* is exported, so shared links look bare. The meta tags and a static card can be built against the demo artwork; the designer's 1200×630 asset and per-guest generation can follow. Worth doing right after deploying, so it can actually be seen.
+3. **Swap in the final artwork** when the designer delivers — see the spec in §5. One constant in `components/guest/invitation-backdrop.tsx`, nothing else.
+4. **Import** (§6.7) — hand-typing 150 households is the next real pain. `exceljs` is already installed.
+5. **Seating** (§6.17) — API is done, needs the board UI. `attendees.table_id` is the assignment.
 6. **Day-of and thank-you lists** (§6.13, §6.14) — same shape as the invitee list, filtered.
 7. **Desktop pass on the guest page**, then mobile on admin — in that order, per the viewport rule.
 8. **Export** (§6.7) — caterer headcount, arrival list.
@@ -222,6 +223,12 @@ allowedDevOrigins: ['192.168.68.114'],
 
 Update that address when the machine's LAN IP changes, and pair it with `NEXT_PUBLIC_SITE_URL` so copy-link produces reachable URLs.
 
+**`<input type="datetime-local">` resolves in the BROWSER's timezone, not the wedding's.** It emits a naive wall-clock string, and `new Date("2026-10-08T19:00")` reads it wherever the laptop happens to be set — while every *display* in this app is pinned to Asia/Jerusalem by `lib/datetime.ts`. Editing the date from a laptop on another timezone would look correct in the form and be wrong in every guest's calendar.
+
+Both directions therefore go through `toDateTimeLocalValue()` / `fromDateTimeLocalValue()` in `lib/datetime.ts`, which read and write Jerusalem wall-clock explicitly; the form sends a full ISO string with an offset, so `PATCH /api/config` stays unaware of any of it.
+
+The autumn DST boundary is the case that catches a naive implementation: `02:30` on the night the clocks go back **does not exist** — 01:59 IDT becomes 01:00 IST — and the obvious single-correction algorithm happily returns that non-existent reading. `fromDateTimeLocalValue()` converts its answer back and checks it reproduces what was typed, trying the other offset when it doesn't. Verified across both boundaries.
+
 **`opened` must be marked from client-side JavaScript only.** WhatsApp fetches the invite page *and* its OG image to build a preview card. Marking `opened` during server rendering flips every invite the moment it is **sent**, destroying the "who hasn't looked yet" filter that the entire follow-up workflow depends on. Crawlers don't run JS. The User-Agent check in `lib/bots.ts` is a backstop, not the mechanism.
 
 **The WhatsApp button asks before counting.** WhatsApp gives no send callback, so tapping opens the chat and the row asks "נשלח?" — nothing is recorded until answered. Counting an opened-then-abandoned chat would inflate `contact_attempts`, which drives the "needs a phone call" flag; the follow-up list would claim people were messaged five times when they were never contacted.
@@ -250,6 +257,7 @@ Update that address when the machine's LAN IP changes, and pair it with `NEXT_PU
 - **The RSVP sheet has not been verified visually**, only structurally and functionally. No headless browser here can click, so tap through it once on a real phone before invitations go out.
 - **`docs/project-explainer.html` describes the old brownfield app.** Historical; regenerate once the app is complete.
 - **Free-tier Supabase projects pause after ~a week of inactivity** — a paused project means guests clicking their link see errors. Must be addressed before real invitations go out. See `setup-database.md` §1.
+- **The app exports no OpenGraph metadata whatsoever.** `generateMetadata` appears nowhere, so an invite link shared on WhatsApp previews as the bare title `אישורי הגעה` plus the raw URL — no image, no couple names, no date. This is §6.15 and it is the largest remaining guest-facing gap. Note it cannot be truly verified without a public domain: WhatsApp fetches the URL from its own servers and can reach neither localhost nor the LAN address.
 - **⚠️ `NEXT_PUBLIC_SITE_URL` is currently `http://192.168.68.114:3030`** — a LAN address, set 2026-07-30 so copy-link works when testing on a phone over Wi-Fi. It is **dead outside the house**. Every invite link built from it — the admin copy-link button and the WhatsApp message — carries this address. Set it to the real domain before a single invitation goes out; left wrong, you find out from a guest.
 
 ---
