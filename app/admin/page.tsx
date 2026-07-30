@@ -10,11 +10,11 @@
 
 import { redirect } from 'next/navigation'
 import { verifyAdmin } from '@/lib/auth'
-import { listInvites } from '@/lib/data'
+import { getConfig, listInvites } from '@/lib/data'
 import { computeStats } from '@/lib/stats'
 import { needsPhoneCall } from '@/lib/status'
 import { AddInviteForm } from '@/components/admin/add-invite-form'
-import { InviteRow } from '@/components/admin/invite-row'
+import { InviteTable } from '@/components/admin/invite-table'
 import { EmptyState } from '@/components/ui/states'
 import { strings } from '@/lib/strings'
 
@@ -25,7 +25,8 @@ export default async function InviteesPage() {
   // the page safe even if the matcher is ever misconfigured.
   if (!(await verifyAdmin())) redirect('/admin/login')
 
-  const invites = await listInvites()
+  // One round trip each; the template is needed for the wa.me buttons.
+  const [invites, config] = await Promise.all([listInvites(), getConfig()])
   const stats = computeStats(invites)
   const flaggedCount = invites.filter((invite) =>
     needsPhoneCall(invite.status, invite.contact_attempts)
@@ -54,11 +55,7 @@ export default async function InviteesPage() {
           hint={strings.emptyStates.noInvitesHint}
         />
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {invites.map((invite) => (
-            <InviteRow key={invite.id} invite={invite} />
-          ))}
-        </ul>
+        <InviteTable invites={invites} inviteTemplate={config.invite_message_template} />
       )}
     </div>
   )

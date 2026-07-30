@@ -12,7 +12,10 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { AttendeeList } from '@/components/admin/attendee-list'
+import { CopyLinkButton } from '@/components/admin/copy-link-button'
+import { HistoryModal } from '@/components/admin/history-modal'
 import { InviteEditForm } from '@/components/admin/invite-edit-form'
+import { WaSendButton } from '@/components/admin/wa-send-button'
 import { summarizeAttendance } from '@/lib/headcount'
 import { needsPhoneCall } from '@/lib/status'
 import { strings } from '@/lib/strings'
@@ -34,7 +37,13 @@ function attendanceLabel(invite: InviteWithPeople): string {
   }
 }
 
-export function InviteRow({ invite }: { invite: InviteWithPeople }) {
+export function InviteRow({
+  invite,
+  inviteTemplate,
+}: {
+  invite: InviteWithPeople
+  inviteTemplate: string
+}) {
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -87,7 +96,10 @@ export function InviteRow({ invite }: { invite: InviteWithPeople }) {
           {flagged ? <p className="text-warning">{strings.guests.needsPhoneCall}</p> : null}
         </div>
 
-        <div className="flex shrink-0 gap-1">
+        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+          <WaSendButton invite={invite} template={inviteTemplate} />
+          <CopyLinkButton token={invite.token} />
+          <HistoryModal inviteId={invite.id} name={invite.name} />
           <button
             type="button"
             onClick={() => {

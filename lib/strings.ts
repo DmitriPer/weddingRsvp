@@ -124,6 +124,32 @@ export const strings = {
     failed: 'ההוספה נכשלה',
   },
 
+  toolbar: {
+    searchPlaceholder: 'חיפוש לפי שם או טלפון',
+    allStatuses: 'כל הסטטוסים',
+    onlyNeedsCall: 'רק מי שצריך טלפון',
+    sortBy: 'מיון',
+    sort: {
+      name: 'שם',
+      status: 'סטטוס',
+      headcount: 'מספר אורחים',
+      lastContacted: 'פנייה אחרונה',
+    },
+    showing: (shown: number, total: number) =>
+      shown === total ? `${total} הזמנות` : `${shown} מתוך ${total}`,
+  },
+
+  actions: {
+    copyLink: 'העתקת קישור',
+    linkCopied: 'הקישור הועתק',
+    copyFailed: 'ההעתקה נכשלה',
+    sendWhatsApp: 'שליחה ב-WhatsApp',
+    noPhone: 'אין מספר טלפון',
+    contactedCount: (n: number) => `נשלח ${n} פעמים`,
+    neverContacted: 'טרם נשלח',
+    lastContacted: (when: string) => `פנייה אחרונה: ${when}`,
+  },
+
   emptyStates: {
     noInvites: 'עדיין אין מוזמנים',
     noInvitesHint: 'הוסיפו מוזמן ראשון כדי להתחיל',
