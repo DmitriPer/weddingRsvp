@@ -203,7 +203,11 @@ Never bulk. Never automatic. Never scheduled.
 Phone numbers are used **as-is** — no formatting or country-code logic. The phone input carries a hint showing the expected international format (e.g. `+972501234567`). Validation is explicitly not built.
 
 ### 6.10 Manual non-responder tracking
-Tapping `wa.me` is the **only** thing that marks a guest contacted: it increments `contact_attempts`, sets `last_contacted_at`, and moves `added → pending`. No separate toggle.
+Sending a WhatsApp is the **only** thing that marks a guest contacted: it increments `contact_attempts`, sets `last_contacted_at`, and moves `added → pending`. No separate toggle.
+
+**Confirmed, not assumed.** WhatsApp gives no callback, so the app cannot know whether send was actually pressed. Tapping the button opens the chat and asks **"נשלח?"** on the row; nothing is recorded until that is answered. Opening a chat and abandoning it records nothing.
+
+This matters because an inflated `contact_attempts` corrupts the follow-up flag below — the list would claim people were contacted five times when they were never messaged at all — and would move an invite to `pending` while it is still unsent.
 
 Invites reaching **5 attempts with still no response** get a "needs a phone call" badge. The app counts and flags; the couple decides whether to send again.
 
