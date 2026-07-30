@@ -1,6 +1,6 @@
 # Progress & Handoff
 
-**Last updated:** 2026-07-30 · branch `greenfield` · 8 commits, none pushed
+**Last updated:** 2026-07-30 · branch `main` · 9 commits, none pushed
 
 The purpose of this file is that a different machine, or a different session, can pick this up with no gaps. **Update it whenever a phase lands** — if it drifts from reality it is worse than not existing.
 
@@ -12,7 +12,7 @@ Companion docs: `wedding-rsvp-PRD.md` (what to build) · `architecture.md` (how 
 
 ```bash
 git clone <repo> && cd weddingRsvp
-git checkout greenfield          # NOT main — main is the abandoned brownfield app
+git checkout main                # the rebuild. The abandoned brownfield app is on `old`
 npm install
 ```
 

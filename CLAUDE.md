@@ -8,7 +8,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## Project state
 
-This is a **greenfield rebuild**, started 2026-07-30 on the `greenfield` orphan branch. The app was previously an adaptation of `amirgal/wedding-rsvp`; that approach was abandoned (reasons in `docs/carry-over.md`). **Read `docs/progress.md` first.** It holds what is built, what is not, what to do next, and the decisions that cost time to reach. Keep it current — a stale progress file is worse than none.
+This is a **greenfield rebuild**, started 2026-07-30 as an orphan branch with no shared history. It is now `main`; the abandoned adaptation of `amirgal/wedding-rsvp` lives on `old` (reasons in `docs/carry-over.md`). **Read `docs/progress.md` first.** It holds what is built, what is not, what to do next, and the decisions that cost time to reach. Keep it current — a stale progress file is worse than none.
 
 | Doc | What it is |
 |---|---|
