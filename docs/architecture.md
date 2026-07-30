@@ -100,7 +100,7 @@ lib/
     admin.ts                        service role — API routes ONLY
 
   data/
-    index.ts                        picks the store from NEXT_PUBLIC_MOCK_MODE
+    index.ts                        the front door; every caller imports here
     types.ts                        the interface both stores satisfy
     mock/{store,seed,index}.ts
     supabase/index.ts
@@ -134,8 +134,7 @@ flowchart TD
     A -->|auth| AU["lib/auth.ts"]
     A -->|compute| L["lib/<br/>pure logic"]
     A -->|persist| D["lib/data/<br/>the only store-aware layer"]
-    D --> MOCK["mock/<br/>in-memory"]
-    D --> SUPA["supabase/<br/>real"]
+    D --> SUPA["supabase/<br/>service role"]
 ```
 
 One direction only. `lib/` never imports from `components/` or `app/`. Components never import `lib/data`.
@@ -304,18 +303,21 @@ erDiagram
 
 **`wedding_config.id` is `boolean primary key check (id)`** — only `true` is valid, so a second row is rejected by the database rather than by a convention someone forgets.
 
-## 6. The mock/real swap
+## 6. The data layer
 
 ```mermaid
 flowchart LR
-    R["app/api/*"] --> I["lib/data/index.ts"]
-    I -->|"MOCK_MODE=true"| M["mock/ — in-memory + seed"]
-    I -->|"MOCK_MODE=false"| S["supabase/ — service role"]
+    P["app/**/page.tsx"] --> I["lib/data/index.ts"]
+    R["app/api/*"] --> I
+    I --> S["supabase/ — service role"]
+    S --> DB["Postgres"]
 ```
 
-Callers use `getInvites()`, `submitRsvp()`. They never see a Supabase client and never know which store answered. Both satisfy the same TypeScript interface, so a missing method is a compile error, not a runtime surprise.
+Callers use `getInvites()`, `submitRsvp()`. They never see a Supabase client. The `DataStore` interface stays even with one implementation: it documents the whole persistence surface in one readable file, and a missing method is a compile error.
 
-The previous version of this app faked the PostgREST chainable API in 221 lines. That bought only that route code *looked* identical in both modes — which is exactly what made it fragile.
+**There is no mock store.** One was planned and dropped once the real database existed — two implementations meant hand-mirroring Postgres `ON DELETE CASCADE` and `ON DELETE SET NULL` in TypeScript, and anything hand-mirrored eventually drifts. Test data is `supabase/migrations/004_seed_test_data.sql`: 12 invented guests covering every state, with Postgres enforcing the rules rather than code imitating them.
+
+The previous version of this app faked the PostgREST chainable API in 221 lines. That bought only the appearance of identical route code — which is exactly what made it fragile.
 
 ## 7. Where each requirement lives
 

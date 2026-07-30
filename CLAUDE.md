@@ -8,7 +8,7 @@ Guidance for Claude Code (claude.ai/code) working in this repository.
 
 ## Project state
 
-This is a **greenfield rebuild**, started 2026-07-30 on the `greenfield` orphan branch. The app was previously an adaptation of `amirgal/wedding-rsvp`; that approach was abandoned (reasons in `docs/carry-over.md`). Right now the repo has docs, migrations, and the admin script — **no feature code exists yet.**
+This is a **greenfield rebuild**, started 2026-07-30 on the `greenfield` orphan branch. The app was previously an adaptation of `amirgal/wedding-rsvp`; that approach was abandoned (reasons in `docs/carry-over.md`). Built so far: migrations, the admin script, the whole backend (`lib/`, `lib/data/`, 11 API routes, `proxy.ts`), and admin login + shell. Still to build: the real invitee table with search/sort/wa.me, the guest RSVP page, asset upload, message-template editing, and seating.
 
 Read these before building anything:
 
@@ -117,8 +117,8 @@ Full schema and rationale in PRD §5 and §10; SQL in `supabase/migrations/`.
 
 - **No automated, scheduled, or bulk WhatsApp/SMS sending — ever.** Every send is a human tap on a per-row `wa.me` button. This protects the couple's number from being flagged. Not a limitation to engineer around.
 - **Function and data before styling.** Screens should be legible and RTL-correct; deliberate visual design is a later phase.
-- **Mock data until explicitly told otherwise.** No real guest data anywhere until Dmitri points the app at his own Supabase project.
-- **Keep the data layer swappable** — mock vs. real is a backing-store swap behind one set of functions, never mock logic scattered through components or routes.
+- **No real guest data until explicitly told otherwise.** The Supabase project holds only invented test rows from `004_seed_test_data.sql`. Dmitri's actual guest list goes in when he says so.
+- **All data access goes through `lib/data`** — never a Supabase client reached directly from a route or component. There is no mock store; test data is a seed migration.
 - **Hebrew / RTL from day one**, not retrofitted.
 
 ## Environment variables
@@ -128,5 +128,5 @@ NEXT_PUBLIC_SUPABASE_URL        # public
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY   # public
 SUPABASE_SECRET_KEY       # server-only — never NEXT_PUBLIC_
 NEXT_PUBLIC_SITE_URL            # builds invite links and absolute OG image URLs
-NEXT_PUBLIC_MOCK_MODE           # 'true' to use the in-memory data layer
+                                # MUST be the real domain before sending invitations
 ```

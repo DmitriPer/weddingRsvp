@@ -19,7 +19,7 @@ This phase delivers a **working, guest-data-safe MVP — function and data first
 
 | In scope | Out of scope |
 |---|---|
-| Full data model and schema | Real Supabase project (mock data only — §8) |
+| Full data model and schema | Real guest data (invented test rows only — §8) |
 | API routes and server logic | Deliberate visual design |
 | Guest RSVP flow end to end | Automated or bulk WhatsApp sending, ever |
 | Admin: list, search, add, edit, delete, import, export | Multi-admin access |
@@ -36,8 +36,8 @@ Carried from `claude-workflow.md`. Not to be relitigated.
 
 1. **No automated, scheduled, or bulk WhatsApp/SMS sending — ever.** Every outbound message is a manual human tap on a per-row `wa.me` button. Reason: risk of the couple's number being flagged or banned. The app *prepares* messages and *flags who needs one*; a human always decides when to send.
 2. **Function and data before styling.**
-3. **Mock data until explicitly told otherwise.** No real guest data anywhere until Dmitri deliberately points the app at his own Supabase project.
-4. **Data access stays swappable.** Mock vs. real is a backing-store swap behind one set of functions — never mock logic scattered through components or routes.
+3. **No real guest data until explicitly told otherwise.** The Supabase project exists and holds only invented test rows. Dmitri's actual guest list goes in when he says so, not before.
+4. **All data access goes through one layer.** Every read and write goes through `lib/data` — never a Supabase client reached directly from a route or a component.
 5. **Never touch the base repo author's live systems or real data.**
 
 ## 4. The Two Journeys
@@ -272,11 +272,11 @@ Non-negotiable.
 6. **Bot-aware status transitions** — §6.15.
 7. **Deadline enforced server-side** — §6.3.
 
-## 8. Mock Data First
+## 8. Test Data
 
-Build and test against an **in-memory data layer with the same function signatures as the real calls**, switched by a flag. Never mock logic scattered through components or routes. Swapping to a real Supabase project must be a backing-store change only.
+**There is no mock store.** One was specified here originally, and dropped on 2026-07-30 once the real Supabase project was working: maintaining a second implementation meant hand-mirroring Postgres `ON DELETE CASCADE` and `ON DELETE SET NULL` in TypeScript, and anything hand-mirrored drifts from the thing it mirrors. Test data is a seed migration instead, so Postgres enforces the rules rather than code imitating them.
 
-Seed ~12 invites spanning all five statuses, both sides, several relations, and some at 5+ `contact_attempts`. Include at least one of each:
+`supabase/migrations/004_seed_test_data.sql` seeds ~12 **invented** invites spanning all five statuses, both sides, several relations, and some at 5+ `contact_attempts`. Every row is marked `__test__` so `delete from invites where name like '%__test__%'` clears it before the real list goes in. Include at least one of each:
 
 - several named people, all approved
 - some approved and some declined
@@ -326,7 +326,7 @@ Seed ~12 invites spanning all five statuses, both sides, several relations, and 
 ## 11. Explicitly Deferred
 
 - Deliberate visual design, beyond legible and RTL-correct.
-- Real Supabase project setup and data migration.
+- Loading the real guest list.
 - Multi-admin access.
 - Any form of automated or scheduled sending — permanently, not just this phase.
 
@@ -343,5 +343,5 @@ Seed ~12 invites spanning all five statuses, both sides, several relations, and 
 - No automated or bulk sending exists anywhere in the code.
 - Every list and form has empty, loading, and error states.
 - Seating assigns named and placeholder people, tracks occupancy against capacity, and lists the unseated.
-- Mock seed covers every case in §8.
+- The seed migration covers every case in §8.
 - Swapping mock for real Supabase changes only the data layer's backing store.

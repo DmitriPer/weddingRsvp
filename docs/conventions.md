@@ -83,18 +83,17 @@ PRD §12 requires that every headcount come from one place. A second copy is pre
 
 ## 5. Data layer
 
-The mock/real swap is a **backing store** swap, not a fake client.
-
 ```
-lib/data/index.ts      picks the store from NEXT_PUBLIC_MOCK_MODE
-lib/data/types.ts      the interface both implementations satisfy
-lib/data/mock/         in-memory store + seed
-lib/data/supabase/     real implementation
+lib/data/index.ts      the front door — every caller imports from here
+lib/data/types.ts      the DataStore interface
+lib/data/supabase/     the implementation
 ```
 
-Callers use `getInvites()`, `submitRsvp()` — they never see a Supabase client and never know which store is behind them. Both implementations satisfy the same TypeScript interface, so a missing method is a compile error rather than a runtime surprise.
+Callers use `getInvites()`, `submitRsvp()` — they never see a Supabase client. The `DataStore` interface stays even with one implementation: it documents the whole persistence surface in one readable file, and a missing method is a compile error.
 
-**Do not emulate the PostgREST chainable API.** The previous version of this app spent 221 lines faking `.from().select().eq()`. It bought only that route code *looked* identical in both modes, which is exactly what made it fragile.
+**There is no mock store.** One was planned, and dropped once the real database existed: two implementations meant hand-mirroring Postgres `ON DELETE CASCADE` and `ON DELETE SET NULL` semantics in TypeScript, and anything hand-mirrored eventually drifts from the thing it mirrors. Test data lives in `supabase/migrations/004_seed_test_data.sql`, where Postgres enforces the rules instead of code imitating them.
+
+**Do not emulate the PostgREST chainable API.** The previous version of this app spent 221 lines faking `.from().select().eq()`. That bought only the appearance of identical route code, which is exactly what made it fragile.
 
 ## 6. API routes
 

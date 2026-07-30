@@ -2,7 +2,7 @@
 
 How to create a free Supabase project and get this app talking to it.
 
-**You don't need this yet.** With `NEXT_PUBLIC_MOCK_MODE=true` the app runs entirely on seeded in-memory data — no account, no database, no keys. Do this when you want real persistence.
+**The app requires this.** There is no offline mode — every read and write goes to Postgres. If you are setting up a second environment or a fresh machine, this is the whole procedure.
 
 **Do not put real guest data in until you've decided to.** Setting up the database and loading your actual guest list are two separate decisions (PRD §3.3).
 
@@ -90,9 +90,6 @@ Verify: **Authentication** → **Users** in the Supabase dashboard.
 Full `.env.local`:
 
 ```bash
-# Flip to false to use the real database
-NEXT_PUBLIC_MOCK_MODE=false
-
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SECRET_KEY=sb_secret_...
@@ -112,13 +109,19 @@ npm run dev     # http://localhost:3030
 
 1. `/admin` → redirected to the login page.
 2. Log in with the account from step 4.
-3. The guest list is **empty** — the real database has no seed data. That's correct.
+3. The guest list is **empty** until you run the test seed below. That's correct.
 4. Add one guest, copy their invite link, open it in a private window, submit an RSVP.
 5. Supabase **Table Editor** → `invites` and `attendees` should show what you just did.
 
-## Switching back to mock
+## Test data
 
-Set `NEXT_PUBLIC_MOCK_MODE=true` and restart. You're back on seeded in-memory data, and the real database is untouched. Useful for development once real guest data exists — the whole reason the data layer is swappable (PRD §8).
+`supabase/migrations/004_seed_test_data.sql` inserts ~12 invented guests covering every state — approved, partly declined, unnamed "+1"s, declined, unanswered, 5+ contact attempts, multi-row history, some seated. Run it the same way as the others when you want something to look at.
+
+Every row it creates is marked `__test__`. Clear them all before your real guest list goes in:
+
+```sql
+delete from invites where name like '%__test__%';
+```
 
 ## Troubleshooting
 
