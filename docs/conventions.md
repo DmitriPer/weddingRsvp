@@ -45,12 +45,15 @@ lib/data/      persist
 
 | Layer | May do | Must never |
 |---|---|---|
+| `app/**/page.tsx` | fetch via `lib/data`, then hand data to components | contain business logic beyond choosing what to fetch |
 | `components/` | render, hold local UI state, call API routes | contain business logic, compute headcounts, format dates, import `lib/data` |
 | `app/api/` | check auth → validate input → call `lib/data` → shape the response | contain business logic worth testing, or talk to a store directly |
 | `lib/` | pure logic: headcount, templates, dates, validation, status transitions | perform I/O, import React |
 | `lib/data/` | persistence — the only place that knows a store exists | contain business rules |
 
 **Direction is one-way.** `lib/` never imports from `components/` or `app/`. `lib/data/` never imports from `lib/` business logic.
+
+**Pages may fetch; components may not.** A Server Component page calling `lib/data` directly is idiomatic App Router and saves an HTTP round trip. Everything below a page receives data as props. Client Components that need to mutate go through `app/api/`.
 
 A component computing a headcount inline is the single most likely way this codebase rots, because the second copy is always *almost* right.
 

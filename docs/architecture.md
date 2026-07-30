@@ -23,10 +23,10 @@ app/
     layout.tsx                      admin shell + tab navigation
     page.tsx                        invitees (default tab)
     login/page.tsx
-    responses/page.tsx
-    stats/page.tsx
     seating/page.tsx
     settings/page.tsx
+    (no responses/ or stats/ tabs: stats are tiles on the invitees
+     page, history is a modal from a guest's row)
 
   api/
     rsvp/route.ts                   POST   guest submission

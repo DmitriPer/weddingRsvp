@@ -207,11 +207,13 @@ Tapping `wa.me` is the **only** thing that marks a guest contacted: it increment
 
 Invites reaching **5 attempts with still no response** get a "needs a phone call" badge. The app counts and flags; the couple decides whether to send again.
 
-### 6.11 Stats
-Counts per status, total adults and kids attending, total declined, total invited — all from §5.1.
+### 6.11 Stats — on the invitees screen, not a tab
+Counts per status, total adults and kids attending, total declined, total invited — all from §5.1. Displayed as tiles at the **top of the invitees list**, not on a separate page: they are four numbers, and they read better beside the list than on their own screen.
 
-### 6.12 Answers and history
-Open any invite to see its current answer plus every previous submission, newest first. History is counts-only — see §10.
+### 6.12 Answers and history — a modal, not a tab
+The invitee row already shows status, headcount, and each person's approved/declined. The only thing it does not show is the **change log**, so that opens as a small modal from the row: every previous submission, newest first, counts only.
+
+Folding both into the invitees screen leaves three tabs — **מוזמנים · סידור שולחנות · הגדרות** — instead of five, with nothing lost.
 
 ### 6.13 Day-of reminder — prep only
 Generate the reminder message and list confirmed guests, each with a `wa.me` button. No scheduling, no auto-send.
