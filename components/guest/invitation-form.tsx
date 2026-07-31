@@ -144,7 +144,7 @@ export function InvitationForm({
                   key={person.id}
                   className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-bloom-strong ${
                     ticked.includes(person.id)
-                      ? 'border-bloom-sky bg-bloom-sky/30'
+                      ? 'border-bloom-ink bg-bloom-ink/10'
                       : 'border-bloom-ink/25 bg-paper/60'
                   }`}
                 >

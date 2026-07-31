@@ -76,7 +76,7 @@ function SecondaryAction({
       // Waze opens in its own app or tab; the .ics downloads in place, and
       // target=_blank on a download leaves an empty tab behind on iOS.
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-      className="flex-1 rounded-xl bg-bloom-butter px-2 py-3 text-center text-sm font-semibold text-bloom-ink shadow-sm active:brightness-95"
+      className="frosted flex-1 rounded-xl border border-bloom-ink/30 px-2 py-3 text-center text-sm font-semibold text-bloom-ink shadow-sm active:bg-bloom-ink/10"
     >
       {children}
     </a>

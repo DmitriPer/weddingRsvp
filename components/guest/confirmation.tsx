@@ -48,9 +48,9 @@ export function Confirmation({
               </li>
             ))}
           </ul>
-          {/* Butter behind the headcount: the palette's only tint that
-              clears AA behind body text (6.04:1 with --bloom-strong). */}
-          <div className="rounded-2xl bg-bloom-butter/70 px-4 py-3">
+          {/* The headcount is set off by an edge and a white fill, not a tint —
+              the same box the form's counters use. */}
+          <div className="rounded-2xl border border-bloom-ink/25 bg-paper/60 px-4 py-3">
             <p className="text-lg font-semibold text-bloom-strong">
               {strings.rsvp.confirmation.total(total)}
             </p>
@@ -58,7 +58,7 @@ export function Confirmation({
           </div>
         </div>
       ) : (
-        <p className="rounded-2xl bg-bloom-blush/60 px-4 py-3 text-bloom-strong">
+        <p className="rounded-2xl border border-bloom-ink/25 bg-paper/60 px-4 py-3 text-bloom-strong">
           {strings.rsvp.confirmation.declined}
         </p>
       )}

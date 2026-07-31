@@ -37,15 +37,13 @@ export function GuestShell({ greeting, bar, children }: GuestShellProps) {
 /**
  * The greeting pill.
  *
- * White frosted, dark-green text, a thin lilac ring. The palette is present as
- * an EDGE, not a fill: its five colours sit at almost identical lightness, so
- * green on any of them lands between 1.65:1 and 2.28:1 — unreadable. A ring
- * carries the colour at no cost to the text, which is the same trick the
- * invitation uses, holding its florals at the border and keeping the middle white.
+ * White frosted, dark-green text, no ring. The colour on this surface is the
+ * artwork's own — the pill stays out of its way, the same trick the invitation
+ * uses in holding its florals at the border and keeping the middle white.
  */
 export function GuestGreeting({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="frosted inline-block rounded-full px-5 py-2 text-lg text-bloom-strong shadow-sm ring-1 ring-bloom-lilac">
+    <h1 className="frosted inline-block rounded-full px-5 py-2 text-lg text-bloom-strong shadow-sm">
       {children}
     </h1>
   )

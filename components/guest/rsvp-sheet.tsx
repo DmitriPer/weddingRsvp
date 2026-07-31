@@ -67,7 +67,7 @@ export function RsvpSheet({ open, onClose, children }: RsvpSheetProps) {
         className="frosted relative max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl p-5 shadow-2xl outline-none safe-bottom"
       >
         {/* The grab handle: the affordance that says this can be dismissed. */}
-        <div aria-hidden className="mx-auto mb-4 h-1 w-10 rounded-full bg-bloom-lilac" />
+        <div aria-hidden className="mx-auto mb-4 h-1 w-10 rounded-full bg-bloom-ink/30" />
         {children}
       </div>
     </div>
