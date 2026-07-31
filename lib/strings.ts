@@ -52,6 +52,10 @@ export const strings = {
     coupleNames: 'שמות בני הזוג',
     weddingDateTime: 'תאריך ושעה',
     weddingDateTimeHint: 'שעון ישראל. זו השעה שתיכנס ליומן של האורחים.',
+    /** The hour/minute selects that replaced the browser's AM/PM time field. */
+    hour: 'שעה',
+    minute: 'דקות',
+    noTime: '—',
     venue: 'מקום האירוע',
     venueHint: 'שם האולם והכתובת — לפי זה עובד כפתור הניווט.',
     deadline: 'תאריך אחרון לאישור',
@@ -72,6 +76,9 @@ export const strings = {
     preview: 'תצוגה מקדימה',
     unknownVariable: (names: string[]) =>
       `לא מזוהה ולא יוחלף: ${names.map((one) => `{{${one}}}`).join(', ')}`,
+
+    /** Shown on a collapsed template so unsaved work cannot hide behind it. */
+    unsaved: 'לא נשמר',
 
     saved: 'ההגדרות נשמרו',
     saveFailed: 'השמירה נכשלה',

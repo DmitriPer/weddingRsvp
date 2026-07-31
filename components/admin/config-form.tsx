@@ -15,7 +15,12 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { fromDateTimeLocalValue, toDateTimeLocalValue } from '@/lib/datetime'
+import {
+  fromDateTimeLocalValue,
+  joinDateTimeLocal,
+  splitDateTimeLocal,
+  toDateTimeLocalValue,
+} from '@/lib/datetime'
 import { strings } from '@/lib/strings'
 import type { WeddingConfig } from '@/lib/types'
 
@@ -88,14 +93,7 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
           htmlFor="wedding-at"
           hint={strings.settings.weddingDateTimeHint}
         >
-          <input
-            id="wedding-at"
-            type="datetime-local"
-            dir="ltr"
-            value={weddingAt}
-            onChange={(event) => setWeddingAt(event.target.value)}
-            className="w-full rounded-md border border-border px-3 py-1.5"
-          />
+          <DateTimeField id="wedding-at" value={weddingAt} onChange={setWeddingAt} />
         </Field>
 
         <Field
@@ -103,14 +101,7 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
           htmlFor="deadline"
           hint={strings.settings.deadlineHint}
         >
-          <input
-            id="deadline"
-            type="datetime-local"
-            dir="ltr"
-            value={deadline}
-            onChange={(event) => setDeadline(event.target.value)}
-            className="w-full rounded-md border border-border px-3 py-1.5"
-          />
+          <DateTimeField id="deadline" value={deadline} onChange={setDeadline} />
         </Field>
 
         <div className="sm:col-span-2">
@@ -133,6 +124,91 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
         {saving ? strings.app.saving : strings.app.save}
       </button>
     </form>
+  )
+}
+
+/** Minute options. Five-minute steps cover every time anyone sets a wedding to. */
+const MINUTE_STEPS = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'))
+const HOURS = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'))
+
+/**
+ * A date, an hour and a minute — deliberately NOT `<input type="datetime-local">`.
+ *
+ * That control renders in the browser's own locale, so an English-language
+ * browser shows "06:30 PM" no matter what the page says; neither `lang` nor
+ * `dir` overrides it. Selects are 24-hour everywhere because the options are
+ * ours, and they are faster to operate at a desk than a stepper.
+ *
+ * Empty stays empty: clearing the date clears the whole value, which is how
+ * "no deadline" (PRD §6.3) survives a round trip through this form.
+ */
+function DateTimeField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string
+  value: string
+  onChange: (next: string) => void
+}) {
+  const { date, time } = splitDateTimeLocal(value)
+  const [hour = '', minute = ''] = time.split(':')
+
+  // A stored 18:37 has no matching option, and a select silently discards a
+  // value it cannot show. Offer it rather than round the wedding time off.
+  const minutes = minute && !MINUTE_STEPS.includes(minute) ? [minute, ...MINUTE_STEPS] : MINUTE_STEPS
+
+  const set = (nextDate: string, nextHour: string, nextMinute: string) => {
+    // Picking a date with no time yet lands on a whole hour rather than nothing,
+    // so one more click completes the value instead of two.
+    const hh = nextHour || (nextDate ? '19' : '')
+    const mm = nextMinute || (nextDate ? '00' : '')
+    onChange(joinDateTimeLocal(nextDate, hh && mm ? `${hh}:${mm}` : ''))
+  }
+
+  return (
+    // dir="ltr" on the ROW, not on each control. The page is RTL, which would
+    // otherwise lay these out right-to-left and print the time as 30:18 — the
+    // parts each rendered correctly, in the wrong order. A date and a clock read
+    // left-to-right in Hebrew too.
+    <div dir="ltr" className="flex items-center gap-2">
+      <input
+        id={id}
+        type="date"
+        value={date}
+        onChange={(event) => set(event.target.value, hour, minute)}
+        className="min-w-0 flex-1 rounded-md border border-border px-3 py-1.5"
+      />
+      <select
+        aria-label={strings.settings.hour}
+        value={hour}
+        onChange={(event) => set(date, event.target.value, minute)}
+        className="rounded-md border border-border px-2 py-1.5"
+      >
+        <option value="">{strings.settings.noTime}</option>
+        {HOURS.map((one) => (
+          <option key={one} value={one}>
+            {one}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden className="text-muted">
+        :
+      </span>
+      <select
+        aria-label={strings.settings.minute}
+        value={minute}
+        onChange={(event) => set(date, hour, event.target.value)}
+        className="rounded-md border border-border px-2 py-1.5"
+      >
+        <option value="">{strings.settings.noTime}</option>
+        {minutes.map((one) => (
+          <option key={one} value={one}>
+            {one}
+          </option>
+        ))}
+      </select>
+    </div>
   )
 }
 

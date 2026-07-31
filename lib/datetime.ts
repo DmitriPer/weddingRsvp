@@ -26,7 +26,14 @@ export function formatDate(value: string | Date | null | undefined): string {
   }).format(date)
 }
 
-/** "19:30" */
+/**
+ * "19:30" — always 24-hour.
+ *
+ * `hour12: false` is explicit rather than inherited from the locale. he-IL
+ * happens to default to 24-hour, but that is a property of CLDR data, not a
+ * guarantee, and "7:30 PM" in a Hebrew RTL line is the kind of thing nobody
+ * notices until a guest reads it.
+ */
 export function formatTime(value: string | Date | null | undefined): string {
   const date = toDate(value)
   if (!date) return ''
@@ -34,6 +41,7 @@ export function formatTime(value: string | Date | null | undefined): string {
     timeZone: WEDDING_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   }).format(date)
 }
 
@@ -55,6 +63,7 @@ export function formatShort(value: string | Date | null | undefined): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   }).format(date)
 }
 
@@ -117,6 +126,27 @@ export function toDateTimeLocalValue(value: string | Date | null | undefined): s
   // en-CA gives 24-hour time, but midnight can come back as "24".
   const hour = get('hour') === '24' ? '00' : get('hour')
   return `${get('year')}-${get('month')}-${get('day')}T${hour}:${get('minute')}`
+}
+
+/**
+ * The two halves of "YYYY-MM-DDTHH:mm", for a form that edits them separately.
+ *
+ * `<input type="datetime-local">` renders in the BROWSER's locale, so on an
+ * English system it offers 12-hour time with AM/PM — and neither the document's
+ * `lang` nor any attribute reliably overrides that. The admin form therefore
+ * pairs a native date input with its own hour and minute selects, which are
+ * 24-hour everywhere by construction. These two helpers are the seam, so the
+ * wall-clock string format stays known only to this file.
+ */
+export function splitDateTimeLocal(value: string): { date: string; time: string } {
+  const [date = '', time = ''] = value.split('T')
+  return { date, time }
+}
+
+/** Empty unless BOTH halves are present — a date with no time is not an instant. */
+export function joinDateTimeLocal(date: string, time: string): string {
+  if (!date || !time) return ''
+  return `${date}T${time}`
 }
 
 /**
