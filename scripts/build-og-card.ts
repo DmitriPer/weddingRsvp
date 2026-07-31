@@ -69,6 +69,30 @@ const RULE = '#7FA46D'
  */
 const FONT_STACK = "Heebo, 'Noto Sans Hebrew', 'Droid Sans Hebrew', sans-serif"
 
+/**
+ * The names as the CARD shows them — Latin, matching the invitation artwork,
+ * which is lettered "NICOLE & DIMA" rather than in Hebrew.
+ *
+ * Deliberately not `wedding_config.couple_names`. That value stays Hebrew: it
+ * titles the .ics event a guest downloads (lib/calendar.ts) and the preview's
+ * own bold text line, both of which sit in Hebrew context. The card is the one
+ * surface that has to sit beside the artwork and match its lettering. Blank this
+ * and the card falls back to the config value.
+ *
+ * It is a constant rather than a settings field because it is a property of the
+ * artwork, not of the wedding — it changes when the designer's file changes, and
+ * the card has to be rebuilt for that anyway.
+ */
+const CARD_COUPLE_NAMES = 'Nicole & Dima'
+
+/** Serif small-caps for the Latin name, echoing the invitation's own lettering. */
+const DISPLAY_FONT_STACK = "'Noto Serif', 'Liberation Serif', Georgia, serif"
+
+/** Hebrew needs RTL; a Latin name set RTL centres oddly and gains nothing. */
+function textDirection(value: string): 'rtl' | 'ltr' {
+  return /[֐-׿]/.test(value) ? 'rtl' : 'ltr'
+}
+
 interface CardText {
   couple: string
   when: string
@@ -110,7 +134,8 @@ async function readCardText(): Promise<CardText> {
   }
 
   return {
-    couple: (data.couple_names ?? '').trim(),
+    // The card's own Latin lettering wins; config is the fallback.
+    couple: CARD_COUPLE_NAMES.trim() || (data.couple_names ?? '').trim(),
     // Via lib/datetime, so the card reads the same instant as every screen.
     when: formatDateTime(data.wedding_date_time),
     venue: (data.venue_name ?? '').trim(),
@@ -135,13 +160,32 @@ function coupleFontSize(couple: string): number {
 
 function textOverlay({ couple, when, venue }: CardText): Buffer {
   const centre = OG_CARD_WIDTH / 2
-  const line = (y: number, size: number, fill: string, weight: number, value: string) =>
-    `<text x="${centre}" y="${y}" font-family="${FONT_STACK}" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="middle" direction="rtl">${escapeXml(value)}</text>`
+  const line = (
+    y: number,
+    size: number,
+    fill: string,
+    weight: number,
+    value: string,
+    { font = FONT_STACK, extra = '' }: { font?: string; extra?: string } = {}
+  ) =>
+    `<text x="${centre}" y="${y}" font-family="${font}" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="middle" direction="${textDirection(value)}"${extra}>${escapeXml(value)}</text>`
 
   // Each line is omitted rather than rendered blank when its field is unset, so
   // a half-filled wedding_config gives a sparser card, never a stray rule.
   const parts = [
-    couple && line(352, coupleFontSize(couple), INK_STRONG, 700, couple),
+    couple &&
+      line(
+        352,
+        coupleFontSize(couple),
+        INK_STRONG,
+        700,
+        couple,
+        {
+          font: DISPLAY_FONT_STACK,
+          // Small caps and open letter-spacing are how the invitation sets it.
+          extra: ' font-variant="small-caps" letter-spacing="4"',
+        }
+      ),
     couple &&
       (when || venue) &&
       `<line x1="${centre - 75}" y1="400" x2="${centre + 75}" y2="400" stroke="${RULE}" stroke-width="1.5"/>`,
