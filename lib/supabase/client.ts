@@ -29,8 +29,11 @@ export function createBrowserSupabaseClient(): SupabaseClient {
    * build runs. Adding them to a hosting dashboard afterwards changes nothing
    * until a NEW BUILD runs. That is the single most likely reason this throws.
    */
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  // Trimmed: a value pasted into a hosting dashboard with a trailing newline
+  // produces an invalid URL and an identical dead button, and where the variable
+  // is stored write-only there is no way to see the stray character.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim()
 
   // These were `!` assertions, which promised a value rather than checking for
   // one: with either missing, createBrowserClient threw from inside the library

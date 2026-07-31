@@ -15,7 +15,9 @@ import 'server-only'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 function required(name: string): string {
-  const value = process.env[name]
+  // Trimmed: a value pasted into a hosting dashboard with a trailing newline
+  // fails in ways that give no hint of a stray character.
+  const value = process.env[name]?.trim()
   if (!value) throw new Error(`Missing required environment variable: ${name}`)
   return value
 }
