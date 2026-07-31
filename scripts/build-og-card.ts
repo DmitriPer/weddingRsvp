@@ -28,6 +28,11 @@ import { OG_CARD_HEIGHT, OG_CARD_MAX_BYTES, OG_CARD_PATH, OG_CARD_WIDTH } from '
 /** The landscape banner the card is built from. Not the portrait invitation. */
 const DEFAULT_SOURCE = 'public/assets/demo-og-source.jpg'
 
+/** The couple's monogram, sitting above the names. Same mark as the invitation. */
+const LOGO = 'public/assets/wedding-logo.svg'
+const LOGO_HEIGHT = 128
+const LOGO_TOP = 132
+
 /**
  * Above this, a source is landscape enough to fill the card by cropping a little
  * off its top and bottom. Below it — a portrait invitation — cropping would eat
@@ -136,12 +141,12 @@ function textOverlay({ couple, when, venue }: CardText): Buffer {
   // Each line is omitted rather than rendered blank when its field is unset, so
   // a half-filled wedding_config gives a sparser card, never a stray rule.
   const parts = [
-    couple && line(290, coupleFontSize(couple), INK_STRONG, 700, couple),
+    couple && line(352, coupleFontSize(couple), INK_STRONG, 700, couple),
     couple &&
       (when || venue) &&
-      `<line x1="${centre - 75}" y1="340" x2="${centre + 75}" y2="340" stroke="${RULE}" stroke-width="1.5"/>`,
-    when && line(406, 44, INK, 400, when),
-    venue && line(462, 34, INK, 400, venue),
+      `<line x1="${centre - 75}" y1="400" x2="${centre + 75}" y2="400" stroke="${RULE}" stroke-width="1.5"/>`,
+    when && line(462, 44, INK, 400, when),
+    venue && line(514, 34, INK, 400, venue),
   ].filter(Boolean)
 
   return Buffer.from(
@@ -190,8 +195,17 @@ async function main(): Promise<void> {
   const text = await readCardText()
   const destination = path.join('public', OG_CARD_PATH.replace(/^\//, ''))
 
+  // The monogram is composited as its own layer rather than embedded in the SVG
+  // overlay: librsvg would have to resolve a nested file reference, and a
+  // silently-missing one is a card that ships with a hole in it.
+  const logo = await sharp(LOGO).resize({ height: LOGO_HEIGHT }).png().toBuffer()
+  const { width: logoWidth } = await sharp(logo).metadata()
+
   await sharp(await composeArtwork(source))
-    .composite([{ input: textOverlay(text) }])
+    .composite([
+      { input: logo, top: LOGO_TOP, left: Math.round((OG_CARD_WIDTH - (logoWidth ?? 0)) / 2) },
+      { input: textOverlay(text) },
+    ])
     .jpeg({ quality: 86, mozjpeg: true })
     .toFile(destination)
 
