@@ -21,6 +21,8 @@
 import { readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import sharp from 'sharp'
+import { createElement } from 'react'
+import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
 import { formatDateTime } from '../lib/datetime'
 import {
@@ -36,8 +38,8 @@ const DEFAULT_SOURCE = 'public/assets/demo-og-source.jpg'
 
 /** The couple's monogram, sitting above the names. Same mark as the invitation. */
 const LOGO = 'public/assets/wedding-logo.svg'
-const LOGO_HEIGHT = 128
-const LOGO_TOP = 132
+const LOGO_HEIGHT = 116
+const LOGO_TOP = 104
 
 /**
  * Above this, a source is landscape enough to fill the card by cropping a little
@@ -67,16 +69,33 @@ const RULE = '#7FA46D'
  * librsvg shapes text through Pango, which implements the bidi algorithm, and
  * renders both the Hebrew and the mixed Hebrew/number date line correctly.
  *
- * The consequence is that the font comes from the MACHINE, via fontconfig,
- * rather than from a file this repo controls. Heebo — the site's own face — is
- * used when installed; otherwise Noto Sans Hebrew, which is close enough that
- * the card is not worth a font-embedding pipeline. The output is committed and
- * looked at, so a bad substitution is caught by eye before it ships.
+ * The consequence is that the HEBREW font comes from the machine, via
+ * fontconfig, rather than from a file this repo controls: Heebo when installed,
+ * otherwise Noto Sans Hebrew. Close enough, and unavoidable — Pango has no API
+ * for handing it a buffer. The Latin name escapes this by going through Satori
+ * instead (see DISPLAY_FONT), which is why only that line is guaranteed to look
+ * the same everywhere. The output is committed and looked at, so a bad
+ * substitution in the Hebrew is caught by eye before it ships.
  */
 const FONT_STACK = "Heebo, 'Noto Sans Hebrew', 'Droid Sans Hebrew', sans-serif"
 
-/** Serif small-caps for the Latin name, echoing the invitation's own lettering. */
-const DISPLAY_FONT_STACK = "'Noto Serif', 'Liberation Serif', Georgia, serif"
+/**
+ * The invitation's own lettering, as closely as a free face gets it: Cormorant
+ * SC, a light Garamond-style small caps with fine hairlines. Compared against a
+ * crop of the artwork alongside Cormorant Garamond, EB Garamond and Cinzel —
+ * the Garamonds have no small caps at all and Cinzel is wider and more evenly
+ * stroked.
+ *
+ * The file is vendored because this is the one thing fontconfig cannot give us:
+ * the SVG path renders through Pango, which can only use fonts INSTALLED ON THE
+ * MACHINE, and a card that looks different depending on who built it is not a
+ * design decision. Satori takes a font as a buffer, so the Latin name goes
+ * through it instead — see renderCoupleName().
+ */
+const DISPLAY_FONT = 'assets/fonts/CormorantSC-Light.ttf'
+const DISPLAY_SIZE = 100
+const DISPLAY_TOP = 244
+const DISPLAY_BLOCK_HEIGHT = 132
 
 /** Hebrew needs RTL; a Latin name set RTL centres oddly and gains nothing. */
 function textDirection(value: string): 'rtl' | 'ltr' {
@@ -148,7 +167,8 @@ function coupleFontSize(couple: string): number {
   return 56
 }
 
-function textOverlay({ couple, when, venue }: CardText): Buffer {
+/** `coupleDrawnSeparately` — the Latin name is a Satori layer, so skip it here. */
+function textOverlay({ couple, when, venue }: CardText, coupleDrawnSeparately: boolean): Buffer {
   const centre = OG_CARD_WIDTH / 2
   const line = (
     y: number,
@@ -163,29 +183,65 @@ function textOverlay({ couple, when, venue }: CardText): Buffer {
   // Each line is omitted rather than rendered blank when its field is unset, so
   // a half-filled wedding_config gives a sparser card, never a stray rule.
   const parts = [
-    couple &&
-      line(
-        352,
-        coupleFontSize(couple),
-        INK_STRONG,
-        700,
-        couple,
-        {
-          font: DISPLAY_FONT_STACK,
-          // Small caps and open letter-spacing are how the invitation sets it.
-          extra: ' font-variant="small-caps" letter-spacing="4"',
-        }
-      ),
+    // Only reached by a Hebrew name falling back from config; the Latin form is
+    // drawn by Satori with the invitation's own typeface.
+    couple && !coupleDrawnSeparately && line(352, coupleFontSize(couple), INK_STRONG, 700, couple),
     couple &&
       (when || venue) &&
-      `<line x1="${centre - 75}" y1="400" x2="${centre + 75}" y2="400" stroke="${RULE}" stroke-width="1.5"/>`,
-    when && line(462, 44, INK, 400, when),
-    venue && line(514, 34, INK, 400, venue),
+      `<line x1="${centre - 75}" y1="406" x2="${centre + 75}" y2="406" stroke="${RULE}" stroke-width="1.5"/>`,
+    when && line(464, 44, INK, 400, when),
+    venue && line(516, 34, INK, 400, venue),
   ].filter(Boolean)
 
   return Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_CARD_WIDTH}" height="${OG_CARD_HEIGHT}">${parts.join('')}</svg>`
   )
+}
+
+/**
+ * The couple's name, rendered by Satori with the vendored font.
+ *
+ * Satori is used HERE and nowhere else in this script, because it does no
+ * bidirectional reordering — Hebrew comes out reversed. A Latin name has no bidi
+ * to get wrong, and in exchange Satori accepts the typeface as a buffer, which
+ * is the only way to guarantee the same lettering on every machine.
+ *
+ * Returns null for a Hebrew name, which then goes down the Pango path with
+ * everything else rather than being silently reversed.
+ */
+async function renderCoupleName(couple: string): Promise<Buffer | null> {
+  if (textDirection(couple) === 'rtl') return null
+
+  // createElement rather than an object literal: this file is .ts, so there is
+  // no JSX, and ImageResponse takes a real ReactElement — a hand-shaped object
+  // matches at runtime but fails the type check that `next build` runs over
+  // every file in the project, scripts included.
+  const element = createElement(
+    'div',
+    {
+      style: {
+        width: `${OG_CARD_WIDTH}px`,
+        height: `${DISPLAY_BLOCK_HEIGHT}px`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: INK_STRONG,
+        fontSize: DISPLAY_SIZE,
+        // The invitation sets the names wide apart; without this they read as a
+        // word rather than a title.
+        letterSpacing: 7,
+      },
+    },
+    couple
+  )
+
+  const response = new ImageResponse(element, {
+    width: OG_CARD_WIDTH,
+    height: DISPLAY_BLOCK_HEIGHT,
+    fonts: [{ name: 'Display', data: readFileSync(DISPLAY_FONT), weight: 300, style: 'normal' }],
+  })
+
+  return Buffer.from(await response.arrayBuffer())
 }
 
 async function composeArtwork(source: string): Promise<Buffer> {
@@ -234,11 +290,13 @@ async function main(): Promise<void> {
   // silently-missing one is a card that ships with a hole in it.
   const logo = await sharp(LOGO).resize({ height: LOGO_HEIGHT }).png().toBuffer()
   const { width: logoWidth } = await sharp(logo).metadata()
+  const coupleName = await renderCoupleName(text.couple)
 
   await sharp(await composeArtwork(source))
     .composite([
       { input: logo, top: LOGO_TOP, left: Math.round((OG_CARD_WIDTH - (logoWidth ?? 0)) / 2) },
-      { input: textOverlay(text) },
+      ...(coupleName ? [{ input: coupleName, top: DISPLAY_TOP, left: 0 }] : []),
+      { input: textOverlay(text, Boolean(coupleName)) },
     ])
     .jpeg({ quality: 86, mozjpeg: true })
     .toFile(destination)
