@@ -12,7 +12,7 @@ import type { Metadata } from 'next'
 import { getConfig, getInviteByToken } from '@/lib/data'
 import { formatDateTime, isRsvpOpen } from '@/lib/datetime'
 import { buildAbsoluteUrl } from '@/lib/links'
-import { OG_CARD_HEIGHT, OG_CARD_PATH, OG_CARD_WIDTH } from '@/lib/og'
+import { OG_CARD_HEIGHT, OG_CARD_PATH, OG_CARD_WIDTH, OG_COUPLE_NAMES } from '@/lib/og'
 import { strings } from '@/lib/strings'
 import { hasAnswered } from '@/lib/status'
 import { ActionBar } from '@/components/guest/action-bar'
@@ -41,13 +41,16 @@ export const dynamic = 'force-dynamic'
  * hasn't looked yet" filter §6.10 depends on. Taking no token makes that
  * impossible rather than merely avoided.
  *
- * Everything shown comes from wedding_config, so it follows the settings tab
- * with no redeploy, and it is identical for every guest.
+ * The date and venue come from wedding_config, so they follow the settings tab
+ * with no redeploy. The names are the Latin form in lib/og.ts, shared with the
+ * card so the picture and the line beneath it cannot disagree. Identical for
+ * every guest either way.
  */
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getConfig()
 
-  const title = config.couple_names.trim() || strings.og.untitled
+  // The Latin form, so the bold line WhatsApp prints matches the card above it.
+  const title = OG_COUPLE_NAMES.trim() || config.couple_names.trim() || strings.og.untitled
   const description = strings.og.details(
     formatDateTime(config.wedding_date_time),
     config.venue_name.trim()

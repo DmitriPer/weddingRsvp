@@ -17,6 +17,22 @@
  * preview that mysteriously has no picture.
  */
 
+/**
+ * The couple's names as the PREVIEW shows them — both painted into the card and
+ * printed in its bold title line, so the picture and the words agree.
+ *
+ * Latin, because the invitation is lettered "NICOLE & DIMA" and the preview sits
+ * beside it. Deliberately not `wedding_config.couple_names`, which stays Hebrew:
+ * that value titles the .ics event a guest downloads (lib/calendar.ts), where
+ * Hebrew is right.
+ *
+ * A constant rather than a settings field because it is a property of the
+ * artwork, not of the wedding — it changes when the designer's file changes, and
+ * the card must be rebuilt for that anyway. Blank it and both fall back to the
+ * config value.
+ */
+export const OG_COUPLE_NAMES = 'Nicole & Dima'
+
 /** Public path of the built card. Served straight from `public/`. */
 export const OG_CARD_PATH = '/assets/og-card.jpg'
 

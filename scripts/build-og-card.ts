@@ -23,7 +23,13 @@ import path from 'node:path'
 import sharp from 'sharp'
 import { createClient } from '@supabase/supabase-js'
 import { formatDateTime } from '../lib/datetime'
-import { OG_CARD_HEIGHT, OG_CARD_MAX_BYTES, OG_CARD_PATH, OG_CARD_WIDTH } from '../lib/og'
+import {
+  OG_CARD_HEIGHT,
+  OG_CARD_MAX_BYTES,
+  OG_CARD_PATH,
+  OG_CARD_WIDTH,
+  OG_COUPLE_NAMES,
+} from '../lib/og'
 
 /** The landscape banner the card is built from. Not the portrait invitation. */
 const DEFAULT_SOURCE = 'public/assets/demo-og-source.jpg'
@@ -68,22 +74,6 @@ const RULE = '#7FA46D'
  * looked at, so a bad substitution is caught by eye before it ships.
  */
 const FONT_STACK = "Heebo, 'Noto Sans Hebrew', 'Droid Sans Hebrew', sans-serif"
-
-/**
- * The names as the CARD shows them — Latin, matching the invitation artwork,
- * which is lettered "NICOLE & DIMA" rather than in Hebrew.
- *
- * Deliberately not `wedding_config.couple_names`. That value stays Hebrew: it
- * titles the .ics event a guest downloads (lib/calendar.ts) and the preview's
- * own bold text line, both of which sit in Hebrew context. The card is the one
- * surface that has to sit beside the artwork and match its lettering. Blank this
- * and the card falls back to the config value.
- *
- * It is a constant rather than a settings field because it is a property of the
- * artwork, not of the wedding — it changes when the designer's file changes, and
- * the card has to be rebuilt for that anyway.
- */
-const CARD_COUPLE_NAMES = 'Nicole & Dima'
 
 /** Serif small-caps for the Latin name, echoing the invitation's own lettering. */
 const DISPLAY_FONT_STACK = "'Noto Serif', 'Liberation Serif', Georgia, serif"
@@ -135,7 +125,7 @@ async function readCardText(): Promise<CardText> {
 
   return {
     // The card's own Latin lettering wins; config is the fallback.
-    couple: CARD_COUPLE_NAMES.trim() || (data.couple_names ?? '').trim(),
+    couple: OG_COUPLE_NAMES.trim() || (data.couple_names ?? '').trim(),
     // Via lib/datetime, so the card reads the same instant as every screen.
     when: formatDateTime(data.wedding_date_time),
     venue: (data.venue_name ?? '').trim(),
