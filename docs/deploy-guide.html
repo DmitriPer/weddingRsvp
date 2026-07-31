@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deploying the RSVP site — a test deployment</title>
+<style>
+  :root{
+    --paper:#fff; --ink:#2c3a25; --muted:#5e7f4c; --line:#dfe6d9;
+    --display:#7da169; --strong:#475f39; --warn:#b54708; --danger:#b42318; --bg:#f7f9f5;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:32px 20px; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; line-height:1.7;
+  }
+  main{max-width:880px; margin:0 auto; background:var(--paper);
+       border:1px solid var(--line); border-radius:16px; padding:40px 36px}
+  h1{font-size:1.75rem; margin:0 0 4px; color:var(--strong)}
+  .sub{color:var(--muted); margin:0 0 28px; font-size:.95rem}
+  h2{font-size:1.2rem; margin:38px 0 10px; color:var(--strong);
+     border-bottom:2px solid var(--line); padding-bottom:6px}
+  h2 .num{display:inline-block; width:28px; height:28px; line-height:28px; text-align:center;
+          background:var(--strong); color:#fff; border-radius:50%; font-size:.85rem; margin-inline-end:8px}
+  h3{font-size:1rem; margin:22px 0 6px; color:var(--strong)}
+  p,li{font-size:.97rem}
+  ul,ol{padding-inline-start:22px}
+  li{margin:5px 0}
+  table{width:100%; border-collapse:collapse; margin:14px 0; font-size:.92rem}
+  th,td{border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top}
+  th{background:var(--bg); font-weight:600; color:var(--strong)}
+  code{background:var(--bg); border:1px solid var(--line); border-radius:5px;
+       padding:1px 6px; font-family:ui-monospace,Menlo,Consolas,monospace;
+       font-size:.87em; word-break:break-all}
+  pre{background:#f4f7f2; border:1px solid var(--line); border-radius:9px;
+      padding:13px 15px; overflow-x:auto; margin:12px 0}
+  pre code{background:none; border:none; padding:0; font-size:.86rem; word-break:normal}
+  .note{background:#fdf6ec; border-inline-start:4px solid var(--warn);
+        padding:12px 16px; border-radius:8px; margin:16px 0; font-size:.93rem}
+  .ok{background:#f2f7ef; border-inline-start:4px solid var(--display)}
+  .stop{background:#fdf2f0; border-inline-start:4px solid var(--danger)}
+  .note p:first-child{margin-top:0} .note p:last-child{margin-bottom:0}
+  .he{direction:rtl; unicode-bidi:isolate; display:inline-block}
+  .check{list-style:none; padding-inline-start:0}
+  .check li{padding-inline-start:26px; position:relative; margin:8px 0}
+  .check li::before{content:"☐"; position:absolute; inset-inline-start:0; color:var(--display); font-size:1.1rem}
+  .foot{margin-top:38px; padding-top:14px; border-top:1px solid var(--line);
+        color:var(--muted); font-size:.86rem}
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Deploying the RSVP site</h1>
+  <p class="sub">A test deployment on a real public URL — enough to see the WhatsApp preview card, which cannot be tested any other way.</p>
+
+  <div class="note ok">
+    <p><strong>Why this is needed at all:</strong> WhatsApp builds its link preview by fetching the page <em>from its own servers</em>. It can reach neither <code>localhost</code> nor <code>192.168.68.114</code>, so the card is invisible until the site has a public address. Everything else already works locally.</p>
+  </div>
+
+  <h2><span class="num">1</span>Before you push</h2>
+
+  <p>The repository is <code>github.com/DmitriPer/weddingRsvp</code>, branch <code>main</code>. Local <code>main</code> is <strong>3 commits ahead</strong> of GitHub, plus the settings-tab work that is still uncommitted.</p>
+
+  <p>Look at <code>/admin/settings</code> first — the 24-hour time selects, the collapsible templates and the taller text boxes are the part nobody has reviewed. Then:</p>
+
+<pre><code>npm run build          # must pass; this is the check Vercel will run
+git add -A
+git commit -m "24-hour time selects, collapsible templates"
+git push origin main</code></pre>
+
+  <div class="note">
+    <p><strong>Never commit <code>.env.local</code>.</strong> It holds the secret key. <code>.gitignore</code> covers <code>.env.local</code> and <code>.env.*.local</code> — but <strong>not</strong> <code>.env.local.bak</code>, which is the obvious name for a backup and the one spelling that is not ignored. If you want a copy, put it outside the repository.</p>
+  </div>
+
+  <h2><span class="num">2</span>Create the Vercel project</h2>
+
+  <ol>
+    <li>Sign in at <code>vercel.com</code> with the GitHub account that owns the repo.</li>
+    <li><strong>Add New → Project</strong>, then import <code>DmitriPer/weddingRsvp</code>.</li>
+    <li>Framework preset detects <strong>Next.js</strong>. Leave build command, output directory and install command exactly as they come — this project needs no custom build settings.</li>
+    <li>Confirm the production branch is <code>main</code>. The <code>old</code> branch is the abandoned first attempt and must never be deployed.</li>
+    <li><strong>Do not deploy yet</strong> — add the environment variables first (next step). A deploy without them fails at build time, when the Supabase client finds no URL.</li>
+  </ol>
+
+  <h2><span class="num">3</span>Environment variables</h2>
+
+  <p>Add these four under <strong>Settings → Environment Variables</strong>, ticking Production, Preview and Development. Copy the values from your local <code>.env.local</code>.</p>
+
+  <table>
+    <tr><th>Name</th><th>Value</th><th>Notes</th></tr>
+    <tr>
+      <td><code>NEXT_PUBLIC_SUPABASE_URL</code></td>
+      <td>same as local</td>
+      <td>Public. Same Supabase project as your local dev.</td>
+    </tr>
+    <tr>
+      <td><code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code></td>
+      <td>same as local</td>
+      <td>Public by design. Every table is RLS <em>deny all</em>, so this key alone reads nothing.</td>
+    </tr>
+    <tr>
+      <td><code>SUPABASE_SECRET_KEY</code></td>
+      <td>same as local</td>
+      <td><strong>Server-only.</strong> Never rename it with a <code>NEXT_PUBLIC_</code> prefix — that prefix means "ship this to the browser", which would open the whole database to anyone who views source.</td>
+    </tr>
+    <tr>
+      <td><code>NEXT_PUBLIC_SITE_URL</code></td>
+      <td>leave it for now</td>
+      <td>You do not know the URL until the first deploy finishes. Step 4 handles it.</td>
+    </tr>
+  </table>
+
+  <div class="note">
+    <p><strong>Do not add <code>ADMIN_EMAIL</code> or <code>ADMIN_PASSWORD</code>.</strong> They exist only for the one-off <code>scripts/create-admin.ts</code>, which has already run. The app never reads them, and putting a password in a hosting dashboard for no reason is how it leaks.</p>
+  </div>
+
+  <h2><span class="num">4</span>Deploy, then fix the site URL, then deploy again</h2>
+
+  <p>This is the one genuinely awkward step, and it is unavoidable: the app needs to know its own address, and the address is assigned by the first deploy.</p>
+
+  <ol>
+    <li>Deploy. It will succeed, and it will be <em>wrong</em> — every invite link and the preview image URL will still point at <code>192.168.68.114</code>.</li>
+    <li>Copy the URL Vercel assigns, e.g. <code>wedding-rsvp-xxxx.vercel.app</code>.</li>
+    <li>Set <code>NEXT_PUBLIC_SITE_URL</code> to it, with <code>https://</code> and <strong>no trailing slash</strong>.</li>
+    <li><strong>Redeploy.</strong> Saving the variable is not enough.</li>
+  </ol>
+
+  <div class="note">
+    <p><strong>Why saving isn't enough.</strong> Anything named <code>NEXT_PUBLIC_*</code> is baked into the JavaScript at <em>build</em> time, not read at runtime. Until a new build runs, the old value is still compiled into the deployed files. In Vercel: <strong>Deployments → ⋯ → Redeploy</strong>.</p>
+  </div>
+
+  <p>One variable feeds three separate things, so they break and fix together: the guest invite links, the admin copy-link button, and the absolute <code>og:image</code> URL in the WhatsApp card.</p>
+
+  <h2><span class="num">5</span>Supabase</h2>
+
+  <p>Nothing has to change — the deployed site talks to the same project your local dev does, and the admin account you created already works there. Two optional bits of hygiene:</p>
+
+  <ul>
+    <li><strong>Auth → URL Configuration → Site URL:</strong> set it to the Vercel URL. Password sign-in does not need it, but any future email flow (password reset) would send links to the wrong place without it.</li>
+    <li><strong>Keep the test data.</strong> The database holds two invented invites. Real guests go in only when you say so.</li>
+  </ul>
+
+  <h2><span class="num">6</span>Check it worked</h2>
+
+  <ul class="check">
+    <li>Open the site root — the landing page shows the artwork, no guest data.</li>
+    <li>Sign in at <code>/admin</code> with your existing credentials.</li>
+    <li>Copy a guest's invite link from the invitee table. Confirm it starts with the Vercel URL, <em>not</em> the LAN address.</li>
+    <li>Open that link: the greeting names the guest, the sheet opens, an RSVP saves, and the status moves to <span class="he">submitted</span> in the admin table.</li>
+    <li>Check <span class="he">ניווט</span> opens Waze at the venue and <span class="he">יומן</span> downloads an <code>.ics</code> with the right date and 24-hour time.</li>
+    <li><strong>Send yourself the invite link on WhatsApp.</strong> The card should show the florals, the monogram, <span class="he">ניקול ודימה</span>, the date and the venue.</li>
+  </ul>
+
+  <div class="note">
+    <p><strong>WhatsApp caches previews per URL, hard.</strong> The first time a link is fetched, that card is stored for a long time. If it looks wrong and you fix it, re-sending the same link shows you the <em>old</em> card and you will chase a bug you already fixed. Test the fix with a different URL — add <code>&amp;x=2</code> to the link, which the app ignores.</p>
+    <p>To inspect the tags directly, paste the URL into Facebook's sharing debugger (<code>developers.facebook.com/tools/debug</code>). It reads the same OpenGraph tags and will re-scrape on demand.</p>
+  </div>
+
+  <h2><span class="num">7</span>Before real invitations go out</h2>
+
+  <div class="note stop">
+    <p>A <code>.vercel.app</code> address is fine for testing and wrong for a wedding. Everything below has to be true first — and note that <strong>each guest's WhatsApp caches the card against whatever URL you sent them</strong>, so changing domains after sending means the old preview lingers.</p>
+  </div>
+
+  <ul>
+    <li><strong>Real domain</strong> attached in Vercel, and <code>NEXT_PUBLIC_SITE_URL</code> changed to it, followed by a redeploy.</li>
+    <li><strong>Ceremony time confirmed.</strong> It is what lands in every guest's calendar.</li>
+    <li><strong>Rebuild the preview card</strong> if any of the names, date or venue changed since it was last built: <code>npm run og-card</code>, then commit and push. The card is a file, not a page — it does not follow the settings tab, and every screen in the app will look correct while the card is stale.</li>
+    <li><strong>Real guest list imported</strong>, replacing the test rows.</li>
+    <li><strong>Contact phone set</strong> — it is what the past-deadline screen tells people to call.</li>
+  </ul>
+
+  <h2><span class="num">8</span>If something breaks</h2>
+
+  <p>Vercel keeps every previous deployment. <strong>Deployments → pick the last good one → Promote to Production</strong> puts the old build back in seconds; no git revert needed.</p>
+
+  <p>Build failures show the full log under the deployment. The usual causes here, in order: a missing environment variable, or a TypeScript error that <code>npm run build</code> would have caught locally — which is exactly why step 1 runs it first.</p>
+
+  <div class="foot">
+    Written 2026-07-31. Related: <code>docs/progress.md</code> for current state and the traps worth knowing, <code>docs/setup-database.md</code> for the Supabase project itself.
+  </div>
+
+</main>
+</body>
+</html>
