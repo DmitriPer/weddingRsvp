@@ -246,6 +246,22 @@ export const strings = {
     },
   },
 
+  /**
+   * The WhatsApp link preview (PRD §6.15). These are the bold and grey lines
+   * printed above the message text, not page copy — WhatsApp always prints them,
+   * so the choice is what they say, never whether they appear.
+   *
+   * Deliberately impersonal: the message template under the card already greets
+   * the guest by name, and the same tags are served to the public landing page.
+   */
+  og: {
+    imageAlt: 'ההזמנה לחתונה',
+    /** Shown when wedding_config still has no couple names. */
+    untitled: 'אתם מוזמנים',
+    /** date · venue, either half omitted when it isn't set yet. */
+    details: (when: string, venue: string) => [when, venue].filter(Boolean).join(' · '),
+  },
+
   emptyStates: {
     noInvites: 'עדיין אין מוזמנים',
     noInvitesHint: 'הוסיפו מוזמן ראשון כדי להתחיל',

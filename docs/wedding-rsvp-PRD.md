@@ -230,9 +230,12 @@ Same shape, for **everyone who said yes**. The app has no attendance data — it
 `wa.me` prefills **text only** — click-to-chat supports no media parameter. A real attachment would mean manual per-message work or the Business Cloud API (rejected: automated sending, violates §3.1). The supported path is the **link preview card** WhatsApp builds from OpenGraph tags.
 
 - The invite page emits `og:image`, `og:title`, `og:description`.
-- The image is **generated per guest** (`next/og` `ImageResponse`) so the card carries that guest's name.
-- A **static fallback** covers generation failure and the landing page.
+- **The card is one static 1200×630 JPEG** at `public/assets/og-card.jpg`, built by `npm run og-card <source>` and committed: the floral artwork, with the couple's names, date and venue painted into its empty centre from `wedding_config`. It is identical for every guest — the personal greeting is in the message template WhatsApp prints beneath it.
+- **The card does not follow the settings tab.** It is a file, not a page. Changing the date or venue in `/admin/settings` requires re-running `npm run og-card`, or the preview advertises the old details while every screen shows the new ones.
 - Constraints: publicly reachable, absolute URL, JPG/PNG, ~1200×630, well under ~600 KB, fast — WhatsApp drops the preview after a few seconds.
+- The artwork is portrait and the preview slot is landscape (~1.91:1). **Whatever is not composed is cropped by WhatsApp from the centre**, slicing the floral arch, so the card is built to the exact dimensions rather than handed over as-is.
+
+**Superseded, 2026-07-31 (Dmitri):** this section previously required the image to be **generated per guest** via `next/og` `ImageResponse`, carrying that guest's name, with a static fallback. With no per-guest content on the card, per-request rendering buys nothing and spends time on the one path that cannot afford it — the crawler abandons the fetch after a few seconds. It also demanded an embedded Hebrew font, since the renderer cannot use `next/font`. One committed file replaces all of it.
 
 **Companion requirement — `opened` is marked from client-side JavaScript, never during server rendering.**
 
@@ -240,7 +243,7 @@ Every invite triggers **two** non-human fetches: the meta tags and the generated
 
 - Primary: a client-side call firing only in a real browser session.
 - Backstop only: User-Agent checks for `WhatsApp`, `facebookexternalhit`, `Twitterbot`, `TelegramBot`, `Slackbot`.
-- **The OG image route must never mutate status.** It is crawler-facing by definition.
+- **Nothing on the crawler path may mutate status.** Satisfied structurally rather than by a guard: the card is a static file, so no code runs to serve it, and `generateMetadata` **takes no arguments** — it never receives the token, so it cannot look an invite up even by mistake.
 
 ### 6.16 Asset upload
 An admin screen uploading images to a Supabase Storage bucket — the invitation picture and the OG card artwork — so they can be changed without touching code. Admin writes, public reads. Mock mode stores locally so the flow works without a real project.

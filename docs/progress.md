@@ -116,23 +116,25 @@ Verified against the real database, not just compiled:
 | §6.12 | History | ✅ | `history-modal.tsx` |
 | §6.13 | Day-of reminder prep | ❌ | — |
 | §6.14 | Thank-you prep | ❌ | — |
-| §6.15 | OG image + client-side `opened` | ⚠️ **half** | `opened` wired from `mark-opened.tsx`. **The app exports NO OpenGraph metadata at all** — `generateMetadata` appears nowhere, so a shared link previews as a bare title and URL |
+| §6.15 | OG image + client-side `opened` | ✅ **built, unverifiable locally** | `generateMetadata` in `app/page.tsx`, card at `public/assets/og-card.jpg`. `opened` wired from `mark-opened.tsx`. WhatsApp itself can only confirm it once the site is on a public domain |
 | §6.16 | Asset upload | ❌ | bucket exists (migration 003) |
 | §6.17 | Seating | ⚠️ **API only** | `/api/tables` CRUD done; `app/admin/seating` is a placeholder |
 | §6.18 | Admin auth | ✅ | `lib/auth.ts`, `proxy.ts`, `app/admin/login` |
 | §6.19 | Empty / loading / error states | ⚠️ partial | `components/ui/states.tsx` exists, used in some places |
 
-**Backend is complete; the guest side and settings are built.** What remains is import/export, seating, and the WhatsApp preview card.
+**Backend is complete; the guest side, settings and the WhatsApp preview are built.** What remains is import/export and seating.
 
 ---
 
 ## 4. What to do next, in order
 
-### Next: fill in `wedding_config` — now a two-minute job in the UI
+### `wedding_config` — filled in, 2026-07-31
 
-Go to **`/admin/settings`** and set the real ceremony time, the couple's names and the contact phone. As of 2026-07-30 these are still a placeholder, `"דמיטרי ו..."` and empty — the venue is correct. The time is the urgent one: it is **19:00, invented**, and it is what every guest who taps הוספה ליומן gets in their calendar.
+Set from `/admin/settings`: **ניקול ודימה**, **8 באוקטובר 2026, 18:30**, "החצר של רוז", המלאכה 27, נתניה. Read back live from the WhatsApp preview tags, so these are the values guests now see in the card, the calendar file and the confirmation screen.
 
-The demo invitation card in `public/assets/demo-invitation.jpeg` carries the real details: **08/10/2026**, "החצר של רוז", המלאכה 27, נתניה. The ceremony times on it are still `00:00` placeholders.
+The invitation artwork in `public/assets/demo-invitation.jpeg` still shows `00:00` for both ceremony times — the artwork is the designer's to correct, not the app's.
+
+Still worth checking: `contact_phone`, which the deadline-closed screen offers as "call us instead".
 
 ### Then, the guest RSVP page — DONE 2026-07-30
 
@@ -150,8 +152,8 @@ Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 ### Then, in rough priority
 
 1. **Deploy to a public domain.** This has become the gate rather than a finishing step: the WhatsApp preview card cannot be verified at all without it, because WhatsApp fetches the URL from its own servers. It also retires the two LAN-only settings in §6. Set `NEXT_PUBLIC_SITE_URL` to the real domain at the same time.
-2. **OpenGraph metadata and the preview card** (§6.15) — currently *nothing* is exported, so shared links look bare. The meta tags and a static card can be built against the demo artwork; the designer's 1200×630 asset and per-guest generation can follow. Worth doing right after deploying, so it can actually be seen.
-3. **Swap in the final artwork** when the designer delivers — see the spec in §5. One constant in `components/guest/invitation-backdrop.tsx`, nothing else.
+2. **Look at the WhatsApp card the moment the domain is live** (§6.15, built 2026-07-31). Send yourself one invite. If the picture is missing, the causes in order of likelihood are: `NEXT_PUBLIC_SITE_URL` still wrong, the URL not reachable from outside, or the file over ~600 KB — `npm run og-card` refuses that last one, so it should be impossible.
+3. **Swap in the final artwork** when the designer delivers — see the spec in §5. Two steps, not one: the constant in `components/guest/invitation-backdrop.tsx`, then `npm run og-card <new-file>` to rebuild the preview card and commit it. Forgetting the second leaves the chat preview showing the *old* invitation, which nothing in a build will tell you.
 4. **Import** (§6.7) — hand-typing 150 households is the next real pain. `exceljs` is already installed.
 5. **Seating** (§6.17) — API is done, needs the board UI. `attendees.table_id` is the assignment.
 6. **Day-of and thank-you lists** (§6.13, §6.14) — same shape as the invitee list, filtered.
@@ -180,28 +182,23 @@ An empty `[]` is the *correct* answer, not a failure — RLS denying the publish
 
 **Never leave a backup copy of the env file in the repo.** `.gitignore` matches `.env.local` and `.env.*.local`, but **not** `.env.local.bak` — the obvious name for a backup is the one spelling that is *not* ignored, and it holds the secret key. Copy it outside the repo or don't copy it.
 
-**The guest palette is the designer's "Hortênsia" set, and not one of its five colours can carry text.** Supplied 2026-07-17, applied 2026-07-30. Contrast against white paper:
+**The guest surface is green and white. The four pastels were applied and then removed** (2026-07-31, Dmitri's call). The designer's "Hortênsia" set — butter `#FFECB5`, sky `#B7C6E6`, lilac `#CDB7D9`, blush `#FAC6DF` — was used as butter action buttons, a lilac ring on the greeting pill, a lilac sheet handle, a sky checked-row tint and a blush declined panel. All five usages are gone, and the tokens are **deleted from `app/globals.css`** rather than left unused: an unused token gets reached for.
+
+The reason is not contrast — butter and blush both passed. The artwork already carries the colour, and a second palette laid on top of it competes with the thing it is supposed to frame. What replaced each: the secondary action buttons are `.frosted` with a green hairline, the greeting pill has no ring, the headcount and declined panels use `border-bloom-ink/25 bg-paper/60` — the same box the form's counters already used.
+
+**Colour that is not text goes on as an edge or a faint wash of the ink itself** — `border-bloom-ink/25`, `bg-bloom-ink/10` — never a filled panel of another hue. That is the rule the removal leaves behind.
+
+The greens stay. Not one of the palette's colours could carry body text on white — the best, the green, is 2.83:1 against a 4.5:1 requirement — so the two ink values are **derived**, not supplied: the palette green's own hue (100°) darkened until it passes.
 
 | Token | Hex | On white | Use |
 |---|---|---|---|
 | `--bloom-display` | `#7FA46D` | **2.83:1** | the palette green — **large text only** |
-| `--bloom-butter` | `#FFECB5` | 1.19:1 | decoration, or a background *behind* text |
-| `--bloom-sky` | `#B7C6E6` | 1.52:1 | decoration only |
-| `--bloom-lilac` | `#CDB7D9` | 1.77:1 | decoration only |
-| `--bloom-blush` | `#FAC6DF` | 1.49:1 | decoration, or a background behind text |
-
-So the two ink values are **derived**, not supplied — the palette green's own hue (100°) darkened until it passes:
-
-| Token | Hex | On white | Use |
-|---|---|---|---|
-| `--bloom-ink` | `#5E7E4F` | 4.59:1 | AA — labels, buttons, body |
+| `--bloom-ink` | `#567348` | 5.33:1 | AA — labels, buttons, body |
 | `--bloom-strong` | `#475F3B` | 7.08:1 | AAA |
 
 Using `--bloom-display` for a form label is the mistake to avoid: it looks right on a monitor and vanishes on a phone outdoors.
 
-**Which pastels may sit behind text**, measured with `--bloom-strong` on top: butter **6.04:1 ✓**, blush **4.79:1 ✓**, sky 4.12:1 ✗, lilac 3.83:1 ✗. Sky and lilac are borders and ornament only — the confirmation screen uses butter behind the headcount and blush behind the declined message for exactly this reason.
-
-The palette green also confirms the artwork: sampling the invitation's own ink gave `#7DA169`, within a few points of `#7FA46D`. Artwork and palette are one system.
+The palette green also confirms the artwork: sampling the invitation's own ink gave `#7DA169`, within a few points of `#7FA46D`. Artwork and palette are one system — which is why removing the pastels costs nothing.
 
 **The frosted sheet is 88% white, not less.** It rises over the bottom florals — the most saturated part of the artwork — where `--bloom-strong` still measures 7.46:1. At 50% it fails. See `.frosted` in `app/globals.css`.
 
@@ -212,7 +209,21 @@ The palette green also confirms the artwork: sampling the invitation's own ink g
 - **Phone background — 1290×2796 (9:19.5, the phone's own shape).** Not 1080×1920: modern phones are taller than 16:9. Florals rearranged into a tall frame. Keep the top ~320px and bottom ~520px clear of anything load-bearing — the greeting and action bar sit there. JPEG, ≤400 KB so it paints on cellular.
 - **WhatsApp card — 1200×630 landscape.** Names and date legible as a chat thumbnail. Under 600 KB or WhatsApp drops the preview.
 
-**The wedding details are pixels, not text.** Dmitri's design puts names, date, time and venue inside the artwork. Changing the ceremony times means a new image from the designer, **not** a `wedding_config` edit. Config must still be filled, because navigation and calendar read from it — it just isn't what the guest sees.
+**The WhatsApp card is a committed file, not a rendered route** (built 2026-07-31). `npm run og-card [source]` → `public/assets/og-card.jpg`, 1200×630, currently **45 KB**: the floral banner in `public/assets/demo-og-source.jpg` with the names, date and venue painted into its centre from `wedding_config`. Things worth knowing before touching it:
+
+- **It does not follow the settings tab.** A page re-reads config on every request; a file does not. Change the date in `/admin/settings` and the card keeps showing the old one until someone re-runs the script — silently, because every screen in the app will be correct. This is the most likely way the card goes wrong.
+- **Hebrew is painted through an SVG overlay, NOT `next/og`.** Satori, which `next/og` uses, does no bidirectional reordering: `ניקול ודימה` renders as `המידו לוקינ` — right glyphs, laid out left-to-right. It looks like a font problem and no font fixes it. librsvg shapes through Pango, which implements bidi, and gets both the Hebrew and the mixed Hebrew/number date line right. Verified by rendering both.
+- **The font therefore comes from the machine, through fontconfig**, not from a file this repo controls. Heebo is used when installed; this machine has only Noto Sans Hebrew, which is what the committed card is set in. Close enough that a font-embedding pipeline isn't worth it — but it does mean the output is worth *looking at* after a rebuild, which is why the script prints the values it painted.
+- **The 600 KB ceiling fails silently.** Over it, WhatsApp shows the preview with *no picture* and reports nothing — you would be left inspecting tags that are all perfectly correct. `scripts/build-og-card.ts` refuses to write a file that big, because the only other place this surfaces is a guest's phone.
+- **Portrait art cannot fill a landscape slot, and WhatsApp resolves that by cropping from the centre** — straight through the floral arch. The script composes the exact 1200×630 frame instead: a landscape source is cropped to fill, a portrait one is fitted whole onto its own sampled paper colour.
+- **`generateMetadata` takes no arguments on purpose.** It runs on the crawler's fetch. Without the token it *cannot* look an invite up, so the "never mark `opened` server-side" rule holds by construction rather than by remembering to. If you ever give it `searchParams`, you have re-opened the bug that flips every invite to `opened` the day they are sent.
+- **`sharp` is a devDependency and script-only.** It was already in the tree as a `next` dependency; declaring it stops `npm prune` removing it. Never import it from `app/` or `lib/`.
+
+**The card's source banner must be textless.** `public/assets/demo-og-source.jpg` was generated by Dmitri from an AI prompt (2026-07-31) — corner florals in the invitation's palette around an empty white middle, which is the space the names sit in. Ask any image generator for Hebrew and it returns letter-shaped nonsense, so the words are always composited afterwards by the script, never drawn by the tool.
+
+**The wedding details are pixels, not text.** Dmitri's design puts names, date, time and venue inside the artwork. Changing the ceremony times means a new image from the designer, **not** a `wedding_config` edit. Config must still be filled, because navigation, the calendar file and the WhatsApp card all read from it — it just isn't what the guest sees on the invitation itself.
+
+The card is the one place where config text is *rendered as artwork*, which is why it needs rebuilding when config changes. Everywhere else, config edits take effect on the next page load.
 
 **Testing on a phone needs `allowedDevOrigins`, and the failure looks like a broken feature.** Next blocks `/_next/*` dev resources from any non-localhost origin. Open the dev server from a phone at `http://<lan-ip>:3030` without it and the page renders *perfectly* — server HTML is unaffected — buttons even highlight on tap, but **React never hydrates and nothing is interactive**. It reads as "the RSVP modal is broken", not "the JavaScript never loaded". The only visible clue is a warning in the dev server's own output.
 
@@ -257,7 +268,7 @@ The autumn DST boundary is the case that catches a naive implementation: `02:30`
 - **The RSVP sheet has not been verified visually**, only structurally and functionally. No headless browser here can click, so tap through it once on a real phone before invitations go out.
 - **`docs/project-explainer.html` describes the old brownfield app.** Historical; regenerate once the app is complete.
 - **Free-tier Supabase projects pause after ~a week of inactivity** — a paused project means guests clicking their link see errors. Must be addressed before real invitations go out. See `setup-database.md` §1.
-- **The app exports no OpenGraph metadata whatsoever.** `generateMetadata` appears nowhere, so an invite link shared on WhatsApp previews as the bare title `אישורי הגעה` plus the raw URL — no image, no couple names, no date. This is §6.15 and it is the largest remaining guest-facing gap. Note it cannot be truly verified without a public domain: WhatsApp fetches the URL from its own servers and can reach neither localhost nor the LAN address.
+- **`NEXT_PUBLIC_SITE_URL` is also inside the WhatsApp card now.** `og:image` must be an *absolute* URL — a crawler has no page context to resolve a relative one against — so the card's address is built from the same variable as the invite links. While it reads `http://192.168.68.114:3030`, the tags point the whole world at a machine on Dmitri's Wi-Fi. One variable, three things that break together.
 - **⚠️ `NEXT_PUBLIC_SITE_URL` is currently `http://192.168.68.114:3030`** — a LAN address, set 2026-07-30 so copy-link works when testing on a phone over Wi-Fi. It is **dead outside the house**. Every invite link built from it — the admin copy-link button and the WhatsApp message — carries this address. Set it to the real domain before a single invitation goes out; left wrong, you find out from a guest.
 
 ---

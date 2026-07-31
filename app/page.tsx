@@ -8,8 +8,12 @@
  * lib/strings, and the token lookup's UUID guard inside lib/data.
  */
 
+import type { Metadata } from 'next'
 import { getConfig, getInviteByToken } from '@/lib/data'
 import { formatDateTime, isRsvpOpen } from '@/lib/datetime'
+import { buildAbsoluteUrl } from '@/lib/links'
+import { OG_CARD_HEIGHT, OG_CARD_PATH, OG_CARD_WIDTH } from '@/lib/og'
+import { strings } from '@/lib/strings'
 import { hasAnswered } from '@/lib/status'
 import { ActionBar } from '@/components/guest/action-bar'
 import { GuestShell } from '@/components/guest/guest-shell'
@@ -19,6 +23,70 @@ import { RsvpScreen } from '@/components/guest/rsvp-screen'
 // Per-token and answer-dependent: caching it would serve one guest's page to
 // another, and show stale answers after a submission.
 export const dynamic = 'force-dynamic'
+
+/**
+ * The WhatsApp link preview (PRD §6.15).
+ *
+ * `wa.me` prefills text only — click-to-chat supports no media parameter — so
+ * these tags are the ONLY way an invitation shows a picture in the chat. The
+ * card is the invitation artwork; the words beneath it in the bubble are the
+ * admin's own message template, which is why nothing here is written onto the
+ * image.
+ *
+ * IT TAKES NO ARGUMENTS, AND THAT IS THE POINT. This runs on the crawler's
+ * fetch. Reading the token here would put a database lookup on the one path
+ * that must never touch an invite — every invite sent triggers two non-human
+ * fetches, the page and the image, and a status write on either would flip the
+ * whole list to `opened` the moment invitations went OUT, destroying the "who
+ * hasn't looked yet" filter §6.10 depends on. Taking no token makes that
+ * impossible rather than merely avoided.
+ *
+ * Everything shown comes from wedding_config, so it follows the settings tab
+ * with no redeploy, and it is identical for every guest.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getConfig()
+
+  const title = config.couple_names.trim() || strings.og.untitled
+  const description = strings.og.details(
+    formatDateTime(config.wedding_date_time),
+    config.venue_name.trim()
+  )
+  const url = buildAbsoluteUrl('/')
+
+  return {
+    metadataBase: new URL(url),
+    title,
+    description: description || undefined,
+
+    // The invite URL carries the token, and the token IS the credential
+    // (PRD §7.1) — it must not end up in a search index. Crawlers that build
+    // preview cards ignore this, so the WhatsApp card is unaffected.
+    robots: { index: false, follow: false },
+
+    openGraph: {
+      type: 'website',
+      locale: 'he_IL',
+      siteName: strings.app.title,
+      title,
+      description: description || undefined,
+      // No token: a card shared onward must not carry someone's invite link.
+      url,
+      images: [
+        {
+          // Absolute. A relative path is not fetched by a crawler, which has no
+          // page context to resolve it against.
+          url: buildAbsoluteUrl(OG_CARD_PATH),
+          width: OG_CARD_WIDTH,
+          height: OG_CARD_HEIGHT,
+          alt: strings.og.imageAlt,
+        },
+      ],
+    },
+
+    twitter: { card: 'summary_large_image' },
+  }
+}
 
 // Next 16: searchParams is a Promise and must be awaited.
 type PageProps = { searchParams: Promise<{ token?: string }> }
