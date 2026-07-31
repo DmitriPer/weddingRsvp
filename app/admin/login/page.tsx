@@ -10,7 +10,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createBrowserSupabaseClient, SupabaseConfigError } from '@/lib/supabase/client'
 import { strings } from '@/lib/strings'
 
 export default function LoginPage() {
@@ -25,8 +25,24 @@ export default function LoginPage() {
     setSubmitting(true)
     setError(null)
 
-    const supabase = createBrowserSupabaseClient()
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    let signInError
+    try {
+      const supabase = createBrowserSupabaseClient()
+      ;({ error: signInError } = await supabase.auth.signInWithPassword({ email, password }))
+    } catch (thrown) {
+      // A misconfigured deployment, or the network refusing outright. Without
+      // this the throw escaped handleSubmit, `submitting` stayed true and the
+      // button sat disabled forever with nothing said — indistinguishable from
+      // a dead button, and the reason is only in the browser console.
+      console.error(thrown)
+      setError(
+        thrown instanceof SupabaseConfigError
+          ? strings.auth.notConfigured
+          : strings.auth.signInFailed
+      )
+      setSubmitting(false)
+      return
+    }
 
     if (signInError) {
       // Deliberately vague: never reveal whether the address exists.

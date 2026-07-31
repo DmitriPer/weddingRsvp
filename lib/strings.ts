@@ -31,6 +31,10 @@ export const strings = {
     signOut: 'יציאה',
     invalidCredentials: 'אימייל או סיסמה שגויים',
     genericError: 'ההתחברות נכשלה. נסו שוב.',
+    /** The request never left the browser — not a wrong password. Admin-only
+        screen, so it names the actual cause instead of being vague. */
+    notConfigured: 'החיבור ל-Supabase לא מוגדר בשרת. יש להגדיר את משתני הסביבה ולפרוס מחדש.',
+    signInFailed: 'לא הצלחנו להתחבר לשרת. בדקו את החיבור ונסו שוב.',
   },
 
   admin: {
