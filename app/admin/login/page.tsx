@@ -8,13 +8,11 @@
  * the login page to itself and nobody could ever sign in.
  */
 
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createBrowserSupabaseClient, SupabaseConfigError } from '@/lib/supabase/client'
 import { strings } from '@/lib/strings'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -51,9 +49,21 @@ export default function LoginPage() {
       return
     }
 
-    // refresh() so the server re-reads the new session cookie before navigating.
-    router.refresh()
-    router.push('/admin')
+    /*
+     * A FULL page load, not router.push().
+     *
+     * router.push() is a client-side navigation: it fetches /admin through
+     * proxy.ts, which calls getUser() and redirects to this page when it finds
+     * no session. That request could leave before the browser had committed the
+     * session cookie the Supabase client had just written, so the first sign-in
+     * bounced back to the login form and only the second one worked — by then
+     * the cookie was there.
+     *
+     * assign() makes the browser issue a fresh document request with whatever
+     * cookies exist at that moment, and drops Next's client router cache with
+     * it. There is nothing left to race.
+     */
+    window.location.assign('/admin')
   }
 
   return (
