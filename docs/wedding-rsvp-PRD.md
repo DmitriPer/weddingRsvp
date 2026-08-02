@@ -1,9 +1,11 @@
 # Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v2 — greenfield spec, the source of truth for what gets built.
+**Status:** v3 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
+
+**v3 (2026-08-02):** bilingual guest side, Hebrew default and Russian per household (§6.7b) · six message templates · the import spreadsheet format, preview-before-write, and multi-select delete (§6.6, §6.7).
 
 **v2 changes:** seating is in scope · unnamed +1s are now real person rows, removing `extra_adults`/`extra_kids` entirely · assets upload through the admin panel · RSVP deadline with a hard close · thank-you list redefined · search, sort, export, copy-link, confirmation screen added.
 
@@ -62,6 +64,11 @@ invites  (one row per invitation)
                 check ('added'|'pending'|'opened'|'submitted'|'edited')
   side          text check ('bride'|'groom'|'shared')
   relation      text check ('family'|'friend'|'work'|'invited_by_family')
+  language      text not null default 'he' check ('he'|'ru')
+                -- which language THIS household reads. Drives the guest page's
+                -- text, its direction, its artwork, and which WhatsApp template
+                -- the wa.me button renders. Hebrew is the default; Russian is
+                -- the exception, so existing rows stay valid.
 
   -- outreach tracking (admin -> guest)
   last_contacted_at  timestamptz
@@ -105,9 +112,15 @@ wedding_config  (exactly one row, seeded by migration, editable from the admin p
   venue_name
   rsvp_deadline                timestamptz null   -- null = no deadline, form always open
   contact_phone                text               -- shown when RSVP has closed
-  invite_message_template      ({{name}} / {{link}})
-  day_of_message_template      ({{name}} / {{link}})
-  thank_you_message_template   ({{name}} / {{link}})
+  -- Three purposes x two languages. Six columns rather than a templates
+  -- table: wedding_config is a single row by design, the set is fixed at six,
+  -- and a table would add a join to read what is effectively six settings.
+  invite_message_template_he      ({{name}} / {{link}})
+  invite_message_template_ru
+  day_of_message_template_he
+  day_of_message_template_ru
+  thank_you_message_template_he
+  thank_you_message_template_ru
 ```
 
 **Indexes:** `invites.token`, `invites.status`, `attendees.invite_id`, `attendees.table_id`, `response_history.invite_id`, `response_history.submitted_at desc`.
@@ -176,7 +189,7 @@ The site root with no token, or a token that doesn't resolve, shows a public pag
 ### 6.5 Config-driven wedding details
 Couple names, date/time, venue, deadline, contact phone, and all three templates live in `wedding_config`, editable from the admin panel. No hardcoded strings, no redeploy to change the date.
 
-Three **separate, independently-editable** templates (invite / day-of / thank-you) — each keeps its own content, so switching never means re-typing.
+**Six separate, independently-editable** templates — invite, day-of and thank-you, each in Hebrew and Russian (§6.7b). Each keeps its own content, so switching never means re-typing.
 
 ### 6.6 Admin guest management
 Add, edit, and delete an invite (name, phone, side, relation). Add, edit, rename, and remove people under an invite, including renaming a placeholder.
@@ -189,14 +202,55 @@ Add, edit, and delete an invite (name, phone, side, relation). Add, edit, rename
 
 **Delete is permanent and cascades**, destroying that invite's people and entire history. Requires a confirmation dialog; the database will not save you.
 
+**Multi-select delete.** A checkbox per row plus "select all shown", which respects the current filter — so filtering to something and clearing it is one action rather than forty confirmations. The confirmation must state the real damage in people, not rows: *"40 invitations, 96 people and their answers. Permanent."* Bulk operations are exactly where a vague confirm gets clicked through.
+
 ### 6.7 Import and export
-Import from `.xlsx` — each row needs at least a name. Export the guest list (for the caterer) and a seating/arrival list. Both via **`exceljs`**.
+
+**Import adds; it never updates.** Every row becomes a new invitation. No matching against existing rows, no merge, no upsert. Editing happens in the UI afterwards; a bad import is cleared with multi-select delete and re-run. Decided knowingly (2026-08-02): matching logic would need a stable key the spreadsheet does not have, and would fail in ways that are hard to see.
+
+**Columns are matched by header name, not position**, so column order and extra columns don't matter.
+
+| Header | Maps to | Notes |
+|---|---|---|
+| `שם` | `invites.name` | required — the invitation label, feeds `{{name}}` |
+| `אנשים` | `attendees` rows, `is_child = false` | comma-separated names |
+| `ילדים` | `attendees` rows, `is_child = true` | comma-separated names |
+| `טלפון` | `invites.phone` | international format, `+972…` |
+| `צד` | `invites.side` | `חתן` · `כלה` · `משותף` |
+| `קשר` | `invites.relation` | `משפחה` · `חברים` · `עבודה` · `הוזמן ע״י המשפחה` |
+| `שפה` | `invites.language` | `he` · `ru`, blank defaults to `he` |
+
+People are named, never counted — the spreadsheet carries names in `אנשים` and `ילדים` rather than a quantity, because a count cannot be ticked, cannot show *who* dropped out, and cannot be seated. Children get their own column rather than a marker inside the names, as the marker is easier to get wrong.
+
+**Preview before writing.** The importer parses the file and reports what it found — rows ready, rows with warnings, rows rejected and why — and writes **nothing** until confirmed. This is the point of the feature, not a nicety: a mistyped phone silently breaks that guest's `wa.me` link, and `שפה = rus` would send a Russian family a Hebrew invitation. Both are cheap to fix in the sheet and expensive to find afterwards.
+
+**Export** the guest list (for the caterer) and a seating/arrival list. Both via **`exceljs`**.
+
+### 6.7b Bilingual guest side — Hebrew and Russian
+
+**Hebrew is the default; Russian is the exception.** `invites.language` decides, per household, and defaults to `he` so nothing existing changes.
+
+**The guest side only.** The admin panel stays Hebrew — Dmitri is its only user. Roughly 40 guest-facing strings need translating rather than the whole app, and `lib/strings.ts` keeps its admin section untouched.
+
+What the language drives, for that household:
+
+| | |
+|---|---|
+| **Text** | every guest-facing string — invitation, form, confirmation, closed-state |
+| **Direction** | Hebrew is RTL, **Russian is LTR** — the page mirrors, it is not Russian text poured into a right-to-left layout |
+| **Artwork** | a second Russian invitation image, chosen by language |
+| **Preview card** | its own OpenGraph image, since the card carries the artwork |
+| **WhatsApp message** | the `_ru` template instead of the `_he` one, picked automatically by the `wa.me` button |
+
+**Direction cannot be set on `<html>` in the root layout.** The layout has no access to `searchParams`, so it cannot know the token, so it cannot know the language. The guest subtree carries its own `dir` on a wrapper element instead. The root stays `dir="rtl"` for the admin.
+
+**A missing Russian template must not silently send Hebrew.** If `invite_message_template_ru` is empty and the household reads Russian, the settings tab flags it rather than the `wa.me` button quietly falling back — a Russian family receiving a Hebrew invitation is the exact failure this feature exists to prevent.
 
 ### 6.8 Copy invite link
 A row action copying that guest's raw invite URL, for guests not reachable on WhatsApp.
 
 ### 6.9 Per-row `wa.me` send button
-Opens `wa.me` with that guest's phone and the rendered message from the shared editable template, `{{name}}`/`{{link}}` substituted. One tap opens WhatsApp ready to send; the admin still taps send inside WhatsApp.
+Opens `wa.me` with that guest's phone and the rendered message from the editable template **for that household's language** (§6.7b), `{{name}}`/`{{link}}` substituted. One tap opens WhatsApp ready to send; the admin still taps send inside WhatsApp.
 
 Never bulk. Never automatic. Never scheduled.
 
@@ -323,6 +377,17 @@ Non-negotiable.
 - **Admin auth:** Supabase Auth, one account created by script. No signup route to defend.
 - **`is_child` boundary:** adults 7+, children 2–7, under-2 not counted. A caterer convention.
 - **Assets upload through the admin panel**, not committed to the repo.
+
+### Added 2026-08-02
+
+- **Hebrew is the default language, Russian is the exception.** Per-household, on `invites.language`, defaulting to `he` so no existing row changes.
+- **Only the guest side is bilingual.** The admin stays Hebrew because one person uses it. Translating settings labels and toast messages nobody reads in Russian is work with no reader.
+- **Russian mirrors the page to LTR** rather than pouring Russian into an RTL layout. Half-mirrored reads wrong to a native speaker, and the direction is per-household so it cannot live on `<html>`.
+- **A second Russian artwork**, with its own preview card.
+- **Six template columns, not a templates table.** `wedding_config` is a single row by design and the set is fixed at six; a table would add a join to read what are effectively six settings.
+- **Import adds, never updates.** Matching would need a stable key the spreadsheet doesn't have. A bad import is cleared with multi-select delete and re-run.
+- **People are imported by name, never as a count.** A count cannot be ticked, cannot show who dropped out, and cannot be seated. Children get their own column rather than a marker inside the names.
+- **The importer previews before writing.** The failures it catches — a mistyped phone, `שפה = rus` — are silent and expensive later: a broken `wa.me` link is discovered from a guest who never replied.
 
 ### Declined, with consequences recorded
 
