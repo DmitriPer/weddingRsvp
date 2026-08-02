@@ -347,8 +347,9 @@ const ru: typeof he = {
   cancel: 'Отмена',
 
   rsvp: {
-    — register. "Здравствуйте" is respectful and safe for older
-    // relatives; "Привет" is warmer but casual. Hebrew "שלום" sits between.
+    // Register: one greeting serves a grandmother and a close friend alike.
+    // "Здравствуйте" is safe across that whole range; "Привет" is warmer but
+    // casual. Hebrew's "שלום" is neutral-formal to a similar degree.
     greeting: (name: string) => `Здравствуйте, ${name}`,
     intro: 'Будем рады узнать, придёте ли вы',
     yes: 'Придём',
@@ -358,8 +359,8 @@ const ru: typeof he = {
     whoIsComingHint: 'Отметьте тех, кто придёт',
     extras: 'Дополнительные гости',
     extrasHint: 'Можно добавить гостей, которых нет в списке',
-    — the section heading above already says "дополнительные", so
-    // repeating it in each label reads clumsy in Russian.
+    // The heading above already says "дополнительные"; repeating it on each
+    // label reads clumsy in Russian.
     extraAdults: 'Взрослые',
     extraKids: 'Дети',
     fewer: 'Меньше',
@@ -377,10 +378,10 @@ const ru: typeof he = {
       declined: 'Мы записали, что вы не придёте. Жаль, будем скучать!',
       attending: 'Придёт',
       extraGuest: 'Дополнительный гость',
-      — 1 гость · 2 гостя · 5 гостей
+      // 1 гость · 2 гостя · 5 гостей
       total: (count: number) =>
         `Всего ${count} ${ruPlural(count, 'гость', 'гостя', 'гостей')}`,
-      — 1 взрослый · 2 взрослых, and 1 ребёнок · 2 ребёнка · 5 детей
+      // 1 взрослый · 2 взрослых, and 1 ребёнок · 2 ребёнка · 5 детей
       breakdown: (adults: number, kids: number) =>
         kids === 0
           ? ''
