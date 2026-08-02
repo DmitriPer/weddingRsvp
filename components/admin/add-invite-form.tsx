@@ -158,7 +158,7 @@ export function AddInviteForm() {
         dir="ltr"
         value={phone}
         onChange={(event) => setPhone(event.target.value)}
-        placeholder="+972501234567"
+        placeholder="0549546899"
         className="ltr-nums mt-1 w-full rounded-md border border-border px-3 py-2"
       />
       <p className="mt-1 mb-3 text-xs text-muted">{strings.inviteForm.phoneHint}</p>

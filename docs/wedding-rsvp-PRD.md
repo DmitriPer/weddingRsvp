@@ -1,9 +1,11 @@
 # Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v4 — greenfield spec, the source of truth for what gets built.
+**Status:** v5 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
+
+**v5 (2026-08-02):** Israeli phone numbers normalised to international form on input (§6.9).
 
 **v4 (2026-08-02):** downloadable `.xlsx` template with dropdown validation, and `.xlsx` only for template, import and export (§6.7).
 
@@ -264,7 +266,24 @@ Opens `wa.me` with that guest's phone and the rendered message from the editable
 
 Never bulk. Never automatic. Never scheduled.
 
-Phone numbers are used **as-is** — no formatting or country-code logic. The phone input carries a hint showing the expected international format (e.g. `+972501234567`). Validation is explicitly not built.
+**Israeli numbers are normalised to international form on the way in** (changed 2026-08-02; this section previously said numbers were used as-is).
+
+Every guest is Israeli and Israeli numbers are written `05…`, so requiring `+972…` on 150 rows was friction with a silent failure behind it: `wa.me` takes digits only, so a stored `0549546899` produced `wa.me/0549546899`, which resolves to nothing. The link looked fine and simply never reached anyone.
+
+One function, `lib/phone.ts`, applied at every entry point — the add form, the edit form and the importer — so the database holds one canonical form and everything downstream is unchanged:
+
+```
+0549546899      →  +972549546899      leading 0 dropped, country code added
+054-954-6899    →  +972549546899      separators removed
+972549546899    →  +972549546899
+00972549546899  →  +972549546899      international prefix
++972549546899   →  unchanged
++14155551234    →  unchanged          anything with + is never touched
+```
+
+**A leading `+` is the escape hatch.** Every guest is Israeli today, but a number typed with `+` passes through untouched, so a foreign guest needs no special handling and no code change.
+
+Anything that cannot be recognised is **stored as typed and flagged**, never silently altered — a wrong number that looks right is worse than one that looks wrong.
 
 ### 6.10 Manual non-responder tracking
 Sending a WhatsApp is the **only** thing that marks a guest contacted: it increments `contact_attempts`, sets `last_contacted_at`, and moves `added → pending`. No separate toggle.
@@ -395,6 +414,7 @@ Non-negotiable.
 - **Russian mirrors the page to LTR** rather than pouring Russian into an RTL layout. Half-mirrored reads wrong to a native speaker, and the direction is per-household so it cannot live on `<html>`.
 - **A second Russian artwork**, with its own preview card.
 - **Six template columns, not a templates table.** `wedding_config` is a single row by design and the set is fixed at six; a table would add a join to read what are effectively six settings.
+- **Israeli phone numbers are normalised on input** (2026-08-02), reversing the earlier "used as-is". Every guest is Israeli, `05…` is how the number is written here, and `wa.me` takes digits only — so a local number stored as typed produced a link that resolved to nothing, and looked fine doing it. A leading `+` is never touched, so a foreign number remains possible without a code change.
 - **`.xlsx` only, no CSV.** The people column holds comma-separated names, which collides with CSV's delimiter and fails silently rather than loudly; Hebrew in CSV also needs a BOM Excel does not add. A cell in `.xlsx` has neither problem.
 - **The admin downloads an empty template rather than reading the format from documentation.** With dropdowns on the three constrained columns, the places a typo would reject a row are places that cannot be freely typed. This is what makes strict header matching reasonable.
 - **Export uses the import template's columns**, so an export can be edited and re-imported, and there is one format rather than two.

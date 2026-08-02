@@ -10,8 +10,11 @@
  *
  *   error    `שפה = rus` — importing it as Hebrew would send a Russian family
  *            a Hebrew invitation, silently. Better to reject the row.
- *   warning  a phone written `0501234567` — recoverable, and blocking the whole
- *            import over formatting would be worse than flagging it.
+ *   warning  a phone already on another invite — probably fine (one household,
+ *            one number), and blocking the import over it would be worse.
+ *
+ * A phone written `0501234567` is neither: it is NORMALISED to +972501234567
+ * (PRD §6.9), because that is how anyone here writes a number.
  */
 
 import {
@@ -21,6 +24,7 @@ import {
   SIDE_FROM_SHEET,
   splitNames,
 } from '@/lib/import-format'
+import { normalisePhone } from '@/lib/phone'
 import type { Language, Relation, Side } from '@/lib/types'
 
 /** One household, ready to write. Mirrors what createInvitesWithPeople takes. */
@@ -143,11 +147,18 @@ export function parseImportRows(
       warnings.push(problem('אין אנשים בהזמנה'))
     }
 
-    // --- phone: warnings only ------------------------------------------------
-    const phone = cell(raw, COLUMNS.phone)
+    // --- phone ---------------------------------------------------------------
+    // Normalised, not rejected: `0549546899` is how anyone here writes a number
+    // and requiring +972 on 150 rows would be friction for nothing (PRD §6.9).
+    const typed = cell(raw, COLUMNS.phone)
+    const normalised = normalisePhone(typed)
+    const phone = normalised.value ?? ''
+
     if (phone) {
-      if (!phone.startsWith('+')) {
-        warnings.push(problem(`הטלפון אינו בפורמט בינלאומי: "${phone}"`))
+      // Only a shape that could NOT be recognised is worth saying anything
+      // about — it is stored as typed, so the wa.me link will not work.
+      if (normalised.unrecognised) {
+        warnings.push(problem(`מספר טלפון לא מזוהה: "${typed}" — יישמר כפי שהוא`))
       }
       const key = phoneKey(phone)
       if (key) {

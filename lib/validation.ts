@@ -20,6 +20,7 @@ import {
   type UpdateInviteInput,
   type UpdateTableInput,
 } from '@/lib/types'
+import { toStoredPhone } from '@/lib/phone'
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string }
 
@@ -40,6 +41,18 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
  */
 export function isUuid(value: string): boolean {
   return UUID_PATTERN.test(value)
+}
+
+/**
+ * A phone, canonicalised (PRD §6.9). `0549546899` becomes `+972549546899`, so
+ * the wa.me link built from it actually reaches someone — stored as typed it
+ * produces `wa.me/0549546899`, which resolves to nothing and looks fine doing
+ * it. A number already starting `+` is never touched.
+ */
+function phoneField(value: unknown): Parsed<string | null> {
+  if (value === undefined || value === null || value === '') return pass(null)
+  if (typeof value !== 'string') return fail('Phone must be text')
+  return pass(toStoredPhone(value))
 }
 
 function optionalText(value: unknown, field: string): Parsed<string | null> {
@@ -86,7 +99,7 @@ export function parseCreateInvite(body: unknown): Parsed<CreateInviteInput> {
 
   const name = requiredText(body.name, 'Name')
   if (!name.ok) return name
-  const phone = optionalText(body.phone, 'Phone')
+  const phone = phoneField(body.phone)
   if (!phone.ok) return phone
   const side = optionalEnum<Side>(body.side, SIDES, 'Side')
   if (!side.ok) return side
@@ -115,7 +128,7 @@ export function parseUpdateInvite(body: unknown): Parsed<UpdateInviteInput> {
     update.name = name.value
   }
   if ('phone' in body) {
-    const phone = optionalText(body.phone, 'Phone')
+    const phone = phoneField(body.phone)
     if (!phone.ok) return phone
     update.phone = phone.value
   }

@@ -128,7 +128,9 @@ export const EXAMPLE_ROW: Record<ColumnKey, string> = {
   name: 'משפחת כהן',
   people: 'רונית, אבי',
   kids: 'מאיה',
-  phone: '+972501234567',
+  // Deliberately the LOCAL form: the example is how someone should actually
+  // write a number, and +972 is added on import (lib/phone.ts).
+  phone: '0501234567',
   side: 'כלה',
   relation: 'משפחה',
   language: 'עברית',

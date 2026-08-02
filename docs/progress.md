@@ -167,6 +167,10 @@ Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 
 Each of these cost real time or was found by testing. They are all live decisions, not history.
 
+**Israeli phones are normalised on input** (2026-08-02, `lib/phone.ts`). `0549546899` becomes `+972549546899` at every entry point — the add form, the edit form and the importer — so the database holds one form. The failure it prevents is silent: `wa.me` takes digits only, so a locally-written number stored as typed produced `wa.me/0549546899`, which resolves to nothing while looking perfectly fine.
+
+**A leading `+` is never touched.** That is the escape hatch for a foreign guest, and it means the Israel assumption can stay hardcoded without trapping anyone. Anything unrecognisable is stored AS TYPED and flagged rather than guessed at — a wrong number that looks right is worse than one that looks wrong.
+
 **The preview card PAINTS the date and venue onto the artwork** (2026-08-02), so they are language-dependent and `npm run og-card` now builds two files — `og-card.jpg` and `og-card-ru.jpg`. Rebuild BOTH and commit both whenever the date, the venue or the artwork changes; they are static files, so nothing at runtime regenerates them and nothing in a build will notice they are stale.
 
 The Latin couple name is identical in both by design — the invitation is lettered "NICOLE & DIMA".

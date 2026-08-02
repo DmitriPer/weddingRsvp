@@ -87,7 +87,7 @@ export function InviteEditForm({
           dir="ltr"
           value={phone}
           onChange={(event) => setPhone(event.target.value)}
-          placeholder="+972501234567"
+          placeholder="0549546899"
           className="ltr-nums mt-1 w-full rounded-md border border-border px-3 py-1.5"
         />
       </div>
