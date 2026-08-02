@@ -30,7 +30,12 @@ import type {
   UpdateTableInput,
   WeddingConfig,
 } from '@/lib/types'
-import type { DataStore, RsvpResult } from '@/lib/data/types'
+import type {
+  BulkCreateResult,
+  DataStore,
+  NewInviteWithPeople,
+  RsvpResult,
+} from '@/lib/data/types'
 
 /** Errors are checked, never assumed — a silent failed write is worse than a crash. */
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }, context: string): T {
@@ -125,6 +130,65 @@ export const supabaseStore: DataStore = {
         .single(),
       'create invite'
     ) as Invite
+  },
+
+  async createInvitesWithPeople(rows: NewInviteWithPeople[]): Promise<BulkCreateResult> {
+    if (rows.length === 0) return { invitesCreated: 0, peopleCreated: 0 }
+    const db = createAdminClient()
+
+    // One insert for every household, not one per household. Looping
+    // createInvite for a 150-row import is ~450 sequential round trips.
+    const invites = unwrap(
+      await db
+        .from('invites')
+        .insert(
+          rows.map((row) => ({
+            name: row.name,
+            phone: row.phone,
+            side: row.side,
+            relation: row.relation,
+            language: row.language,
+          }))
+        )
+        .select('id'),
+      'import invites'
+    ) as { id: string }[]
+
+    // Order is preserved by PostgREST, which is what lets people be matched
+    // back to their household by position.
+    const people = rows.flatMap((row, index) =>
+      row.people.map((person) => ({
+        invite_id: invites[index].id,
+        name: person.name,
+        is_child: person.is_child,
+      }))
+    )
+
+    if (people.length > 0) {
+      const { error } = await db.from('attendees').insert(people)
+      if (error) {
+        /*
+         * COMPENSATE. These two inserts are not one transaction through
+         * PostgREST, so a failure here would otherwise leave every invitation
+         * created above with no people and nothing to explain why — a
+         * half-import that looks like a successful one.
+         */
+        await db.from('invites').delete().in('id', invites.map((invite) => invite.id))
+        throw new Error(`import people: ${error.message}`)
+      }
+    }
+
+    return { invitesCreated: invites.length, peopleCreated: people.length }
+  },
+
+  async deleteInvites(ids): Promise<number> {
+    const valid = ids.filter(isUuid)
+    if (valid.length === 0) return 0
+    const db = createAdminClient()
+    // Postgres cascades to attendees and response_history (migration 001).
+    const { data, error } = await db.from('invites').delete().in('id', valid).select('id')
+    if (error) throw new Error(`delete invites: ${error.message}`)
+    return data?.length ?? 0
   },
 
   async updateInvite(id, input: UpdateInviteInput): Promise<Invite | null> {

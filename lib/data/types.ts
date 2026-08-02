@@ -10,6 +10,9 @@
 
 import type {
   Attendee,
+  Language,
+  Relation,
+  Side,
   CreateAttendeeInput,
   CreateInviteInput,
   CreateTableInput,
@@ -33,14 +36,36 @@ import type {
 export type { RsvpResult } from '@/lib/types'
 import type { RsvpResult } from '@/lib/types'
 
+/** One household from the spreadsheet: the invitation, and its named people. */
+export interface NewInviteWithPeople {
+  name: string
+  phone: string | null
+  side: Side | null
+  relation: Relation | null
+  language: Language
+  people: { name: string; is_child: boolean }[]
+}
+
+export interface BulkCreateResult {
+  invitesCreated: number
+  peopleCreated: number
+}
+
 export interface DataStore {
   // --- invites -------------------------------------------------------------
   listInvites(): Promise<InviteWithPeople[]>
   getInvite(id: string): Promise<InviteWithHistory | null>
   getInviteByToken(token: string): Promise<InviteWithPeople | null>
   createInvite(input: CreateInviteInput): Promise<Invite>
+  /**
+   * Bulk create, for the spreadsheet import (PRD §6.7). Two round trips rather
+   * than the ~450 that looping createInvite + createAttendee would take.
+   */
+  createInvitesWithPeople(rows: NewInviteWithPeople[]): Promise<BulkCreateResult>
   updateInvite(id: string, input: UpdateInviteInput): Promise<Invite | null>
   deleteInvite(id: string): Promise<boolean>
+  /** Multi-select delete (PRD §6.6). Postgres cascades to people and history. */
+  deleteInvites(ids: string[]): Promise<number>
   /** Duplicate phone warning (PRD §6.6) — a warning, never a block. */
   findInvitesByPhone(phone: string, excludeId?: string): Promise<Invite[]>
 

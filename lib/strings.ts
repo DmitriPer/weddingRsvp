@@ -187,6 +187,45 @@ export const strings = {
     failed: 'ההוספה נכשלה',
   },
 
+  /** Spreadsheet template, import and export (PRD §6.7). */
+  importer: {
+    title: 'ייבוא מקובץ',
+    downloadTemplate: 'הורדת תבנית ריקה',
+    downloadTemplateHint:
+      'הורידו את הקובץ, מלאו אותו, והעלו אותו חזרה. העמודות צד, קשר ושפה הן רשימות לבחירה — כך אי אפשר לטעות בהן.',
+    chooseFile: 'בחירת קובץ',
+    checking: 'בודק…',
+    importing: 'מייבא…',
+    /** Nothing is written until this is pressed. */
+    confirm: (count: number) => `ייבוא ${count} הזמנות`,
+    cancel: 'ביטול',
+    export: 'ייצוא הרשימה',
+
+    ready: (invites: number, people: number) => `${invites} הזמנות · ${people} אנשים`,
+    warnings: (n: number) => `${n} אזהרות — ייובאו בכל זאת`,
+    errors: (n: number) => `${n} שורות לא ייובאו`,
+    nothingReady: 'אף שורה לא עברה את הבדיקה',
+    rowLabel: (row: number) => `שורה ${row}`,
+    imported: (invites: number, people: number) =>
+      `יובאו ${invites} הזמנות ו-${people} אנשים`,
+    failed: 'הייבוא נכשל',
+    /** Said plainly: the preview writes nothing. */
+    previewOnly: 'עדיין לא נשמר כלום. בדקו את הרשימה ואשרו.',
+  },
+
+  /** Multi-select delete (PRD §6.6). */
+  bulk: {
+    selectAllShown: (n: number) => `בחירת הכל המוצג (${n})`,
+    clearSelection: 'ניקוי הבחירה',
+    selected: (n: number) => `${n} נבחרו`,
+    delete: (n: number) => `מחיקת ${n} הזמנות`,
+    /** Counts PEOPLE, not rows — the row count understates what dies. */
+    confirm: (invites: number, people: number) =>
+      `למחוק ${invites} הזמנות? יימחקו גם ${people} אנשים וכל היסטוריית התשובות שלהם. לצמיתות.`,
+    deleted: (n: number) => `${n} הזמנות נמחקו`,
+    deleteFailed: 'המחיקה נכשלה',
+  },
+
   toolbar: {
     searchPlaceholder: 'חיפוש לפי שם או טלפון',
     allStatuses: 'כל הסטטוסים',

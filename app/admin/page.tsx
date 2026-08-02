@@ -14,6 +14,7 @@ import { getConfig, listInvites } from '@/lib/data'
 import { computeStats } from '@/lib/stats'
 import { needsPhoneCall } from '@/lib/status'
 import { AddInviteForm } from '@/components/admin/add-invite-form'
+import { ImportPanel } from '@/components/admin/import-panel'
 import { InviteTable } from '@/components/admin/invite-table'
 import { EmptyState } from '@/components/ui/states'
 import { strings } from '@/lib/strings'
@@ -49,6 +50,8 @@ export default async function InviteesPage() {
       ) : null}
 
       <AddInviteForm />
+
+      <ImportPanel />
 
       {invites.length === 0 ? (
         <EmptyState

@@ -11,7 +11,12 @@ import 'server-only'
  * supabase/migrations/004_seed_test_data.sql, where Postgres enforces the rules.
  */
 
-export type { DataStore, RsvpResult } from '@/lib/data/types'
+export type {
+  BulkCreateResult,
+  DataStore,
+  NewInviteWithPeople,
+  RsvpResult,
+} from '@/lib/data/types'
 
 import { supabaseStore } from '@/lib/data/supabase'
 
@@ -21,8 +26,10 @@ export const listInvites = store.listInvites.bind(store)
 export const getInvite = store.getInvite.bind(store)
 export const getInviteByToken = store.getInviteByToken.bind(store)
 export const createInvite = store.createInvite.bind(store)
+export const createInvitesWithPeople = store.createInvitesWithPeople.bind(store)
 export const updateInvite = store.updateInvite.bind(store)
 export const deleteInvite = store.deleteInvite.bind(store)
+export const deleteInvites = store.deleteInvites.bind(store)
 export const findInvitesByPhone = store.findInvitesByPhone.bind(store)
 
 export const markOpened = store.markOpened.bind(store)

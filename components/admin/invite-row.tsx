@@ -40,9 +40,13 @@ function attendanceLabel(invite: InviteWithPeople): string {
 export function InviteRow({
   invite,
   config,
+  selected,
+  onToggleSelected,
 }: {
   invite: InviteWithPeople
   config: WeddingConfig
+  selected: boolean
+  onToggleSelected: (id: string) => void
 }) {
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
@@ -75,6 +79,13 @@ export function InviteRow({
   return (
     <li className="px-4 py-3">
       <div className="flex items-start justify-between gap-3">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelected(invite.id)}
+          aria-label={invite.name}
+          className="mt-1 shrink-0"
+        />
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
