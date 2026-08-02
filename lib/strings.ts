@@ -398,8 +398,8 @@ const ru: typeof he = {
     nav: {
       rsvp: 'Подтвердить', // ru:draft
       yourAnswer: 'Ваш ответ', // ru:draft
-      navigate: 'Маршрут', // ru:draft
-      addToCalendar: 'В календарь', // ru:draft
+      navigate: 'Как добраться',
+      addToCalendar: 'Добавить в календарь',
       closeSheet: 'Закрыть', // ru:draft
     },
   },
