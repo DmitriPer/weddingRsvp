@@ -31,7 +31,10 @@ interface RsvpScreenProps {
   /** null = never answered. */
   attending: boolean | null
   when: string
+  /** What the guest READS. Follows their language (lib/venue.ts). */
   venue: string
+  /** What Waze searches. Always the Hebrew address. */
+  venueForNav: string
   phone: string
   hasDate: boolean
   /** False past the deadline. The server enforces it either way (PRD §6.3). */
@@ -51,6 +54,7 @@ export function RsvpScreen({
   attending,
   when,
   venue,
+  venueForNav,
   phone,
   hasDate,
   rsvpOpen,
@@ -80,14 +84,14 @@ export function RsvpScreen({
 
   return (
     <GuestShell
-          lang={lang}
+      lang={lang}
       greeting={<GuestGreeting>{t.rsvp.greeting(inviteName)}</GuestGreeting>}
       bar={
         <ActionBar
           lang={lang}
           rsvpLabel={label}
           onRsvp={() => setSheetOpen(true)}
-          venue={venue}
+          venue={venueForNav}
           hasDate={hasDate}
         />
       }
@@ -95,7 +99,7 @@ export function RsvpScreen({
       <RsvpSheet lang={lang} open={sheetOpen} onClose={() => setSheetOpen(false)}>
         {!rsvpOpen ? (
           <RsvpClosed
-          lang={lang}
+            lang={lang}
             attending={saved ? saved.attending : attending}
             attendees={saved?.attendees ?? attendees}
             when={when}
@@ -104,7 +108,7 @@ export function RsvpScreen({
           />
         ) : saved && !editing ? (
           <Confirmation
-          lang={lang}
+            lang={lang}
             attending={saved.attending}
             attendees={saved.attendees}
             when={when}
@@ -113,7 +117,7 @@ export function RsvpScreen({
           />
         ) : (
           <InvitationForm
-          lang={lang}
+            lang={lang}
             token={token}
             attendees={saved?.attendees ?? attendees}
             initialAttending={saved?.attending ?? attending}

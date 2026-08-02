@@ -28,6 +28,7 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
   const router = useRouter()
   const [coupleNames, setCoupleNames] = useState(config.couple_names)
   const [venue, setVenue] = useState(config.venue_name)
+  const [venueRu, setVenueRu] = useState(config.venue_name_ru)
   const [phone, setPhone] = useState(config.contact_phone)
   const [weddingAt, setWeddingAt] = useState(toDateTimeLocalValue(config.wedding_date_time))
   const [deadline, setDeadline] = useState(toDateTimeLocalValue(config.rsvp_deadline))
@@ -43,6 +44,7 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
       body: JSON.stringify({
         couple_names: coupleNames.trim(),
         venue_name: venue.trim(),
+        venue_name_ru: venueRu.trim(),
         contact_phone: phone.trim(),
         // null, never '' — an empty deadline means "always open" (PRD §6.3).
         wedding_date_time: fromDateTimeLocalValue(weddingAt),
@@ -110,6 +112,21 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
               id="venue"
               value={venue}
               onChange={(event) => setVenue(event.target.value)}
+              className="w-full rounded-md border border-border px-3 py-1.5"
+            />
+          </Field>
+
+          <Field
+            label={strings.settings.venueRu}
+            htmlFor="venue-ru"
+            hint={strings.settings.venueRuHint}
+          >
+            <input
+              id="venue-ru"
+              dir="ltr"
+              value={venueRu}
+              onChange={(event) => setVenueRu(event.target.value)}
+              placeholder="Двор Роз, ха-Мелаха 27, Нетания"
               className="w-full rounded-md border border-border px-3 py-1.5"
             />
           </Field>

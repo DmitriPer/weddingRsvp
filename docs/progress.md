@@ -167,6 +167,12 @@ Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 
 Each of these cost real time or was found by testing. They are all live decisions, not history.
 
+**The venue name has two jobs, split by job rather than by language** (2026-08-02). `venue_name` is what Waze searches and is never translated; `venue_name_ru` is display only, for the preview line and the guest page. Waze finds the Hebrew address and may find nothing for a Cyrillic transliteration, so a guest tapping "Как добраться" into a dead end is the failure this avoids. Blank `venue_name_ru` falls back to Hebrew — the OPPOSITE of the message templates, which must not fall back, because a Hebrew address is still usable to a Russian speaker while a whole Hebrew invitation is not. See `lib/venue.ts`.
+
+**Ship the migration BEFORE the code that needs it** (2026-08-02). The settings form started sending `venue_name_ru` while the column did not exist yet, so the first thing Dmitri saw was a 500 on save rather than a new field. Migration first, then the code.
+
+**Never `rm -rf .next` while the dev server is running** — it wipes the manifests mid-session and the server starts throwing ENOENT for `build-manifest.json`, which looks like an application bug and is not. Stop the server first.
+
 **`do $$ … end $$;` blocks did not execute in the Supabase SQL editor** (2026-08-02). Migration 005 was written with DO blocks to make its `RENAME COLUMN` statements re-runnable. Running the file reported no error and changed nothing — the columns simply were not there afterwards, and only a query against `information_schema` revealed it. Rewritten as plain statements, which ran first time.
 
 The lesson is not about DO blocks specifically: **a migration that silently does nothing is worse than one that fails loudly.** Always verify a migration against `information_schema` rather than trusting the editor's "Success". 005 is therefore NOT re-runnable, and says so at the top.

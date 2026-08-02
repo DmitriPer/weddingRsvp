@@ -24,7 +24,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { renderPreview, unknownVariables } from '@/lib/templates'
 import { strings } from '@/lib/strings'
-import type { WeddingConfig } from '@/lib/types'
+import type { Language, WeddingConfig } from '@/lib/types'
 
 type TemplateField = Extract<
   keyof WeddingConfig,
@@ -40,10 +40,13 @@ export function TemplateEditor({
   label,
   field,
   initial,
+  language,
 }: {
   label: string
   field: TemplateField
   initial: string
+  /** Which language this template is for — the preview's sample name follows it. */
+  language: Language
 }) {
   const [text, setText] = useState(initial)
   const [saving, setSaving] = useState(false)
@@ -122,7 +125,7 @@ export function TemplateEditor({
           <p className="text-xs text-muted">{strings.settings.preview}</p>
           {/* whitespace-pre-wrap: line breaks in a template survive into WhatsApp,
               so the preview has to show them too. */}
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm">{renderPreview(text)}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm">{renderPreview(text, language)}</p>
         </div>
 
         <button

@@ -8,6 +8,7 @@ const EDITABLE_FIELDS = [
   'couple_names',
   'wedding_date_time',
   'venue_name',
+  'venue_name_ru',
   'rsvp_deadline',
   'contact_phone',
   'invite_message_template_he',

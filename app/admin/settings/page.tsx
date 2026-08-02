@@ -62,16 +62,19 @@ export default async function SettingsPage() {
             <TemplateEditor
               label={strings.settings.inviteTemplate}
               field="invite_message_template_he"
+              language="he"
               initial={config.invite_message_template_he}
             />
             <TemplateEditor
               label={strings.settings.dayOfTemplate}
               field="day_of_message_template_he"
+              language="he"
               initial={config.day_of_message_template_he}
             />
             <TemplateEditor
               label={strings.settings.thankYouTemplate}
               field="thank_you_message_template_he"
+              language="he"
               initial={config.thank_you_message_template_he}
             />
           </div>
@@ -84,16 +87,19 @@ export default async function SettingsPage() {
             <TemplateEditor
               label={strings.settings.inviteTemplate}
               field="invite_message_template_ru"
+              language="ru"
               initial={config.invite_message_template_ru}
             />
             <TemplateEditor
               label={strings.settings.dayOfTemplate}
               field="day_of_message_template_ru"
+              language="ru"
               initial={config.day_of_message_template_ru}
             />
             <TemplateEditor
               label={strings.settings.thankYouTemplate}
               field="thank_you_message_template_ru"
+              language="ru"
               initial={config.thank_you_message_template_ru}
             />
           </div>

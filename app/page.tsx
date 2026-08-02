@@ -13,6 +13,7 @@ import { getConfig, getInviteByToken } from '@/lib/data'
 import { formatDateTime, isRsvpOpen } from '@/lib/datetime'
 import { buildAbsoluteUrl } from '@/lib/links'
 import { OG_CARD_HEIGHT, OG_CARD_PATHS, OG_CARD_WIDTH, OG_COUPLE_NAMES } from '@/lib/og'
+import { venueForDisplay, venueForNavigation } from '@/lib/venue'
 import { guestText, localeFor } from '@/lib/strings'
 import { hasAnswered } from '@/lib/status'
 import { LANGUAGES, type Language } from '@/lib/types'
@@ -62,7 +63,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const title = OG_COUPLE_NAMES.trim() || config.couple_names.trim() || t.og.untitled
   const description = t.og.details(
     formatDateTime(config.wedding_date_time, localeFor(language)),
-    config.venue_name.trim()
+    venueForDisplay(config, language).trim()
   )
   const url = buildAbsoluteUrl('/')
 
@@ -138,7 +139,7 @@ export default async function GuestPage({ searchParams }: PageProps) {
         bar={
           <ActionBar
             lang={language}
-            venue={config.venue_name}
+            venue={venueForNavigation(config)}
             hasDate={Boolean(config.wedding_date_time)}
           />
         }
@@ -159,7 +160,8 @@ export default async function GuestPage({ searchParams }: PageProps) {
         attendees={invite.attendees}
         attending={invite.attending}
         when={when}
-        venue={config.venue_name}
+        venue={venueForDisplay(config, language)}
+        venueForNav={venueForNavigation(config)}
         phone={config.contact_phone}
         hasDate={Boolean(config.wedding_date_time)}
         rsvpOpen={isRsvpOpen(config.rsvp_deadline)}

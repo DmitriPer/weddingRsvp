@@ -92,7 +92,10 @@ export interface ResponseHistoryEntry {
 export interface WeddingConfig {
   couple_names: string
   wedding_date_time: string | null
+  /** Navigation, always. Never translated — Waze searches this (lib/venue.ts). */
   venue_name: string
+  /** Display only, for Russian households. Blank falls back to venue_name. */
+  venue_name_ru: string
   /** null = no deadline, the form is always open */
   rsvp_deadline: string | null
   contact_phone: string
