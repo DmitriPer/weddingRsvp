@@ -4,7 +4,16 @@ Every word a Russian-speaking guest reads. The Russian column is **my draft**; c
 
 **Only UI text is here.** Guest names are never translated: you type `Слава` in the admin and `Слава` is what shows.
 
-Status: **2 of 39 reviewed.**
+Status: **✅ complete — reviewed and approved by Dmitri, 2026-08-02.**
+
+One correction came out of the review: `rsvp.nav.rsvp` was `Подтвердить`, which leaves the question open — confirm *what*? It is now **`Подтвердить участие`**, which also makes it consistent with `siteName` (`Подтверждение участия`); the draft disagreed with itself on the same concept.
+
+Two choices were examined and deliberately kept:
+
+- **`Здравствуйте, {name}`** for the greeting. One greeting serves everyone from a grandmother to a close friend, and it is safe across that whole range. Hebrew's `שלום` is neutral-formal to a similar degree.
+- **`Мы женимся!`** on the landing page. Grammatically `жениться` leans masculine, but it is idiomatic in Russian wedding invitations. A choice, not an oversight.
+
+The live copy is `lib/strings.ts`. This sheet is the record of how it got there.
 
 ---
 
@@ -15,7 +24,19 @@ Status: **2 of 39 reviewed.**
 | `rsvp.nav.navigate` | ניווט לאולם | Как добраться ✅ |
 | `rsvp.nav.addToCalendar` | הוספה ליומן | Добавить в календарь ✅ |
 
-> ⚠️ **Check `Добавить в календарь` on a phone.** The action bar puts three buttons side by side, about 110px each on a 375px screen. At 20 characters this will wrap to two or three lines and make the Russian bar taller than the Hebrew one. If it looks bad, `В календарь` fits. Not urgent — just look at it when you next open the page on your phone.
+> ⚠️ **All three Russian buttons will wrap to two lines. Look at it on a phone.**
+>
+> The action bar is one flex row of three equal buttons — about **93px of text space each** on a 375px screen at `text-sm`.
+>
+> | | Hebrew | Russian |
+> |---|---|---|
+> | RSVP | אישור הגעה — 1 line | Подтвердить участие — **2 lines** |
+> | Navigate | ניווט לאולם — 1 line | Как добраться — **2 lines** |
+> | Calendar | הוספה ליומן — 1 line | Добавить в календарь — **2 lines** |
+>
+> Nothing overflows — the longest single word (`календарь`, ~72px) still fits, so text wraps at spaces rather than spilling. The Russian bar is simply taller than the Hebrew one, and because all three wrap together it should at least look deliberate.
+>
+> **Not a blocker, and not worth changing blind.** Open a Russian invite on your phone; if the taller bar crowds the artwork, the shortest honest fixes are `В календарь` and `Маршрут`.
 
 ---
 
@@ -85,7 +106,7 @@ Status: **2 of 39 reviewed.**
 
 | key | עברית | русский (draft) |
 |---|---|---|
-| `rsvp.nav.rsvp` | אישור הגעה | Подтвердить |
+| `rsvp.nav.rsvp` | אישור הגעה | **Подтвердить участие** ✅ corrected |
 | `rsvp.nav.yourAnswer` | התשובה שלכם | Ваш ответ |
 | `rsvp.nav.closeSheet` | סגירה | Закрыть |
 | `rsvp.landing.invitation` | מתחתנים! | Мы женимся! |

@@ -329,84 +329,91 @@ const he = {
 }
 
 /**
- * DRAFT — every line below is marked `ru:draft` and awaits Dmitri's pass.
- * Find them all with:  grep -n "ru:draft" lib/strings.ts
+ * Reviewed and approved by Dmitri, 2026-08-02.
  *
  * Typed as `typeof he`, so a missing or misspelled key is a compile error
  * rather than a guest seeing `undefined`.
+ *
+ * Two choices worth not re-litigating:
+ *   - `Здравствуйте` for the greeting. One greeting serves everyone from a
+ *     grandmother to a close friend; it is safe across that whole range, and
+ *     Hebrew's `שלום` is neutral-formal to a similar degree.
+ *   - `Мы женимся!` on the landing page. Grammatically `жениться` leans
+ *     masculine, but it is idiomatic in Russian wedding invitations. A
+ *     deliberate choice, not an oversight.
  */
 const ru: typeof he = {
-  siteName: 'Подтверждение участия', // ru:draft
-  cancel: 'Отмена', // ru:draft
+  siteName: 'Подтверждение участия',
+  cancel: 'Отмена',
 
   rsvp: {
-    // ru:draft — register. "Здравствуйте" is respectful and safe for older
+    — register. "Здравствуйте" is respectful and safe for older
     // relatives; "Привет" is warmer but casual. Hebrew "שלום" sits between.
     greeting: (name: string) => `Здравствуйте, ${name}`,
-    intro: 'Будем рады узнать, придёте ли вы', // ru:draft
-    yes: 'Придём', // ru:draft
-    no: 'Не придём', // ru:draft
+    intro: 'Будем рады узнать, придёте ли вы',
+    yes: 'Придём',
+    no: 'Не придём',
 
-    whoIsComing: 'Кто придёт?', // ru:draft
-    whoIsComingHint: 'Отметьте тех, кто придёт', // ru:draft
-    extras: 'Дополнительные гости', // ru:draft
-    extrasHint: 'Можно добавить гостей, которых нет в списке', // ru:draft
-    // ru:draft — the section heading above already says "дополнительные", so
+    whoIsComing: 'Кто придёт?',
+    whoIsComingHint: 'Отметьте тех, кто придёт',
+    extras: 'Дополнительные гости',
+    extrasHint: 'Можно добавить гостей, которых нет в списке',
+    — the section heading above already says "дополнительные", so
     // repeating it in each label reads clumsy in Russian.
     extraAdults: 'Взрослые',
-    extraKids: 'Дети', // ru:draft
-    fewer: 'Меньше', // ru:draft
-    more: 'Больше', // ru:draft
+    extraKids: 'Дети',
+    fewer: 'Меньше',
+    more: 'Больше',
 
-    submit: 'Отправить ответ', // ru:draft
-    submitting: 'Отправляем…', // ru:draft
-    chooseAnswer: 'Выберите, придёте ли вы', // ru:draft
-    pickSomeone: 'Отметьте хотя бы одного гостя или ответьте, что не придёте', // ru:draft
-    failed: 'Не удалось отправить. Попробуйте ещё раз.', // ru:draft
+    submit: 'Отправить ответ',
+    submitting: 'Отправляем…',
+    chooseAnswer: 'Выберите, придёте ли вы',
+    pickSomeone: 'Отметьте хотя бы одного гостя или ответьте, что не придёте',
+    failed: 'Не удалось отправить. Попробуйте ещё раз.',
 
     confirmation: {
-      titleAttending: 'Спасибо! Мы вас записали', // ru:draft
-      titleDeclined: 'Спасибо, что сообщили', // ru:draft
-      declined: 'Мы записали, что вы не придёте. Жаль, будем скучать!', // ru:draft
-      attending: 'Придёт', // ru:draft
-      extraGuest: 'Дополнительный гость', // ru:draft
-      // ru:draft — 1 гость · 2 гостя · 5 гостей
+      titleAttending: 'Спасибо! Мы вас записали',
+      titleDeclined: 'Спасибо, что сообщили',
+      declined: 'Мы записали, что вы не придёте. Жаль, будем скучать!',
+      attending: 'Придёт',
+      extraGuest: 'Дополнительный гость',
+      — 1 гость · 2 гостя · 5 гостей
       total: (count: number) =>
         `Всего ${count} ${ruPlural(count, 'гость', 'гостя', 'гостей')}`,
-      // ru:draft — 1 взрослый · 2 взрослых, and 1 ребёнок · 2 ребёнка · 5 детей
+      — 1 взрослый · 2 взрослых, and 1 ребёнок · 2 ребёнка · 5 детей
       breakdown: (adults: number, kids: number) =>
         kids === 0
           ? ''
           : `${adults} ${ruPlural(adults, 'взрослый', 'взрослых', 'взрослых')} · ` +
             `${kids} ${ruPlural(kids, 'ребёнок', 'ребёнка', 'детей')}`,
-      changeAnswer: 'Изменить ответ', // ru:draft
+      changeAnswer: 'Изменить ответ',
     },
 
     closed: {
-      title: 'Подтверждение участия закрыто', // ru:draft
-      callInstead: 'Для изменений позвоните нам:', // ru:draft
-      callInsteadNoPhone: 'Для изменений свяжитесь с нами.', // ru:draft
-      yourAnswer: 'Ваш ответ', // ru:draft
-      noAnswer: 'Ответ не получен', // ru:draft
+      title: 'Подтверждение участия закрыто',
+      callInstead: 'Для изменений позвоните нам:',
+      callInsteadNoPhone: 'Для изменений свяжитесь с нами.',
+      yourAnswer: 'Ваш ответ',
+      noAnswer: 'Ответ не получен',
     },
 
     landing: {
-      invitation: 'Мы женимся!', // ru:draft
-      seeYou: 'Будем рады видеть вас', // ru:draft
+      invitation: 'Мы женимся!',
+      seeYou: 'Будем рады видеть вас',
     },
 
     nav: {
-      rsvp: 'Подтвердить', // ru:draft
-      yourAnswer: 'Ваш ответ', // ru:draft
+      rsvp: 'Подтвердить участие',
+      yourAnswer: 'Ваш ответ',
       navigate: 'Как добраться',
       addToCalendar: 'Добавить в календарь',
-      closeSheet: 'Закрыть', // ru:draft
+      closeSheet: 'Закрыть',
     },
   },
 
   og: {
-    imageAlt: 'Приглашение на свадьбу', // ru:draft
-    untitled: 'Вы приглашены', // ru:draft
+    imageAlt: 'Приглашение на свадьбу',
+    untitled: 'Вы приглашены',
     // Punctuation only — nothing to translate.
     details: (when: string, venue: string) => [when, venue].filter(Boolean).join(' · '),
   },
