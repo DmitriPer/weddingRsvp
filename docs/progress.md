@@ -179,7 +179,9 @@ The Latin couple name is identical in both by design — the invitation is lette
 
 **Ship the migration BEFORE the code that needs it** (2026-08-02). The settings form started sending `venue_name_ru` while the column did not exist yet, so the first thing Dmitri saw was a 500 on save rather than a new field. Migration first, then the code.
 
-**Never `rm -rf .next` while the dev server is running** — it wipes the manifests mid-session and the server starts throwing ENOENT for `build-manifest.json`, which looks like an application bug and is not. Stop the server first.
+**Don't `rm -rf .next` at all as part of routine verification.** It was being run before `npm run build` to force a clean check, and it is unnecessary: `npx tsc --noEmit` already typechecks independently, and Next's incremental build is not the thing that goes stale. Meanwhile, doing it while the dev server is running wipes that server's manifests mid-session, and the result — ENOENT for `routes-manifest.json`, `Cannot find module '[turbopack]_runtime.js'`, every admin page 500 — looks exactly like an application bug and is not. It happened twice on 2026-08-02, the second time immediately after this note was first written in its weaker "stop the server first" form.
+
+Verification is `npx tsc --noEmit && npm run lint && npm run build`. The one case that genuinely needs a clean `.next` is stale generated route types after DELETING a route folder — rare, and worth stopping the dev server for deliberately.
 
 **`do $$ … end $$;` blocks did not execute in the Supabase SQL editor** (2026-08-02). Migration 005 was written with DO blocks to make its `RENAME COLUMN` statements re-runnable. Running the file reported no error and changed nothing — the columns simply were not there afterwards, and only a query against `information_schema` revealed it. Rewritten as plain statements, which ran first time.
 
