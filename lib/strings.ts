@@ -187,6 +187,25 @@ export const strings = {
     failed: 'ההוספה נכשלה',
   },
 
+  /** The dashboard bar (PRD §6.11). */
+  stats: {
+    records: 'רשומות',
+    invited: 'מוזמנים',
+    awaiting: 'ממתין לתשובה',
+    coming: 'מגיעים',
+    notComing: 'לא מגיעים',
+    /** The small line under a tile: the same figure counted in invitations. */
+    invites: (n: number) => (n === 1 ? 'הזמנה אחת' : `${n} הזמנות`),
+
+    detailsTitle: 'פירוט המגיעים',
+    adults: 'מבוגרים',
+    kids: 'ילדים',
+    /** Guest-added "+1"s — already inside מגיעים, shown apart. */
+    extras: 'לא מהרשימה',
+    extrasHint: 'אורחים שהמוזמנים הוסיפו בעצמם',
+    noneComing: 'עדיין אין מי שאישר הגעה',
+  },
+
   /** Spreadsheet template, import and export (PRD §6.7). */
   importer: {
     title: 'ייבוא מקובץ',

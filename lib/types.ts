@@ -129,19 +129,40 @@ export interface Headcount {
  * two is one invitation and two people, and the tiles show people — mixing the
  * two is how a caterer gets the wrong number.
  */
+/**
+ * The dashboard bar (PRD §6.11).
+ *
+ * Every figure comes in BOTH units, because the two answer different questions:
+ * people is what the caterer is quoted on, invitations is how many messages are
+ * still owed. The bar shows people large and invitations small beneath.
+ */
 export interface Stats {
   byStatus: Record<InviteStatus, number>
-  /** Invitations sent. */
+
+  /** Rows: one per invitation. */
   totalInvites: number
-  /** People listed across every invitation, answered or not. */
+  /** People YOU listed. Excludes guest-added "+1"s — those are `totalExtras`. */
   totalInvitedPeople: number
+
+  /** No answer yet. */
+  totalAwaitingPeople: number
+  totalAwaitingInvites: number
+
+  /** Coming. Includes guest-added "+1"s: this is the real headcount. */
+  totalAttending: number
+  totalAttendingInvites: number
+
+  /** Not coming — including someone unticked from a household that IS coming. */
+  totalDeclinedPeople: number
+  /** Invitations that answered no outright. */
+  totalDeclined: number
+
+  /** The breakdown of who is coming. */
   totalAdults: number
   totalKids: number
-  totalAttending: number
-  /** Invitations that answered no. */
-  totalDeclined: number
-  /** People who answered no. */
-  totalDeclinedPeople: number
+  /** Guest-added "+1"s among them — people who were never on the list. */
+  totalExtras: number
+
   totalUnanswered: number
 }
 

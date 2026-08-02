@@ -60,7 +60,9 @@ export function summarizeAttendance(
  * a headcount until it disagrees with one.
  */
 export function countInvited(attendees: Attendee[]): number {
-  return attendees.length
+  // Placeholders excluded: a guest-added "+1" is somebody coming, not somebody
+  // invited. They are counted separately by countExtras().
+  return attendees.filter((person) => !person.is_placeholder).length
 }
 
 /**
@@ -73,6 +75,22 @@ export function countInvited(attendees: Attendee[]): number {
 export function countDeclined(attending: boolean | null, attendees: Attendee[]): number {
   if (attending === null) return 0
   return attendees.filter((person) => !person.is_attending && !person.is_placeholder).length
+}
+
+/**
+ * People whose answer is still unknown — everyone on an invitation that has not
+ * replied. Nobody on an ANSWERED invitation is awaiting: they are either coming
+ * or they are not.
+ *
+ * This is the number that says how much the caterer count could still move.
+ */
+export function countAwaiting(attending: boolean | null, attendees: Attendee[]): number {
+  return attending === null ? attendees.length : 0
+}
+
+/** Guest-added "+1"s among those coming — people who were never on the list. */
+export function countExtras(attendees: Attendee[]): number {
+  return attendees.filter((person) => person.is_attending && person.is_placeholder).length
 }
 
 export function sumHeadcounts(counts: Headcount[]): Headcount {

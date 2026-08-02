@@ -295,7 +295,24 @@ This matters because an inflated `contact_attempts` corrupts the follow-up flag 
 Invites reaching **5 attempts with still no response** get a "needs a phone call" badge. The app counts and flags; the couple decides whether to send again.
 
 ### 6.11 Stats — on the invitees screen, not a tab
-Counts per status, total adults and kids attending, total declined, total invited — all from §5.1. Displayed as tiles at the **top of the invitees list**, not on a separate page: they are four numbers, and they read better beside the list than on their own screen.
+Five tiles at the **top of the invitees list**, not a separate page:
+
+| Tile | Counts |
+|---|---|
+| **רשומות** | invitations — rows |
+| **מוזמנים** | people *you* listed. Guest-added "+1"s are not yours and are excluded |
+| **ממתין לתשובה** ○ | people on invitations with no answer |
+| **מגיעים** ✓ | people coming, **including** guest-added "+1"s — the real headcount |
+| **לא מגיעים** ✕ | people not coming, including someone unticked from a household that *is* coming |
+
+**Each answer tile shows people large and invitations small beneath it.** The two answer different questions and both are needed: people is what the caterer is quoted on, invitations is how many messages are still owed. A household of four that hasn't replied is *one* message and *four* uncertain plates.
+
+The glyphs are the same ones a person's row already uses — ○ awaiting, ✓ coming — so the bar and the list speak one language.
+
+Below, collapsed, **פירוט המגיעים**: מבוגרים · ילדים, and set apart, **לא מהרשימה** — the guest-added "+1"s. Set apart rather than listed alongside because they are already counted inside מגיעים; showing them in the same row would read as an addition.
+
+The figures partition cleanly, which is the property worth keeping:
+`מוזמנים = ממתין + (מגיעים − לא מהרשימה) + לא מגיעים`
 
 ### 6.12 Answers and history — a modal, not a tab
 The invitee row already shows status, headcount, and each person's approved/declined. The only thing it does not show is the **change log**, so that opens as a small modal from the row: every previous submission, newest first, counts only.
