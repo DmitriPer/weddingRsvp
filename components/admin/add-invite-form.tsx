@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { strings } from '@/lib/strings'
-import { RELATIONS, SIDES, type Relation, type Side } from '@/lib/types'
+import { LANGUAGES, RELATIONS, SIDES, type Language, type Relation, type Side } from '@/lib/types'
 
 interface PersonDraft {
   key: number
@@ -31,6 +31,8 @@ export function AddInviteForm() {
   const [phone, setPhone] = useState('')
   const [side, setSide] = useState<Side | ''>('')
   const [relation, setRelation] = useState<Relation | ''>('')
+  // Hebrew unless said otherwise — the default, not a blank (PRD §6.7b).
+  const [language, setLanguage] = useState<Language>('he')
   const [people, setPeople] = useState<PersonDraft[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +42,7 @@ export function AddInviteForm() {
     setPhone('')
     setSide('')
     setRelation('')
+    setLanguage('he')
     setPeople([])
     setError(null)
   }
@@ -75,6 +78,7 @@ export function AddInviteForm() {
           phone: phone.trim() || null,
           side: side || null,
           relation: relation || null,
+          language,
         }),
       })
       const inviteBody = await inviteResponse.json()
@@ -159,7 +163,7 @@ export function AddInviteForm() {
       />
       <p className="mt-1 mb-3 text-xs text-muted">{strings.inviteForm.phoneHint}</p>
 
-      <div className="mb-4 grid grid-cols-2 gap-3">
+      <div className="mb-4 grid grid-cols-3 gap-3">
         <div>
           <label className="block text-sm" htmlFor="invite-side">
             {strings.inviteForm.side}
@@ -174,6 +178,23 @@ export function AddInviteForm() {
             {SIDES.map((value) => (
               <option key={value} value={value}>
                 {strings.side[value]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm" htmlFor="invite-language">
+            {strings.language.label}
+          </label>
+          <select
+            id="invite-language"
+            value={language}
+            onChange={(event) => setLanguage(event.target.value as Language)}
+            className="mt-1 w-full rounded-md border border-border px-3 py-2"
+          >
+            {LANGUAGES.map((value) => (
+              <option key={value} value={value}>
+                {strings.language[value]}
               </option>
             ))}
           </select>

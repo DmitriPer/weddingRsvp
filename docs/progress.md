@@ -1,6 +1,6 @@
 # Progress & Handoff
 
-**Last updated:** 2026-07-30 · branch `main` · pushed to `DmitriPer/weddingRsvp`
+**Last updated:** 2026-08-02 · branch `main` · pushed to `DmitriPer/weddingRsvp`
 
 The purpose of this file is that a different machine, or a different session, can pick this up with no gaps. **Update it whenever a phase lands** — if it drifts from reality it is worse than not existing.
 
@@ -119,6 +119,7 @@ Verified against the real database, not just compiled:
 | §6.15 | OG image + client-side `opened` | ✅ **built, unverifiable locally** | `generateMetadata` in `app/page.tsx`, card at `public/assets/og-card.jpg`. `opened` wired from `mark-opened.tsx`. WhatsApp itself can only confirm it once the site is on a public domain |
 | §6.16 | Asset upload | ❌ | bucket exists (migration 003) |
 | §6.17 | Seating | ⚠️ **API only** | `/api/tables` CRUD done; `app/admin/seating` is a placeholder |
+| §6.7b | Bilingual guest side (he/ru) | ✅ | `lib/strings.ts` `guestText()`, `guest-shell.tsx` |
 | §6.18 | Admin auth | ✅ | `lib/auth.ts`, `proxy.ts`, `app/admin/login` |
 | §6.19 | Empty / loading / error states | ⚠️ partial | `components/ui/states.tsx` exists, used in some places |
 
@@ -165,6 +166,10 @@ Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 ## 5. Things not to rediscover the hard way
 
 Each of these cost real time or was found by testing. They are all live decisions, not history.
+
+**`do $$ … end $$;` blocks did not execute in the Supabase SQL editor** (2026-08-02). Migration 005 was written with DO blocks to make its `RENAME COLUMN` statements re-runnable. Running the file reported no error and changed nothing — the columns simply were not there afterwards, and only a query against `information_schema` revealed it. Rewritten as plain statements, which ran first time.
+
+The lesson is not about DO blocks specifically: **a migration that silently does nothing is worse than one that fails loudly.** Always verify a migration against `information_schema` rather than trusting the editor's "Success". 005 is therefore NOT re-runnable, and says so at the top.
 
 **Two env-file traps, both of which fail silently.** Cost an hour on the Linux desktop (2026-07-30). The app boots normally under either one and only breaks when it touches data, so the symptom points nowhere near the cause:
 

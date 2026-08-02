@@ -8,10 +8,12 @@
  * without saying why.
  */
 
-import { strings } from '@/lib/strings'
+import { guestText } from '@/lib/strings'
+import type { Language } from '@/lib/types'
 import { buildNavigationLink } from '@/lib/links'
 
 interface ActionBarProps {
+  lang: Language
   /** Label changes once they have answered — see rsvp-screen.tsx. */
   rsvpLabel?: string
   /** Absent on the public landing page, which has nothing to RSVP to. */
@@ -21,7 +23,9 @@ interface ActionBarProps {
   hasDate: boolean
 }
 
-export function ActionBar({ rsvpLabel, onRsvp, venue, hasDate }: ActionBarProps) {
+export function ActionBar({ lang, rsvpLabel, onRsvp, venue, hasDate }: ActionBarProps) {
+  const t = guestText(lang)
+
   const navigation = buildNavigationLink(venue)
 
   // Nothing to offer: render nothing rather than an empty frosted slab.
@@ -50,12 +54,12 @@ export function ActionBar({ rsvpLabel, onRsvp, venue, hasDate }: ActionBarProps)
 
       {navigation ? (
         <SecondaryAction href={navigation} external>
-          {strings.rsvp.nav.navigate}
+          {t.rsvp.nav.navigate}
         </SecondaryAction>
       ) : null}
 
       {hasDate ? (
-        <SecondaryAction href="/api/calendar">{strings.rsvp.nav.addToCalendar}</SecondaryAction>
+        <SecondaryAction href="/api/calendar">{t.rsvp.nav.addToCalendar}</SecondaryAction>
       ) : null}
     </nav>
   )

@@ -12,9 +12,10 @@ import type { Metadata } from 'next'
 import { getConfig, getInviteByToken } from '@/lib/data'
 import { formatDateTime, isRsvpOpen } from '@/lib/datetime'
 import { buildAbsoluteUrl } from '@/lib/links'
-import { OG_CARD_HEIGHT, OG_CARD_PATH, OG_CARD_WIDTH, OG_COUPLE_NAMES } from '@/lib/og'
-import { strings } from '@/lib/strings'
+import { OG_CARD_HEIGHT, OG_CARD_PATHS, OG_CARD_WIDTH, OG_COUPLE_NAMES } from '@/lib/og'
+import { guestText, localeFor } from '@/lib/strings'
 import { hasAnswered } from '@/lib/status'
+import { LANGUAGES, type Language } from '@/lib/types'
 import { ActionBar } from '@/components/guest/action-bar'
 import { GuestShell } from '@/components/guest/guest-shell'
 import { MarkOpened } from '@/components/guest/mark-opened'
@@ -33,26 +34,34 @@ export const dynamic = 'force-dynamic'
  * admin's own message template, which is why nothing here is written onto the
  * image.
  *
- * IT TAKES NO ARGUMENTS, AND THAT IS THE POINT. This runs on the crawler's
- * fetch. Reading the token here would put a database lookup on the one path
+ * IT NEVER READS THE TOKEN, AND THAT IS THE POINT. This runs on the crawler's
+ * fetch. Resolving the token here would put a database lookup on the one path
  * that must never touch an invite — every invite sent triggers two non-human
  * fetches, the page and the image, and a status write on either would flip the
  * whole list to `opened` the moment invitations went OUT, destroying the "who
- * hasn't looked yet" filter §6.10 depends on. Taking no token makes that
- * impossible rather than merely avoided.
+ * hasn't looked yet" filter §6.10 depends on.
+ *
+ * It reads `?lang=` instead (PRD §6.7b). The card carries the artwork, so a
+ * Russian household needs a Russian card — and the admin already knows each
+ * invite's language when it builds the link, so carrying it in the URL answers
+ * the crawler with NO LOOKUP AT ALL. A tampered value changes which picture is
+ * shown and nothing else; the page itself still takes its language from the
+ * database.
  *
  * The date and venue come from wedding_config, so they follow the settings tab
  * with no redeploy. The names are the Latin form in lib/og.ts, shared with the
  * card so the picture and the line beneath it cannot disagree. Identical for
  * every guest either way.
  */
-export async function generateMetadata(): Promise<Metadata> {
-  const config = await getConfig()
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const [{ lang }, config] = await Promise.all([searchParams, getConfig()])
+  const language = parseLangParam(lang)
+  const t = guestText(language)
 
   // The Latin form, so the bold line WhatsApp prints matches the card above it.
-  const title = OG_COUPLE_NAMES.trim() || config.couple_names.trim() || strings.og.untitled
-  const description = strings.og.details(
-    formatDateTime(config.wedding_date_time),
+  const title = OG_COUPLE_NAMES.trim() || config.couple_names.trim() || t.og.untitled
+  const description = t.og.details(
+    formatDateTime(config.wedding_date_time, localeFor(language)),
     config.venue_name.trim()
   )
   const url = buildAbsoluteUrl('/')
@@ -69,8 +78,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
     openGraph: {
       type: 'website',
-      locale: 'he_IL',
-      siteName: strings.app.title,
+      locale: language === 'he' ? 'he_IL' : 'ru_RU',
+      siteName: t.siteName,
       title,
       description: description || undefined,
       // No token: a card shared onward must not carry someone's invite link.
@@ -79,10 +88,10 @@ export async function generateMetadata(): Promise<Metadata> {
         {
           // Absolute. A relative path is not fetched by a crawler, which has no
           // page context to resolve it against.
-          url: buildAbsoluteUrl(OG_CARD_PATH),
+          url: buildAbsoluteUrl(OG_CARD_PATHS[language]),
           width: OG_CARD_WIDTH,
           height: OG_CARD_HEIGHT,
-          alt: strings.og.imageAlt,
+          alt: t.og.imageAlt,
         },
       ],
     },
@@ -92,13 +101,26 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // Next 16: searchParams is a Promise and must be awaited.
-type PageProps = { searchParams: Promise<{ token?: string }> }
+type PageProps = { searchParams: Promise<{ token?: string; lang?: string }> }
+
+/**
+ * `?lang=` is untrusted input from a URL anyone can edit, so anything that is
+ * not a language we support becomes Hebrew rather than an error. It only ever
+ * selects a preview card.
+ */
+function parseLangParam(value: string | undefined): Language {
+  return LANGUAGES.includes(value as Language) ? (value as Language) : 'he'
+}
 
 export default async function GuestPage({ searchParams }: PageProps) {
   const [{ token }, config] = await Promise.all([searchParams, getConfig()])
-
-  const when = formatDateTime(config.wedding_date_time)
   const invite = token ? await getInviteByToken(token) : null
+
+  // The DATABASE decides the page's language, not the URL. `?lang=` exists only
+  // so the crawler can be answered without a lookup (see generateMetadata); a
+  // guest who edits it still sees their own household's language.
+  const language: Language = invite?.language ?? 'he'
+  const when = formatDateTime(config.wedding_date_time, localeFor(language))
 
   // No token, an unknown one, or a mangled one all land here identically — an
   // unresolvable link must reveal nothing, including that it was unresolvable
@@ -112,7 +134,14 @@ export default async function GuestPage({ searchParams }: PageProps) {
   if (!invite) {
     return (
       <GuestShell
-        bar={<ActionBar venue={config.venue_name} hasDate={Boolean(config.wedding_date_time)} />}
+        lang={language}
+        bar={
+          <ActionBar
+            lang={language}
+            venue={config.venue_name}
+            hasDate={Boolean(config.wedding_date_time)}
+          />
+        }
       />
     )
   }
@@ -124,6 +153,7 @@ export default async function GuestPage({ searchParams }: PageProps) {
 
       {/* Brings its own shell: the greeting and action bar are part of it. */}
       <RsvpScreen
+        lang={language}
         token={invite.token}
         inviteName={invite.name}
         attendees={invite.attendees}

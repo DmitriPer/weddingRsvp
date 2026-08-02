@@ -19,7 +19,7 @@ import { WaSendButton } from '@/components/admin/wa-send-button'
 import { summarizeAttendance } from '@/lib/headcount'
 import { needsPhoneCall } from '@/lib/status'
 import { strings } from '@/lib/strings'
-import type { InviteWithPeople } from '@/lib/types'
+import type { InviteWithPeople, WeddingConfig } from '@/lib/types'
 
 function attendanceLabel(invite: InviteWithPeople): string {
   const summary = summarizeAttendance(invite.attending, invite.attendees)
@@ -39,10 +39,10 @@ function attendanceLabel(invite: InviteWithPeople): string {
 
 export function InviteRow({
   invite,
-  inviteTemplate,
+  config,
 }: {
   invite: InviteWithPeople
-  inviteTemplate: string
+  config: WeddingConfig
 }) {
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
@@ -91,14 +91,21 @@ export function InviteRow({
         </button>
 
         <div className="shrink-0 text-left text-sm">
-          <p className="text-muted">{strings.status[invite.status]}</p>
+          <p className="text-muted">
+            {strings.status[invite.status]}
+            {invite.language !== 'he' ? (
+              <span className="ms-1 rounded border border-border px-1 text-xs">
+                {strings.language.badge[invite.language]}
+              </span>
+            ) : null}
+          </p>
           <p className="text-muted">{attendanceLabel(invite)}</p>
           {flagged ? <p className="text-warning">{strings.guests.needsPhoneCall}</p> : null}
         </div>
 
         <div className="flex shrink-0 flex-wrap justify-end gap-1">
-          <WaSendButton invite={invite} template={inviteTemplate} />
-          <CopyLinkButton token={invite.token} />
+          <WaSendButton invite={invite} config={config} />
+          <CopyLinkButton token={invite.token} language={invite.language} />
           <HistoryModal inviteId={invite.id} name={invite.name} />
           <button
             type="button"

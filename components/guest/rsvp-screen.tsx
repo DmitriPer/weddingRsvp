@@ -14,16 +14,17 @@
  */
 
 import { useState } from 'react'
-import { strings } from '@/lib/strings'
+import { guestText } from '@/lib/strings'
 import { ActionBar } from '@/components/guest/action-bar'
 import { Confirmation } from '@/components/guest/confirmation'
 import { GuestGreeting, GuestShell } from '@/components/guest/guest-shell'
 import { InvitationForm } from '@/components/guest/invitation-form'
 import { RsvpClosed } from '@/components/guest/rsvp-closed'
 import { RsvpSheet } from '@/components/guest/rsvp-sheet'
-import type { Attendee, RsvpResult } from '@/lib/types'
+import type { Attendee, Language, RsvpResult } from '@/lib/types'
 
 interface RsvpScreenProps {
+  lang: Language
   token: string
   inviteName: string
   attendees: Attendee[]
@@ -43,6 +44,7 @@ interface SavedAnswer {
 }
 
 export function RsvpScreen({
+  lang,
   token,
   inviteName,
   attendees,
@@ -53,6 +55,7 @@ export function RsvpScreen({
   hasDate,
   rsvpOpen,
 }: RsvpScreenProps) {
+  const t = guestText(lang)
   const [saved, setSaved] = useState<SavedAnswer | null>(
     attending === null ? null : { attending, attendees }
   )
@@ -70,16 +73,18 @@ export function RsvpScreen({
   }
 
   const label = !rsvpOpen
-    ? strings.rsvp.nav.yourAnswer
+    ? t.rsvp.nav.yourAnswer
     : saved
-      ? strings.rsvp.nav.yourAnswer
-      : strings.rsvp.nav.rsvp
+      ? t.rsvp.nav.yourAnswer
+      : t.rsvp.nav.rsvp
 
   return (
     <GuestShell
-      greeting={<GuestGreeting>{strings.rsvp.greeting(inviteName)}</GuestGreeting>}
+          lang={lang}
+      greeting={<GuestGreeting>{t.rsvp.greeting(inviteName)}</GuestGreeting>}
       bar={
         <ActionBar
+          lang={lang}
           rsvpLabel={label}
           onRsvp={() => setSheetOpen(true)}
           venue={venue}
@@ -87,9 +92,10 @@ export function RsvpScreen({
         />
       }
     >
-      <RsvpSheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
+      <RsvpSheet lang={lang} open={sheetOpen} onClose={() => setSheetOpen(false)}>
         {!rsvpOpen ? (
           <RsvpClosed
+          lang={lang}
             attending={saved ? saved.attending : attending}
             attendees={saved?.attendees ?? attendees}
             when={when}
@@ -98,6 +104,7 @@ export function RsvpScreen({
           />
         ) : saved && !editing ? (
           <Confirmation
+          lang={lang}
             attending={saved.attending}
             attendees={saved.attendees}
             when={when}
@@ -106,6 +113,7 @@ export function RsvpScreen({
           />
         ) : (
           <InvitationForm
+          lang={lang}
             token={token}
             attendees={saved?.attendees ?? attendees}
             initialAttending={saved?.attending ?? attending}

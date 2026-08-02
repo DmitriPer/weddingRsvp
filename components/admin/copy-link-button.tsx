@@ -6,13 +6,14 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { buildInviteLink } from '@/lib/links'
 import { strings } from '@/lib/strings'
+import type { Language } from '@/lib/types'
 
-export function CopyLinkButton({ token }: { token: string }) {
+export function CopyLinkButton({ token, language }: { token: string; language: Language }) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(buildInviteLink(token))
+      await navigator.clipboard.writeText(buildInviteLink(token, language))
       setCopied(true)
       toast.success(strings.actions.linkCopied)
       setTimeout(() => setCopied(false), 1500)

@@ -117,6 +117,9 @@ export const supabaseStore: DataStore = {
           phone: input.phone ?? null,
           side: input.side ?? null,
           relation: input.relation ?? null,
+          // Omitted lets the column default to 'he' rather than writing null
+          // into a NOT NULL column.
+          ...(input.language ? { language: input.language } : {}),
         })
         .select()
         .single(),

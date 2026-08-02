@@ -19,14 +19,20 @@ import {
   type SortKey,
 } from '@/lib/invite-filters'
 import { strings } from '@/lib/strings'
-import { INVITE_STATUSES, type InviteStatus, type InviteWithPeople } from '@/lib/types'
+import {
+  INVITE_STATUSES,
+  type InviteStatus,
+  type InviteWithPeople,
+  type WeddingConfig,
+} from '@/lib/types'
 
 export function InviteTable({
   invites,
-  inviteTemplate,
+  config,
 }: {
   invites: InviteWithPeople[]
-  inviteTemplate: string
+  /** The whole config, not one template: the row picks by household language. */
+  config: WeddingConfig
 }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<InviteStatus | ''>('')
@@ -99,7 +105,7 @@ export function InviteTable({
       ) : (
         <ul className="divide-y divide-border rounded-lg border border-border">
           {visible.map((invite) => (
-            <InviteRow key={invite.id} invite={invite} inviteTemplate={inviteTemplate} />
+            <InviteRow key={invite.id} invite={invite} config={config} />
           ))}
         </ul>
       )}

@@ -5,12 +5,14 @@
 
 import {
   INVITE_STATUSES,
+  LANGUAGES,
   RELATIONS,
   SIDES,
   type CreateAttendeeInput,
   type CreateInviteInput,
   type CreateTableInput,
   type InviteStatus,
+  type Language,
   type Relation,
   type RsvpSubmission,
   type Side,
@@ -90,12 +92,16 @@ export function parseCreateInvite(body: unknown): Parsed<CreateInviteInput> {
   if (!side.ok) return side
   const relation = optionalEnum<Relation>(body.relation, RELATIONS, 'Relation')
   if (!relation.ok) return relation
+  const language = optionalEnum<Language>(body.language, LANGUAGES, 'Language')
+  if (!language.ok) return language
 
   return pass({
     name: name.value,
     phone: phone.value,
     side: side.value,
     relation: relation.value,
+    // Blank means Hebrew: the default, not a missing value (PRD §6.7b).
+    language: language.value ?? 'he',
   })
 }
 
@@ -122,6 +128,12 @@ export function parseUpdateInvite(body: unknown): Parsed<UpdateInviteInput> {
     const relation = optionalEnum<Relation>(body.relation, RELATIONS, 'Relation')
     if (!relation.ok) return relation
     update.relation = relation.value
+  }
+  if ('language' in body) {
+    const language = optionalEnum<Language>(body.language, LANGUAGES, 'Language')
+    if (!language.ok) return language
+    // `language` is NOT NULL in the database — clearing it means Hebrew.
+    update.language = language.value ?? 'he'
   }
 
   if (Object.keys(update).length === 0) return fail('Nothing to update')

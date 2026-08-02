@@ -29,14 +29,26 @@
  * decoration that must bleed to the edges and stay put while content scrolls.
  */
 
-const ARTWORK = '/assets/demo-invitation.jpeg'
+import type { Language } from '@/lib/types'
 
-export function InvitationBackdrop() {
+/**
+ * One entry per language (PRD §6.7b). Russian points at the Hebrew file until
+ * the designer delivers a Russian version — the code path is already correct,
+ * so swapping it is this one line plus `npm run og-card` to rebuild the
+ * matching preview card. Forgetting the second leaves the WhatsApp preview
+ * showing the wrong invitation, which nothing in a build will tell you.
+ */
+const ARTWORK: Record<Language, string> = {
+  he: '/assets/demo-invitation.jpeg',
+  ru: '/assets/demo-invitation.jpeg',
+}
+
+export function InvitationBackdrop({ lang }: { lang: Language }) {
   return (
     <div aria-hidden className="fixed inset-0 -z-10 bg-paper">
       <div
         className="absolute inset-x-0 bottom-0 top-20 bg-contain bg-top bg-no-repeat"
-        style={{ backgroundImage: `url(${ARTWORK})` }}
+        style={{ backgroundImage: `url(${ARTWORK[lang]})` }}
       />
       {/*
        * A scrim behind the greeting only. The bottom no longer needs one: the

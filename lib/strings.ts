@@ -74,6 +74,14 @@ export const strings = {
     dayOfTemplate: 'תזכורת ביום האירוע',
     thankYouTemplate: 'תודה אחרי האירוע',
 
+    /** Six templates now: three purposes in each language (PRD §6.7b). */
+    hebrewGroup: 'הודעות בעברית',
+    russianGroup: 'הודעות ברוסית',
+    russianGroupHint: 'נשלחות למוזמנים שמסומנים כדוברי רוסית.',
+    /** A blank Russian template must be visible, never a silent fallback. */
+    missingRussian: (count: number) =>
+      `יש ${count} מוזמנים דוברי רוסית, אבל ההודעה ברוסית ריקה — הם לא יקבלו הזמנה בשפה שלהם.`,
+
     variablesHint: 'אפשר להשתמש ב:',
     variableName: '{{name}} — שם ההזמנה',
     variableLink: '{{link}} — הקישור האישי של המוזמן',
@@ -94,6 +102,15 @@ export const strings = {
     opened: 'נפתח',
     submitted: 'אישר',
     edited: 'עודכן',
+  },
+
+  /** Admin labels for invites.language. The guest never sees these. */
+  language: {
+    label: 'שפה',
+    he: 'עברית',
+    ru: 'רוסית',
+    /** Shown on a row only when it is NOT Hebrew, so Russian households stand out. */
+    badge: { he: '', ru: 'RU' },
   },
 
   side: {
@@ -198,7 +215,47 @@ export const strings = {
     lastContacted: (when: string) => `פנייה אחרונה: ${when}`,
   },
 
-  /** The guest-facing side (PRD §6.1–§6.4). The only screens a guest ever sees. */
+  emptyStates: {
+    noInvites: 'עדיין אין מוזמנים',
+    noInvitesHint: 'הוסיפו מוזמן ראשון כדי להתחיל',
+    noResults: 'לא נמצאו תוצאות',
+    noResultsHint: 'נסו לחפש משהו אחר',
+  },
+} as const
+
+/* ===========================================================================
+ * The guest side (PRD §6.7b) — Hebrew and Russian.
+ *
+ * Only the ADMIN uses `strings` above; it stays Hebrew because one person uses
+ * it. Everything a GUEST reads lives below and exists in both languages,
+ * chosen per household by `invites.language`.
+ *
+ * What is NOT translated: the guest's own data. For a Russian household Dmitri
+ * types `Слава` as the invitation name and `Слава, Настя` as the people, and
+ * those are stored and shown exactly as typed. The greeting is UI text with the
+ * stored name dropped into it.
+ * ========================================================================= */
+
+import type { Language } from '@/lib/types'
+
+/**
+ * Russian has three plural forms where Hebrew has two, and the rule is not
+ * "one vs many": 1 гость, 2–4 гостя, 5–20 гостей, then 21 гость again. Getting
+ * this wrong is the kind of mistake a native speaker notices immediately and a
+ * translation table cannot express, so it is a function.
+ */
+function ruPlural(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return one
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few
+  return many
+}
+
+const he = {
+  siteName: 'אישורי הגעה',
+  cancel: 'ביטול',
+
   rsvp: {
     greeting: (name: string) => `שלום ${name}`,
     intro: 'נשמח לדעת אם תגיעו',
@@ -261,9 +318,6 @@ export const strings = {
    * The WhatsApp link preview (PRD §6.15). These are the bold and grey lines
    * printed above the message text, not page copy — WhatsApp always prints them,
    * so the choice is what they say, never whether they appear.
-   *
-   * Deliberately impersonal: the message template under the card already greets
-   * the guest by name, and the same tags are served to the public landing page.
    */
   og: {
     imageAlt: 'ההזמנה לחתונה',
@@ -272,11 +326,112 @@ export const strings = {
     /** date · venue, either half omitted when it isn't set yet. */
     details: (when: string, venue: string) => [when, venue].filter(Boolean).join(' · '),
   },
+}
 
-  emptyStates: {
-    noInvites: 'עדיין אין מוזמנים',
-    noInvitesHint: 'הוסיפו מוזמן ראשון כדי להתחיל',
-    noResults: 'לא נמצאו תוצאות',
-    noResultsHint: 'נסו לחפש משהו אחר',
+/**
+ * DRAFT — every line below is marked `ru:draft` and awaits Dmitri's pass.
+ * Find them all with:  grep -n "ru:draft" lib/strings.ts
+ *
+ * Typed as `typeof he`, so a missing or misspelled key is a compile error
+ * rather than a guest seeing `undefined`.
+ */
+const ru: typeof he = {
+  siteName: 'Подтверждение участия', // ru:draft
+  cancel: 'Отмена', // ru:draft
+
+  rsvp: {
+    // ru:draft — register. "Здравствуйте" is respectful and safe for older
+    // relatives; "Привет" is warmer but casual. Hebrew "שלום" sits between.
+    greeting: (name: string) => `Здравствуйте, ${name}`,
+    intro: 'Будем рады узнать, придёте ли вы', // ru:draft
+    yes: 'Придём', // ru:draft
+    no: 'Не придём', // ru:draft
+
+    whoIsComing: 'Кто придёт?', // ru:draft
+    whoIsComingHint: 'Отметьте тех, кто придёт', // ru:draft
+    extras: 'Дополнительные гости', // ru:draft
+    extrasHint: 'Можно добавить гостей, которых нет в списке', // ru:draft
+    // ru:draft — the section heading above already says "дополнительные", so
+    // repeating it in each label reads clumsy in Russian.
+    extraAdults: 'Взрослые',
+    extraKids: 'Дети', // ru:draft
+    fewer: 'Меньше', // ru:draft
+    more: 'Больше', // ru:draft
+
+    submit: 'Отправить ответ', // ru:draft
+    submitting: 'Отправляем…', // ru:draft
+    chooseAnswer: 'Выберите, придёте ли вы', // ru:draft
+    pickSomeone: 'Отметьте хотя бы одного гостя или ответьте, что не придёте', // ru:draft
+    failed: 'Не удалось отправить. Попробуйте ещё раз.', // ru:draft
+
+    confirmation: {
+      titleAttending: 'Спасибо! Мы вас записали', // ru:draft
+      titleDeclined: 'Спасибо, что сообщили', // ru:draft
+      declined: 'Мы записали, что вы не придёте. Жаль, будем скучать!', // ru:draft
+      attending: 'Придёт', // ru:draft
+      extraGuest: 'Дополнительный гость', // ru:draft
+      // ru:draft — 1 гость · 2 гостя · 5 гостей
+      total: (count: number) =>
+        `Всего ${count} ${ruPlural(count, 'гость', 'гостя', 'гостей')}`,
+      // ru:draft — 1 взрослый · 2 взрослых, and 1 ребёнок · 2 ребёнка · 5 детей
+      breakdown: (adults: number, kids: number) =>
+        kids === 0
+          ? ''
+          : `${adults} ${ruPlural(adults, 'взрослый', 'взрослых', 'взрослых')} · ` +
+            `${kids} ${ruPlural(kids, 'ребёнок', 'ребёнка', 'детей')}`,
+      changeAnswer: 'Изменить ответ', // ru:draft
+    },
+
+    closed: {
+      title: 'Подтверждение участия закрыто', // ru:draft
+      callInstead: 'Для изменений позвоните нам:', // ru:draft
+      callInsteadNoPhone: 'Для изменений свяжитесь с нами.', // ru:draft
+      yourAnswer: 'Ваш ответ', // ru:draft
+      noAnswer: 'Ответ не получен', // ru:draft
+    },
+
+    landing: {
+      invitation: 'Мы женимся!', // ru:draft
+      seeYou: 'Будем рады видеть вас', // ru:draft
+    },
+
+    nav: {
+      rsvp: 'Подтвердить', // ru:draft
+      yourAnswer: 'Ваш ответ', // ru:draft
+      navigate: 'Маршрут', // ru:draft
+      addToCalendar: 'В календарь', // ru:draft
+      closeSheet: 'Закрыть', // ru:draft
+    },
   },
-} as const
+
+  og: {
+    imageAlt: 'Приглашение на свадьбу', // ru:draft
+    untitled: 'Вы приглашены', // ru:draft
+    // Punctuation only — nothing to translate.
+    details: (when: string, venue: string) => [when, venue].filter(Boolean).join(' · '),
+  },
+}
+
+const guestSets: Record<Language, typeof he> = { he, ru }
+
+/** Every guest-facing string, in that household's language. */
+export function guestText(lang: Language): typeof he {
+  return guestSets[lang]
+}
+
+export type GuestText = typeof he
+
+/**
+ * Hebrew is right-to-left, Russian is left-to-right. Applied to a wrapper
+ * around the guest subtree, never to <html>: the root layout cannot see
+ * `searchParams`, so it cannot know the token, so it cannot know the language.
+ */
+export function dirFor(lang: Language): 'rtl' | 'ltr' {
+  return lang === 'he' ? 'rtl' : 'ltr'
+}
+
+/** For Intl date formatting. The timezone stays Asia/Jerusalem regardless — it
+ *  is the wedding's timezone, not the reader's. */
+export function localeFor(lang: Language): string {
+  return lang === 'he' ? 'he-IL' : 'ru-RU'
+}

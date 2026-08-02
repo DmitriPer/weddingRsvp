@@ -1,3 +1,5 @@
+import type { Language } from '@/lib/types'
+
 /**
  * THE invite URL builder.
  *
@@ -12,9 +14,27 @@ function siteOrigin(): string {
   return configured.replace(/\/+$/, '') // tolerate a trailing slash
 }
 
-/** The guest's personal link. The token is the credential (PRD §7.1). */
-export function buildInviteLink(token: string): string {
-  return `${siteOrigin()}/?token=${encodeURIComponent(token)}`
+/**
+ * The guest's personal link. The token is the credential (PRD §7.1).
+ *
+ * `&lang=` is appended for Russian, and it exists for ONE reason: the WhatsApp
+ * preview card carries the invitation artwork, so a Russian household needs a
+ * Russian card — but `generateMetadata` must not query the database. Every
+ * invite sent triggers two crawler fetches, and putting a lookup on that path
+ * is what the no-arguments rule in app/page.tsx exists to prevent.
+ *
+ * The admin already knows each invite's language when it builds this link, so
+ * carrying it in the URL lets the crawler be answered with no lookup at all.
+ *
+ * It is only ever a hint for the preview. The PAGE takes its language from the
+ * database, which is authoritative — so a tampered `lang` changes which picture
+ * a crawler shows and nothing else.
+ *
+ * Hebrew is the default and omits it, keeping the common link short.
+ */
+export function buildInviteLink(token: string, language: Language = 'he'): string {
+  const base = `${siteOrigin()}/?token=${encodeURIComponent(token)}`
+  return language === 'he' ? base : `${base}&lang=${language}`
 }
 
 /** Absolute URL for OpenGraph images — relative paths are not fetched by crawlers. */

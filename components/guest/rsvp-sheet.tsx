@@ -13,15 +13,19 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { strings } from '@/lib/strings'
+import { guestText } from '@/lib/strings'
+import type { Language } from '@/lib/types'
 
 interface RsvpSheetProps {
+  lang: Language
   open: boolean
   onClose: () => void
   children: React.ReactNode
 }
 
-export function RsvpSheet({ open, onClose, children }: RsvpSheetProps) {
+export function RsvpSheet({ lang, open, onClose, children }: RsvpSheetProps) {
+  const t = guestText(lang)
+
   const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export function RsvpSheet({ open, onClose, children }: RsvpSheetProps) {
     <div className="fixed inset-0 z-20 flex items-end">
       <button
         type="button"
-        aria-label={strings.rsvp.nav.closeSheet}
+        aria-label={t.rsvp.nav.closeSheet}
         onClick={onClose}
         className="absolute inset-0 bg-bloom-strong/20"
       />

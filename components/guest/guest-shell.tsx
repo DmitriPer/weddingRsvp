@@ -12,17 +12,33 @@
  */
 
 import { InvitationBackdrop } from '@/components/guest/invitation-backdrop'
+import { dirFor } from '@/lib/strings'
+import type { Language } from '@/lib/types'
 
 interface GuestShellProps {
+  lang: Language
   greeting?: React.ReactNode
   bar?: React.ReactNode
   children?: React.ReactNode
 }
 
-export function GuestShell({ greeting, bar, children }: GuestShellProps) {
+/**
+ * `lang` and `dir` sit HERE, not on <html> (PRD §6.7b).
+ *
+ * The root layout cannot see `searchParams`, so it cannot know the token, so it
+ * cannot know which language this household reads. It stays `he`/`rtl` for the
+ * admin, and the guest subtree overrides both on this wrapper.
+ *
+ * Hebrew is right-to-left and Russian left-to-right, and `dir` is what flips
+ * the layout: every component below lays out with flex and centring, with no
+ * physical direction classes, so the whole subtree mirrors from this one
+ * attribute. `lang` matters too — it tells the browser which font and hyphenation
+ * rules to use, and screen readers which voice.
+ */
+export function GuestShell({ lang, greeting, bar, children }: GuestShellProps) {
   return (
-    <div className="relative flex min-h-dvh flex-col">
-      <InvitationBackdrop />
+    <div lang={lang} dir={dirFor(lang)} className="relative flex min-h-dvh flex-col">
+      <InvitationBackdrop lang={lang} />
 
       {greeting ? <header className="px-4 pt-6 text-center">{greeting}</header> : null}
 

@@ -6,12 +6,13 @@
  * drift from the list rendered beside them.
  */
 
-import { strings } from '@/lib/strings'
+import { guestText } from '@/lib/strings'
 import { attendingPeople, countAttending } from '@/lib/headcount'
 import { WeddingDetails } from '@/components/guest/wedding-details'
-import type { Attendee } from '@/lib/types'
+import type { Attendee, Language } from '@/lib/types'
 
 interface ConfirmationProps {
+  lang: Language
   attending: boolean
   attendees: Attendee[]
   when: string
@@ -21,22 +22,25 @@ interface ConfirmationProps {
 }
 
 export function Confirmation({
+  lang,
   attending,
   attendees,
   when,
   venue,
   onChangeAnswer,
 }: ConfirmationProps) {
+  const t = guestText(lang)
+
   const coming = attendingPeople(attendees)
   const { adults, kids, total } = countAttending(attendees)
-  const breakdown = strings.rsvp.confirmation.breakdown(adults, kids)
+  const breakdown = t.rsvp.confirmation.breakdown(adults, kids)
 
   return (
     <section className="space-y-6 text-center">
       <h1 className="text-2xl text-bloom-display">
         {attending
-          ? strings.rsvp.confirmation.titleAttending
-          : strings.rsvp.confirmation.titleDeclined}
+          ? t.rsvp.confirmation.titleAttending
+          : t.rsvp.confirmation.titleDeclined}
       </h1>
 
       {attending ? (
@@ -44,7 +48,7 @@ export function Confirmation({
           <ul className="space-y-1 text-bloom-strong">
             {coming.map((person) => (
               <li key={person.id}>
-                {person.is_placeholder ? strings.rsvp.confirmation.extraGuest : person.name}
+                {person.is_placeholder ? t.rsvp.confirmation.extraGuest : person.name}
               </li>
             ))}
           </ul>
@@ -52,14 +56,14 @@ export function Confirmation({
               the same box the form's counters use. */}
           <div className="rounded-2xl border border-bloom-ink/25 bg-paper/60 px-4 py-3">
             <p className="text-lg font-semibold text-bloom-strong">
-              {strings.rsvp.confirmation.total(total)}
+              {t.rsvp.confirmation.total(total)}
             </p>
             {breakdown ? <p className="text-sm text-bloom-strong/80">{breakdown}</p> : null}
           </div>
         </div>
       ) : (
         <p className="rounded-2xl border border-bloom-ink/25 bg-paper/60 px-4 py-3 text-bloom-strong">
-          {strings.rsvp.confirmation.declined}
+          {t.rsvp.confirmation.declined}
         </p>
       )}
 
@@ -71,7 +75,7 @@ export function Confirmation({
           onClick={onChangeAnswer}
           className="rounded-xl border border-bloom-ink/30 px-5 py-2.5 text-sm text-bloom-ink active:bg-bloom-ink/10"
         >
-          {strings.rsvp.confirmation.changeAnswer}
+          {t.rsvp.confirmation.changeAnswer}
         </button>
       ) : null}
     </section>

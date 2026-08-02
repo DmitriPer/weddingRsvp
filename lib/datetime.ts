@@ -6,6 +6,12 @@
  */
 
 export const WEDDING_TIMEZONE = 'Asia/Jerusalem'
+/**
+ * The admin's locale, and the default everywhere. Guest-facing formatters take
+ * an optional override so a Russian household reads its date in Russian; the
+ * TIMEZONE never varies — Asia/Jerusalem is the wedding's timezone, not the
+ * reader's.
+ */
 const LOCALE = 'he-IL'
 
 function toDate(value: string | Date | null | undefined): Date | null {
@@ -15,10 +21,10 @@ function toDate(value: string | Date | null | undefined): Date | null {
 }
 
 /** "15 בספטמבר 2026" */
-export function formatDate(value: string | Date | null | undefined): string {
+export function formatDate(value: string | Date | null | undefined, locale: string = LOCALE): string {
   const date = toDate(value)
   if (!date) return ''
-  return new Intl.DateTimeFormat(LOCALE, {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: WEDDING_TIMEZONE,
     day: 'numeric',
     month: 'long',
@@ -34,10 +40,10 @@ export function formatDate(value: string | Date | null | undefined): string {
  * guarantee, and "7:30 PM" in a Hebrew RTL line is the kind of thing nobody
  * notices until a guest reads it.
  */
-export function formatTime(value: string | Date | null | undefined): string {
+export function formatTime(value: string | Date | null | undefined, locale: string = LOCALE): string {
   const date = toDate(value)
   if (!date) return ''
-  return new Intl.DateTimeFormat(LOCALE, {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: WEDDING_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
@@ -46,10 +52,10 @@ export function formatTime(value: string | Date | null | undefined): string {
 }
 
 /** "15 בספטמבר 2026, 19:30" */
-export function formatDateTime(value: string | Date | null | undefined): string {
+export function formatDateTime(value: string | Date | null | undefined, locale: string = LOCALE): string {
   const date = toDate(value)
   if (!date) return ''
-  return `${formatDate(date)}, ${formatTime(date)}`
+  return `${formatDate(date, locale)}, ${formatTime(date, locale)}`
 }
 
 /** Short form for dense table cells: "15/09/2026, 19:30" */

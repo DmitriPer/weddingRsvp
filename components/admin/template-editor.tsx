@@ -3,12 +3,12 @@
 /**
  * One WhatsApp message template, with a live preview (PRD §6.5).
  *
- * Collapsed by default. Three open editors put the one being worked on off the
- * bottom of the screen; collapsed, all three fit and any of them is one click
+ * Collapsed by default. Six open editors put the one being worked on off the
+ * bottom of the screen; collapsed, all six fit and any of them is one click
  * away. A collapsed editor with unsaved changes says so in its header — hiding
  * work behind a closed panel is the obvious way this could lose someone's text.
  *
- * Each of the three templates saves on its own, so editing the invite wording
+ * Each of the six templates saves on its own, so editing the invite wording
  * can never overwrite the thank-you message someone spent time on.
  *
  * The preview matters more than it looks: a template is never seen rendered
@@ -28,7 +28,12 @@ import type { WeddingConfig } from '@/lib/types'
 
 type TemplateField = Extract<
   keyof WeddingConfig,
-  'invite_message_template' | 'day_of_message_template' | 'thank_you_message_template'
+  | 'invite_message_template_he'
+  | 'invite_message_template_ru'
+  | 'day_of_message_template_he'
+  | 'day_of_message_template_ru'
+  | 'thank_you_message_template_he'
+  | 'thank_you_message_template_ru'
 >
 
 export function TemplateEditor({

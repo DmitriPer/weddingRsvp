@@ -10,9 +10,12 @@ const EDITABLE_FIELDS = [
   'venue_name',
   'rsvp_deadline',
   'contact_phone',
-  'invite_message_template',
-  'day_of_message_template',
-  'thank_you_message_template',
+  'invite_message_template_he',
+  'invite_message_template_ru',
+  'day_of_message_template_he',
+  'day_of_message_template_ru',
+  'thank_you_message_template_he',
+  'thank_you_message_template_ru',
 ] as const
 
 export async function GET() {

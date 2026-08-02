@@ -5,7 +5,15 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { strings } from '@/lib/strings'
-import { RELATIONS, SIDES, type Invite, type Relation, type Side } from '@/lib/types'
+import {
+  LANGUAGES,
+  RELATIONS,
+  SIDES,
+  type Invite,
+  type Language,
+  type Relation,
+  type Side,
+} from '@/lib/types'
 
 export function InviteEditForm({
   invite,
@@ -20,6 +28,7 @@ export function InviteEditForm({
   const [phone, setPhone] = useState(invite.phone ?? '')
   const [side, setSide] = useState<Side | ''>(invite.side ?? '')
   const [relation, setRelation] = useState<Relation | ''>(invite.relation ?? '')
+  const [language, setLanguage] = useState<Language>(invite.language)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(event: React.FormEvent) {
@@ -34,6 +43,7 @@ export function InviteEditForm({
         phone: phone.trim() || null,
         side: side || null,
         relation: relation || null,
+        language,
       }),
     })
     const body = await response.json()
@@ -82,7 +92,7 @@ export function InviteEditForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <select
           value={side}
           onChange={(event) => setSide(event.target.value as Side | '')}
@@ -93,6 +103,18 @@ export function InviteEditForm({
           {SIDES.map((value) => (
             <option key={value} value={value}>
               {strings.side[value]}
+            </option>
+          ))}
+        </select>
+        <select
+          value={language}
+          onChange={(event) => setLanguage(event.target.value as Language)}
+          aria-label={strings.language.label}
+          className="rounded-md border border-border px-3 py-1.5"
+        >
+          {LANGUAGES.map((value) => (
+            <option key={value} value={value}>
+              {strings.language[value]}
             </option>
           ))}
         </select>

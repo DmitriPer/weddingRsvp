@@ -1,3 +1,5 @@
+import type { Language } from '@/lib/types'
+
 /**
  * THE WhatsApp preview card's shape (PRD §6.15).
  *
@@ -33,8 +35,21 @@
  */
 export const OG_COUPLE_NAMES = 'Nicole & Dima'
 
-/** Public path of the built card. Served straight from `public/`. */
-export const OG_CARD_PATH = '/assets/og-card.jpg'
+/**
+ * Public path of the built card, per language. Served straight from `public/`.
+ *
+ * Russian points at the same file until the designer delivers a Russian
+ * invitation — the card is a composition OF the artwork, so the two change
+ * together. Rebuild with `npm run og-card <file>` after swapping the backdrop
+ * in components/guest/invitation-backdrop.tsx.
+ */
+export const OG_CARD_PATHS: Record<Language, string> = {
+  he: '/assets/og-card.jpg',
+  ru: '/assets/og-card.jpg',
+}
+
+/** The Hebrew card. Kept for the build script, which composes one at a time. */
+export const OG_CARD_PATH = OG_CARD_PATHS.he
 
 export const OG_CARD_WIDTH = 1200
 export const OG_CARD_HEIGHT = 630

@@ -28,9 +28,16 @@ import { buildWhatsAppLink } from '@/lib/links'
 import { renderForInvite } from '@/lib/templates'
 import { formatShort } from '@/lib/datetime'
 import { strings } from '@/lib/strings'
-import type { Invite } from '@/lib/types'
+import type { Invite, WeddingConfig } from '@/lib/types'
 
-export function WaSendButton({ invite, template }: { invite: Invite; template: string }) {
+/** The invite template for this household's language. */
+function templateFor(config: WeddingConfig, invite: Invite): string {
+  return invite.language === 'ru'
+    ? config.invite_message_template_ru
+    : config.invite_message_template_he
+}
+
+export function WaSendButton({ invite, config }: { invite: Invite; config: WeddingConfig }) {
   const router = useRouter()
   const [asking, setAsking] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -46,7 +53,7 @@ export function WaSendButton({ invite, template }: { invite: Invite; template: s
     )
   }
 
-  const message = renderForInvite(template, invite)
+  const message = renderForInvite(templateFor(config, invite), invite)
   const href = buildWhatsAppLink(invite.phone, message)
 
   const attemptsLabel =

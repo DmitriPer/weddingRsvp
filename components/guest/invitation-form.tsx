@@ -16,10 +16,11 @@
  */
 
 import { useState } from 'react'
-import { strings } from '@/lib/strings'
-import type { Attendee, RsvpResult } from '@/lib/types'
+import { guestText } from '@/lib/strings'
+import type { Attendee, Language, RsvpResult } from '@/lib/types'
 
 interface InvitationFormProps {
+  lang: Language
   token: string
   attendees: Attendee[]
   /** null = never answered. Decides whether ticks are pre-filled or stored. */
@@ -45,12 +46,14 @@ function countPlaceholders(attendees: Attendee[], isChild: boolean): number {
 }
 
 export function InvitationForm({
+  lang,
   token,
   attendees,
   initialAttending,
   onSubmitted,
   onCancel,
 }: InvitationFormProps) {
+  const t = guestText(lang)
   const named = attendees.filter((person) => !person.is_placeholder)
 
   const [attending, setAttending] = useState<boolean | null>(initialAttending)
@@ -72,11 +75,11 @@ export function InvitationForm({
     event.preventDefault()
 
     if (attending === null) {
-      setError(strings.rsvp.chooseAnswer)
+      setError(t.rsvp.chooseAnswer)
       return
     }
     if (attending && ticked.length === 0 && extraAdults + extraKids === 0) {
-      setError(strings.rsvp.pickSomeone)
+      setError(t.rsvp.pickSomeone)
       return
     }
 
@@ -99,7 +102,7 @@ export function InvitationForm({
       // 410: the deadline passed while this page sat open. The server is the
       // one that decides, so say so rather than letting the form look broken.
       if (response.status === 410) {
-        setError(strings.rsvp.closed.title)
+        setError(t.rsvp.closed.title)
         return
       }
 
@@ -108,7 +111,7 @@ export function InvitationForm({
 
       onSubmitted(body.data as RsvpResult)
     } catch {
-      setError(strings.rsvp.failed)
+      setError(t.rsvp.failed)
     } finally {
       setSaving(false)
     }
@@ -117,15 +120,15 @@ export function InvitationForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <fieldset className="space-y-3" disabled={saving}>
-        <legend className="sr-only">{strings.rsvp.intro}</legend>
+        <legend className="sr-only">{t.rsvp.intro}</legend>
         <div className="grid grid-cols-2 gap-3">
           <AnswerButton
-            label={strings.rsvp.yes}
+            label={t.rsvp.yes}
             selected={attending === true}
             onClick={() => setAttending(true)}
           />
           <AnswerButton
-            label={strings.rsvp.no}
+            label={t.rsvp.no}
             selected={attending === false}
             onClick={() => setAttending(false)}
           />
@@ -137,8 +140,8 @@ export function InvitationForm({
         <>
           {named.length > 0 ? (
             <fieldset className="space-y-2" disabled={saving}>
-              <legend className="font-semibold text-bloom-strong">{strings.rsvp.whoIsComing}</legend>
-              <p className="text-sm text-bloom-ink">{strings.rsvp.whoIsComingHint}</p>
+              <legend className="font-semibold text-bloom-strong">{t.rsvp.whoIsComing}</legend>
+              <p className="text-sm text-bloom-ink">{t.rsvp.whoIsComingHint}</p>
               {named.map((person) => (
                 <label
                   key={person.id}
@@ -161,14 +164,15 @@ export function InvitationForm({
           ) : null}
 
           <fieldset className="space-y-3" disabled={saving}>
-            <legend className="font-semibold text-bloom-strong">{strings.rsvp.extras}</legend>
-            <p className="text-sm text-bloom-ink">{strings.rsvp.extrasHint}</p>
+            <legend className="font-semibold text-bloom-strong">{t.rsvp.extras}</legend>
+            <p className="text-sm text-bloom-ink">{t.rsvp.extrasHint}</p>
             <Counter
-              label={strings.rsvp.extraAdults}
+              lang={lang}
+              label={t.rsvp.extraAdults}
               value={extraAdults}
               onChange={setExtraAdults}
             />
-            <Counter label={strings.rsvp.extraKids} value={extraKids} onChange={setExtraKids} />
+            <Counter lang={lang} label={t.rsvp.extraKids} value={extraKids} onChange={setExtraKids} />
           </fieldset>
         </>
       ) : null}
@@ -185,7 +189,7 @@ export function InvitationForm({
           disabled={saving}
           className="flex-1 rounded-xl bg-bloom-ink px-4 py-3.5 font-semibold text-paper active:bg-bloom-strong disabled:opacity-60"
         >
-          {saving ? strings.rsvp.submitting : strings.rsvp.submit}
+          {saving ? t.rsvp.submitting : t.rsvp.submit}
         </button>
         {onCancel ? (
           <button
@@ -194,7 +198,7 @@ export function InvitationForm({
             disabled={saving}
             className="rounded-xl border border-bloom-ink/30 px-4 py-3.5 text-sm text-bloom-ink active:bg-bloom-ink/10"
           >
-            {strings.app.cancel}
+            {t.cancel}
           </button>
         ) : null}
       </div>
@@ -228,14 +232,17 @@ function AnswerButton({
 }
 
 function Counter({
+  lang,
   label,
   value,
   onChange,
 }: {
+  lang: Language
   label: string
   value: number
   onChange: (next: number) => void
 }) {
+  const t = guestText(lang)
   return (
     <div className="flex items-center justify-between rounded-xl border border-bloom-ink/25 bg-paper/60 px-3 py-2.5 text-bloom-strong">
       <span>{label}</span>
@@ -243,7 +250,7 @@ function Counter({
         <button
           type="button"
           onClick={() => onChange(Math.max(0, value - 1))}
-          aria-label={`${strings.rsvp.fewer} ${label}`}
+          aria-label={`${t.rsvp.fewer} ${label}`}
           className="size-9 rounded-lg border border-bloom-ink/30 text-lg text-bloom-ink active:bg-bloom-ink/10"
         >
           −
@@ -252,7 +259,7 @@ function Counter({
         <button
           type="button"
           onClick={() => onChange(value + 1)}
-          aria-label={`${strings.rsvp.more} ${label}`}
+          aria-label={`${t.rsvp.more} ${label}`}
           className="size-9 rounded-lg border border-bloom-ink/30 text-lg text-bloom-ink active:bg-bloom-ink/10"
         >
           +

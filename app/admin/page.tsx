@@ -56,7 +56,7 @@ export default async function InviteesPage() {
           hint={strings.emptyStates.noInvitesHint}
         />
       ) : (
-        <InviteTable invites={invites} inviteTemplate={config.invite_message_template} />
+        <InviteTable invites={invites} config={config} />
       )}
     </div>
   )

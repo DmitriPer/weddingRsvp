@@ -7,12 +7,13 @@
  * the deadline is that numbers cannot move after the caterer is committed to.
  */
 
-import { strings } from '@/lib/strings'
+import { guestText } from '@/lib/strings'
 import { Confirmation } from '@/components/guest/confirmation'
 import { WeddingDetails } from '@/components/guest/wedding-details'
-import type { Attendee } from '@/lib/types'
+import type { Attendee, Language } from '@/lib/types'
 
 interface RsvpClosedProps {
+  lang: Language
   /** null = never answered, and now never will through the form. */
   attending: boolean | null
   attendees: Attendee[]
@@ -21,32 +22,34 @@ interface RsvpClosedProps {
   phone: string
 }
 
-export function RsvpClosed({ attending, attendees, when, venue, phone }: RsvpClosedProps) {
+export function RsvpClosed({ lang, attending, attendees, when, venue, phone }: RsvpClosedProps) {
+  const t = guestText(lang)
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-bloom-ink/25 px-4 py-3 text-center">
-        <p className="font-semibold text-bloom-strong">{strings.rsvp.closed.title}</p>
+        <p className="font-semibold text-bloom-strong">{t.rsvp.closed.title}</p>
         {phone ? (
           <p className="mt-1 text-sm text-bloom-ink">
-            {strings.rsvp.closed.callInstead}{' '}
+            {t.rsvp.closed.callInstead}{' '}
             <a href={`tel:${phone}`} className="ltr-nums inline-block underline">
               {phone}
             </a>
           </p>
         ) : (
-          <p className="mt-1 text-sm text-bloom-ink">{strings.rsvp.closed.callInsteadNoPhone}</p>
+          <p className="mt-1 text-sm text-bloom-ink">{t.rsvp.closed.callInsteadNoPhone}</p>
         )}
       </div>
 
       {attending === null ? (
         <section className="space-y-6 text-center">
-          <p className="text-sm text-bloom-ink">{strings.rsvp.closed.yourAnswer}</p>
-          <p>{strings.rsvp.closed.noAnswer}</p>
+          <p className="text-sm text-bloom-ink">{t.rsvp.closed.yourAnswer}</p>
+          <p>{t.rsvp.closed.noAnswer}</p>
           <WeddingDetails when={when} venue={venue} />
         </section>
       ) : (
         // No onChangeAnswer: there is nothing to change any more.
-        <Confirmation attending={attending} attendees={attendees} when={when} venue={venue} />
+        <Confirmation lang={lang} attending={attending} attendees={attendees} when={when} venue={venue} />
       )}
     </div>
   )

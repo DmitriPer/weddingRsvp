@@ -6,6 +6,13 @@
  */
 
 export type InviteStatus = 'added' | 'pending' | 'opened' | 'submitted' | 'edited'
+
+/**
+ * Which language a household reads (PRD §6.7b). Hebrew is the default and
+ * Russian the exception, which is why 'he' comes first and is the column
+ * default — every existing invite stays valid.
+ */
+export type Language = 'he' | 'ru'
 export type Side = 'bride' | 'groom' | 'shared'
 export type Relation = 'family' | 'friend' | 'work' | 'invited_by_family'
 
@@ -16,6 +23,8 @@ export const INVITE_STATUSES: readonly InviteStatus[] = [
   'submitted',
   'edited',
 ] as const
+
+export const LANGUAGES: readonly Language[] = ['he', 'ru'] as const
 
 export const SIDES: readonly Side[] = ['bride', 'groom', 'shared'] as const
 export const RELATIONS: readonly Relation[] = [
@@ -34,6 +43,8 @@ export interface Invite {
   status: InviteStatus
   side: Side | null
   relation: Relation | null
+  /** Drives the guest page's text, direction, artwork and WhatsApp template. */
+  language: Language
 
   last_contacted_at: string | null
   contact_attempts: number
@@ -85,9 +96,14 @@ export interface WeddingConfig {
   /** null = no deadline, the form is always open */
   rsvp_deadline: string | null
   contact_phone: string
-  invite_message_template: string
-  day_of_message_template: string
-  thank_you_message_template: string
+  /** Three purposes x two languages (PRD §6.7b). The wa.me button picks the
+      pair member matching that household's `language`. */
+  invite_message_template_he: string
+  invite_message_template_ru: string
+  day_of_message_template_he: string
+  day_of_message_template_ru: string
+  thank_you_message_template_he: string
+  thank_you_message_template_ru: string
   updated_at: string
 }
 
@@ -153,6 +169,8 @@ export interface CreateInviteInput {
   phone?: string | null
   side?: Side | null
   relation?: Relation | null
+  /** Omitted means Hebrew — the database default. */
+  language?: Language
 }
 
 export type UpdateInviteInput = Partial<CreateInviteInput>
