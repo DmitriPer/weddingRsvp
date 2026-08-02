@@ -1,9 +1,11 @@
 # Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v3 — greenfield spec, the source of truth for what gets built.
+**Status:** v4 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
+
+**v4 (2026-08-02):** downloadable `.xlsx` template with dropdown validation, and `.xlsx` only for template, import and export (§6.7).
 
 **v3 (2026-08-02):** bilingual guest side, Hebrew default and Russian per household (§6.7b) · six message templates · the import spreadsheet format, preview-before-write, and multi-select delete (§6.6, §6.7).
 
@@ -208,6 +210,12 @@ Add, edit, and delete an invite (name, phone, side, relation). Add, edit, rename
 
 **Import adds; it never updates.** Every row becomes a new invitation. No matching against existing rows, no merge, no upsert. Editing happens in the UI afterwards; a bad import is cleared with multi-select delete and re-run. Decided knowingly (2026-08-02): matching logic would need a stable key the spreadsheet does not have, and would fail in ways that are hard to see.
 
+**`.xlsx` only — not CSV.** The `אנשים` column holds comma-separated names, and in CSV the comma *is* the delimiter, so every such cell depends on correct quoting. One missing quote turns a row into the wrong number of columns and does it **silently**, producing a plausible wrong result rather than an error. Hebrew adds a second CSV trap: Excel needs a UTF-8 BOM or it renders `?????`. In `.xlsx` a cell is a cell and encoding is part of the format, so neither failure exists.
+
+**Download an empty template first.** The admin downloads `תבנית-מוזמנים.xlsx` — the exact headers, one filled example row showing the shape, and **dropdown validation on `צד`, `קשר` and `שפה`** so the three constrained columns cannot be mistyped. Fill it in, upload the same file.
+
+This is what makes strict header matching reasonable: nobody has to guess the format or copy it from documentation, and the columns where a typo would reject a row are the columns you cannot type into freely.
+
 **Columns are matched by header name, not position**, so column order and extra columns don't matter.
 
 | Header | Maps to | Notes |
@@ -224,7 +232,9 @@ People are named, never counted — the spreadsheet carries names in `אנשים
 
 **Preview before writing.** The importer parses the file and reports what it found — rows ready, rows with warnings, rows rejected and why — and writes **nothing** until confirmed. This is the point of the feature, not a nicety: a mistyped phone silently breaks that guest's `wa.me` link, and `שפה = rus` would send a Russian family a Hebrew invitation. Both are cheap to fix in the sheet and expensive to find afterwards.
 
-**Export** the guest list (for the caterer) and a seating/arrival list. Both via **`exceljs`**.
+**Export** the guest list (for the caterer) and a seating/arrival list, both `.xlsx`. The guest-list export uses the **same columns as the import template**, so an export can be edited and re-imported as a new batch, and so there is one format to understand rather than two.
+
+All three — template, import, export — via **`exceljs`**.
 
 ### 6.7b Bilingual guest side — Hebrew and Russian
 
@@ -385,6 +395,9 @@ Non-negotiable.
 - **Russian mirrors the page to LTR** rather than pouring Russian into an RTL layout. Half-mirrored reads wrong to a native speaker, and the direction is per-household so it cannot live on `<html>`.
 - **A second Russian artwork**, with its own preview card.
 - **Six template columns, not a templates table.** `wedding_config` is a single row by design and the set is fixed at six; a table would add a join to read what are effectively six settings.
+- **`.xlsx` only, no CSV.** The people column holds comma-separated names, which collides with CSV's delimiter and fails silently rather than loudly; Hebrew in CSV also needs a BOM Excel does not add. A cell in `.xlsx` has neither problem.
+- **The admin downloads an empty template rather than reading the format from documentation.** With dropdowns on the three constrained columns, the places a typo would reject a row are places that cannot be freely typed. This is what makes strict header matching reasonable.
+- **Export uses the import template's columns**, so an export can be edited and re-imported, and there is one format rather than two.
 - **Import adds, never updates.** Matching would need a stable key the spreadsheet doesn't have. A bad import is cleared with multi-select delete and re-run.
 - **People are imported by name, never as a count.** A count cannot be ticked, cannot show who dropped out, and cannot be seated. Children get their own column rather than a marker inside the names.
 - **The importer previews before writing.** The failures it catches — a mistyped phone, `שפה = rus` — are silent and expensive later: a broken `wa.me` link is discovered from a guest who never replied.
