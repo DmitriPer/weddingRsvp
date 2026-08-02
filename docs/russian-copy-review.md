@@ -130,6 +130,8 @@ Not page copy. WhatsApp always prints these above the message, so the only choic
 
 **The three WhatsApp message templates.** Those are yours to write, not translate — you'll type them in the admin under **הגדרות → הודעות ברוסית**. They're currently empty, which means a Russian household would get a blank message. Deliberate: it does not fall back to Hebrew, and the settings tab warns you as soon as a Russian household exists.
 
+**The preview card's text.** It is painted onto the artwork by `scripts/build-og-card.ts` from `wedding_config`, not written here — the date follows the language's locale and the venue comes from `venue_name_ru`. Run `npm run og-card` after changing either.
+
 **The calendar file (`.ics`).** It names an Israeli venue and is titled with `couple_names`, both of which stay Hebrew. Decided, not overlooked.
 
 **The admin panel.** Hebrew only — you're the only person who uses it.

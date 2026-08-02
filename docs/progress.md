@@ -167,6 +167,10 @@ Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 
 Each of these cost real time or was found by testing. They are all live decisions, not history.
 
+**The preview card PAINTS the date and venue onto the artwork** (2026-08-02), so they are language-dependent and `npm run og-card` now builds two files — `og-card.jpg` and `og-card-ru.jpg`. Rebuild BOTH and commit both whenever the date, the venue or the artwork changes; they are static files, so nothing at runtime regenerates them and nothing in a build will notice they are stale.
+
+The Latin couple name is identical in both by design — the invitation is lettered "NICOLE & DIMA".
+
 **The venue name has two jobs, split by job rather than by language** (2026-08-02). `venue_name` is what Waze searches and is never translated; `venue_name_ru` is display only, for the preview line and the guest page. Waze finds the Hebrew address and may find nothing for a Cyrillic transliteration, so a guest tapping "Как добраться" into a dead end is the failure this avoids. Blank `venue_name_ru` falls back to Hebrew — the OPPOSITE of the message templates, which must not fall back, because a Hebrew address is still usable to a Russian speaker while a whole Hebrew invitation is not. See `lib/venue.ts`.
 
 **Ship the migration BEFORE the code that needs it** (2026-08-02). The settings form started sending `venue_name_ru` while the column did not exist yet, so the first thing Dmitri saw was a 500 on save rather than a new field. Migration first, then the code.

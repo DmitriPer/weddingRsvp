@@ -25,11 +25,14 @@ import { createElement } from 'react'
 import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
 import { formatDateTime } from '../lib/datetime'
+import { localeFor } from '../lib/strings'
+import { venueForDisplay } from '../lib/venue'
+import { LANGUAGES, type Language, type WeddingConfig } from '../lib/types'
 import {
   OG_CARD_HEIGHT,
   OG_CARD_MAX_BYTES,
-  OG_CARD_PATH,
   OG_CARD_WIDTH,
+  OG_CARD_PATHS,
   OG_COUPLE_NAMES,
 } from '../lib/og'
 
@@ -126,7 +129,7 @@ function readEnv(name: string): string {
  * a React Server Component. scripts/create-admin.ts talks to Supabase the same
  * way for the same reason.
  */
-async function readCardText(): Promise<CardText> {
+async function readCardText(language: Language): Promise<CardText> {
   const supabase = createClient(
     readEnv('NEXT_PUBLIC_SUPABASE_URL'),
     readEnv('SUPABASE_SECRET_KEY'),
@@ -135,7 +138,7 @@ async function readCardText(): Promise<CardText> {
 
   const { data, error } = await supabase
     .from('wedding_config')
-    .select('couple_names, wedding_date_time, venue_name')
+    .select('couple_names, wedding_date_time, venue_name, venue_name_ru')
     .single()
 
   if (error) {
@@ -143,11 +146,14 @@ async function readCardText(): Promise<CardText> {
   }
 
   return {
-    // The card's own Latin lettering wins; config is the fallback.
+    // The card's own Latin lettering wins; config is the fallback. Identical in
+    // both languages — the invitation is lettered "NICOLE & DIMA".
     couple: OG_COUPLE_NAMES.trim() || (data.couple_names ?? '').trim(),
-    // Via lib/datetime, so the card reads the same instant as every screen.
-    when: formatDateTime(data.wedding_date_time),
-    venue: (data.venue_name ?? '').trim(),
+    // Via lib/datetime, so the card reads the same instant as every screen —
+    // and in the reader's language, which is the point of building two cards.
+    when: formatDateTime(data.wedding_date_time, localeFor(language)),
+    // Display, never navigation: the card is read, not tapped (lib/venue.ts).
+    venue: venueForDisplay(data as unknown as WeddingConfig, language).trim(),
   }
 }
 
@@ -282,14 +288,17 @@ async function main(): Promise<void> {
   const source = process.argv[2] ?? DEFAULT_SOURCE
   readFileSync(source) // fail here, with the path, rather than inside sharp
 
-  const text = await readCardText()
-  const destination = path.join('public', OG_CARD_PATH.replace(/^\//, ''))
-
   // The monogram is composited as its own layer rather than embedded in the SVG
   // overlay: librsvg would have to resolve a nested file reference, and a
   // silently-missing one is a card that ships with a hole in it.
   const logo = await sharp(LOGO).resize({ height: LOGO_HEIGHT }).png().toBuffer()
   const { width: logoWidth } = await sharp(logo).metadata()
+
+  // One card per language. They share the artwork and the Latin couple name;
+  // the painted date and venue are what differ.
+  for (const language of LANGUAGES) {
+  const text = await readCardText(language)
+  const destination = path.join('public', OG_CARD_PATHS[language].replace(/^\//, ''))
   const coupleName = await renderCoupleName(text.couple)
 
   await sharp(await composeArtwork(source))
@@ -313,15 +322,15 @@ async function main(): Promise<void> {
     )
   }
 
-  console.log(`${source} → ${destination}`)
-  console.log(`${OG_CARD_WIDTH}×${OG_CARD_HEIGHT}, ${kb} KB (budget ${OG_CARD_MAX_BYTES / 1024} KB)`)
+  console.log(`[${language}] ${source} → ${destination}`)
+  console.log(`      ${OG_CARD_WIDTH}×${OG_CARD_HEIGHT}, ${kb} KB (budget ${OG_CARD_MAX_BYTES / 1024} KB)`)
+  console.log(`      ${text.couple || '(no couple names set)'}`)
+  console.log(`      ${text.when || '(no date set)'}`)
+  console.log(`      ${text.venue || '(no venue set)'}`)
   console.log('')
-  console.log('Painted onto the card, from wedding_config:')
-  console.log(`  ${text.couple || '(no couple names set)'}`)
-  console.log(`  ${text.when || '(no date set)'}`)
-  console.log(`  ${text.venue || '(no venue set)'}`)
-  console.log('')
-  console.log('Look at it, then commit it: the card is served as a static file.')
+  }
+
+  console.log('Look at both, then commit them: the cards are served as static files.')
 }
 
 main().catch((error: unknown) => {

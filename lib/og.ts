@@ -38,17 +38,20 @@ export const OG_COUPLE_NAMES = 'Nicole & Dima'
 /**
  * Public path of the built card, per language. Served straight from `public/`.
  *
- * Russian points at the same file until the designer delivers a Russian
- * invitation — the card is a composition OF the artwork, so the two change
- * together. Rebuild with `npm run og-card <file>` after swapping the backdrop
- * in components/guest/invitation-backdrop.tsx.
+ * Two files, because the card PAINTS the date and venue onto the artwork and
+ * both differ by language — a Russian household reading a Hebrew date and a
+ * Hebrew address in the picture is the thing this exists to fix.
+ *
+ * `npm run og-card` builds both. They share the artwork; only the painted lines
+ * differ. When the designer delivers a Russian invitation, point the script at
+ * it and the two will differ in the picture as well.
  */
 export const OG_CARD_PATHS: Record<Language, string> = {
   he: '/assets/og-card.jpg',
-  ru: '/assets/og-card.jpg',
+  ru: '/assets/og-card-ru.jpg',
 }
 
-/** The Hebrew card. Kept for the build script, which composes one at a time. */
+/** The Hebrew card, where a single default is needed. */
 export const OG_CARD_PATH = OG_CARD_PATHS.he
 
 export const OG_CARD_WIDTH = 1200
