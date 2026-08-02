@@ -167,6 +167,10 @@ Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 
 Each of these cost real time or was found by testing. They are all live decisions, not history.
 
+**A hydration warning naming only `<body>` is a browser extension, not a bug** (2026-08-02). The diff showed one attribute, `cz-shortcut-listen="true"`, which ColorZilla attaches to `<body>` before React hydrates; password managers and page translators do the same with their own. Nothing in the app can prevent it — the attribute arrives before our code runs — so `<body>` carries `suppressHydrationWarning`, which applies to that element's own attributes only and not to any child.
+
+**Read the diff before believing a hydration error.** If the mismatch names an element the app actually renders, it is real; if it names `<body>` or `<html>` and an attribute with a vendor prefix, it is an extension. Confirm in a private window.
+
 **Israeli phones are normalised on input** (2026-08-02, `lib/phone.ts`). `0549546899` becomes `+972549546899` at every entry point — the add form, the edit form and the importer — so the database holds one form. The failure it prevents is silent: `wa.me` takes digits only, so a locally-written number stored as typed produced `wa.me/0549546899`, which resolves to nothing while looking perfectly fine.
 
 **A leading `+` is never touched.** That is the escape hatch for a foreign guest, and it means the Israel assumption can stay hardcoded without trapping anyone. Anything unrecognisable is stored AS TYPED and flagged rather than guessed at — a wrong number that looks right is worse than one that looks wrong.
