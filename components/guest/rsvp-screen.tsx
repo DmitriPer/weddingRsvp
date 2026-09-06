@@ -25,6 +25,8 @@ import type { Attendee, Language, RsvpResult } from '@/lib/types'
 
 interface RsvpScreenProps {
   lang: Language
+  /** Already resolved for this household's language (lib/invitation-image.ts). */
+  backdropImage: string
   token: string
   inviteName: string
   attendees: Attendee[]
@@ -48,6 +50,7 @@ interface SavedAnswer {
 
 export function RsvpScreen({
   lang,
+  backdropImage,
   token,
   inviteName,
   attendees,
@@ -85,6 +88,7 @@ export function RsvpScreen({
   return (
     <GuestShell
       lang={lang}
+      backdropImage={backdropImage}
       greeting={<GuestGreeting>{t.rsvp.greeting(inviteName)}</GuestGreeting>}
       bar={
         <ActionBar

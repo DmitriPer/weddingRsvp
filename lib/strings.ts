@@ -97,6 +97,27 @@ export const strings = {
 
     saved: 'ההגדרות נשמרו',
     saveFailed: 'השמירה נכשלה',
+
+    /** The invitation backdrop image gallery (PRD §6.16). Uploading adds a new
+        gallery entry and activates it immediately; past uploads are never
+        deleted by an upload, only by an explicit action here. */
+    image: {
+      title: 'תמונת רקע להזמנה',
+      hint: 'התמונה שממלאת את המסך כשהמוזמן פותח את הקישור שלו. JPEG, PNG או WebP, עד 2MB. אפשר להעלות כמה תמונות ולבחור ביניהן.',
+      he: 'תמונה בעברית',
+      ru: 'תמונה ברוסית',
+      ruHint: 'השאירו ריק כדי להציג למוזמנים דוברי רוסית את התמונה העברית.',
+      choose: 'העלאת תמונה חדשה',
+      uploading: 'מעלה…',
+      uploaded: 'התמונה עודכנה',
+      failed: 'ההעלאה נכשלה',
+      active: 'פעילה',
+      selected: 'התמונה הפעילה עודכנה',
+      selectFailed: 'הבחירה נכשלה',
+      confirmDelete: 'למחוק את התמונה הזו לצמיתות?',
+      deleteFailed: 'המחיקה נכשלה',
+      empty: 'עדיין לא הועלו תמונות',
+    },
   },
 
   status: {

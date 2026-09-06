@@ -9,8 +9,9 @@
 
 import { redirect } from 'next/navigation'
 import { verifyAdmin } from '@/lib/auth'
-import { getConfig, listInvites } from '@/lib/data'
+import { getConfig, listInvitationImages, listInvites } from '@/lib/data'
 import { ConfigForm } from '@/components/admin/config-form'
+import { InvitationImageForm } from '@/components/admin/invitation-image-form'
 import { TemplateEditor } from '@/components/admin/template-editor'
 import { strings } from '@/lib/strings'
 
@@ -21,7 +22,12 @@ export default async function SettingsPage() {
   // the page safe even if the matcher is ever misconfigured.
   if (!(await verifyAdmin())) redirect('/admin/login')
 
-  const [config, invites] = await Promise.all([getConfig(), listInvites()])
+  const [config, invites, heImages, ruImages] = await Promise.all([
+    getConfig(),
+    listInvites(),
+    listInvitationImages('he'),
+    listInvitationImages('ru'),
+  ])
 
   // A Russian household with a blank Russian template would otherwise receive a
   // Hebrew invitation and nothing would say so — the exact failure PRD §6.7b
@@ -38,6 +44,10 @@ export default async function SettingsPage() {
           <p className="text-sm text-muted">{strings.settings.detailsHint}</p>
         </div>
         <ConfigForm config={config} />
+      </section>
+
+      <section>
+        <InvitationImageForm config={config} heImages={heImages} ruImages={ruImages} />
       </section>
 
       <section className="space-y-3">

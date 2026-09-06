@@ -96,6 +96,11 @@ export interface WeddingConfig {
   venue_name: string
   /** Display only, for Russian households. Blank falls back to venue_name. */
   venue_name_ru: string
+  /** The guest page's full-screen background (PRD §6.16). A Storage public URL
+      once uploaded from /admin/settings; defaults to the committed demo art. */
+  invitation_image_he: string
+  /** Blank falls back to invitation_image_he (lib/invitation-image.ts). */
+  invitation_image_ru: string
   /** null = no deadline, the form is always open */
   rsvp_deadline: string | null
   contact_phone: string
