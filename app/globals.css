@@ -12,7 +12,7 @@
   --muted: #6b7280;
   --border: #e5e7eb;
   --surface: #f9fafb;
-  --accent: #1f6f54;
+  --accent: #527d39;
   --danger: #b42318;
   --warning: #b54708;
 
@@ -30,9 +30,9 @@
    * darkened until they pass on white. The palette green itself does not —
    * 2.83:1 against a 4.5:1 requirement.
    *
-   *   --bloom-display  #7FA46D  2.83:1  the palette green. LARGE TEXT ONLY.
-   *   --bloom-ink      #567348  5.33:1  AA. Labels, buttons, body.
-   *   --bloom-strong   #475F3B  7.08:1  AAA.
+   *   --bloom-display  #7AB359  2.49:1  the palette green. LARGE TEXT ONLY.
+   *   --bloom-ink      #527D39  4.83:1  AA. Labels, buttons, body.
+   *   --bloom-strong   #3F602C  7.19:1  AAA.
    *
    * Using --bloom-display for a form label is the one mistake to avoid: it
    * looks right on a monitor and vanishes on a phone outdoors.
@@ -41,9 +41,9 @@
    * itself — border-bloom-ink/25, bg-bloom-ink/10 — never as a filled panel.
    */
   --paper: #ffffff;
-  --bloom-display: #7fa46d;
-  --bloom-ink: #567348;
-  --bloom-strong: #475f3b;
+  --bloom-display: #7ab359;
+  --bloom-ink: #527d39;
+  --bloom-strong: #3f602c;
 }
 
 @theme inline {
