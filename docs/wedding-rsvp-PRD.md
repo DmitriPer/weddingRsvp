@@ -1,9 +1,13 @@
 # Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v7 — greenfield spec, the source of truth for what gets built.
+**Status:** v9 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
+
+**v9 (2026-09-06):** the invitation backdrop upload becomes a gallery per language — uploads accumulate rather than overwrite, any past upload can be reactivated, and a non-active one can be deleted (§6.16).
+
+**v8 (2026-09-06):** the guest page's backdrop image becomes admin-uploadable, per language, from Settings — replacing the hardcoded artwork constant (§6.16).
 
 **v7 (2026-09-06):** invitee table gains independent filters by relation and by side, combinable with each other and with the status filter (§6.6).
 
@@ -350,7 +354,16 @@ Every invite triggers **two** non-human fetches: the meta tags and the generated
 - **Nothing on the crawler path may mutate status.** Satisfied structurally rather than by a guard: the card is a static file, so no code runs to serve it, and `generateMetadata` **takes no arguments** — it never receives the token, so it cannot look an invite up even by mistake.
 
 ### 6.16 Asset upload
-An admin screen uploading images to a Supabase Storage bucket — the invitation picture and the OG card artwork — so they can be changed without touching code. Admin writes, public reads. Mock mode stores locally so the flow works without a real project.
+
+The guest page's full-screen backdrop image is admin-uploadable from `/admin/settings`, one image per language (Hebrew, Russian) — `wedding_config.invitation_image_he` / `invitation_image_ru`, a Supabase Storage (`assets` bucket) public URL. Admin writes, public reads (§7.2's RLS deny-all applies to tables, not Storage — the bucket has its own policies, `supabase/migrations/003_storage.sql`).
+
+Blank Russian falls back to the Hebrew image (`lib/invitation-image.ts`), the same reasoning as `venue_name_ru` (§6.7b): a Russian household seeing the Hebrew artwork is a lesser gap than seeing no background at all.
+
+Uploads accept JPEG/PNG/WebP up to 2MB and are not resized server-side — this repo does not run image processing at request time (`sharp` stays a build-script-only devDependency).
+
+**A gallery, not a single slot.** Every upload gets a unique Storage path (`invitation/{language}/{timestamp}-{random}.{ext}`) and is never overwritten by a later one — Hebrew and Russian each keep their own history, never shared between languages. Settings shows every past upload as a thumbnail: uploading a new image makes it active immediately, but an admin can also click any older thumbnail to reactivate it without re-uploading, or delete one permanently. **Deleting the currently-active image is refused** — checked server-side in the API route, not merely hidden in the UI — so a guest can never end up pointed at a Storage object that no longer exists. A cache-busting query string on the active URL means a browser or CDN never keeps serving a stale image after either an upload or a re-selection.
+
+**Out of scope here:** the WhatsApp preview thumbnail (`og-card.jpg` / `og-card-ru.jpg`, §6.15) stays the separate build-script system it already is — it paints text onto the image server-side through a different pipeline (Pango, for Hebrew bidi) and isn't part of this upload flow.
 
 ### 6.17 Seating
 - Manage tables: name, capacity, ordering.

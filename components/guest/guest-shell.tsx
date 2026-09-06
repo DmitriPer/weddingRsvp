@@ -17,6 +17,8 @@ import type { Language } from '@/lib/types'
 
 interface GuestShellProps {
   lang: Language
+  /** Already resolved for this household's language (lib/invitation-image.ts). */
+  backdropImage: string
   greeting?: React.ReactNode
   bar?: React.ReactNode
   children?: React.ReactNode
@@ -35,10 +37,10 @@ interface GuestShellProps {
  * attribute. `lang` matters too — it tells the browser which font and hyphenation
  * rules to use, and screen readers which voice.
  */
-export function GuestShell({ lang, greeting, bar, children }: GuestShellProps) {
+export function GuestShell({ lang, backdropImage, greeting, bar, children }: GuestShellProps) {
   return (
     <div lang={lang} dir={dirFor(lang)} className="relative flex min-h-dvh flex-col">
-      <InvitationBackdrop lang={lang} />
+      <InvitationBackdrop backdropImage={backdropImage} />
 
       {greeting ? <header className="px-4 pt-6 text-center">{greeting}</header> : null}
 

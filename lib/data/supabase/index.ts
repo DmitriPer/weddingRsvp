@@ -22,6 +22,7 @@ import type {
   Invite,
   InviteWithHistory,
   InviteWithPeople,
+  Language,
   ResponseHistoryEntry,
   RsvpSubmission,
   SeatingTable,
@@ -33,9 +34,30 @@ import type {
 import type {
   BulkCreateResult,
   DataStore,
+  InvitationImage,
   NewInviteWithPeople,
   RsvpResult,
 } from '@/lib/data/types'
+
+/** jpg is the fallback: the API route already restricts contentType to these three. */
+function extensionForContentType(contentType: string): string {
+  if (contentType === 'image/png') return 'png'
+  if (contentType === 'image/webp') return 'webp'
+  return 'jpg'
+}
+
+const INVITATION_IMAGE_FOLDER = (language: Language) => `invitation/${language}`
+
+/**
+ * A request only ever names its OWN language's folder — select/delete are
+ * refused on any other path, so a crafted `path` can't repoint config at, or
+ * remove, a Storage object outside where this feature writes.
+ */
+function assertOwnFolder(language: Language, path: string): void {
+  if (path !== `${INVITATION_IMAGE_FOLDER(language)}/${path.split('/').pop()}`) {
+    throw new Error(`path does not belong to ${language}'s invitation image folder: ${path}`)
+  }
+}
 
 /** Errors are checked, never assumed — a silent failed write is worse than a crash. */
 function unwrap<T>(result: { data: T | null; error: { message: string } | null }, context: string): T {
@@ -408,6 +430,61 @@ export const supabaseStore: DataStore = {
         .single(),
       'save config'
     ) as WeddingConfig
+  },
+
+  async uploadInvitationImage(language, bytes, contentType): Promise<WeddingConfig> {
+    const db = createAdminClient()
+
+    // A UNIQUE path per upload — never the same name twice — so a new upload
+    // can never overwrite and destroy a previous one. No `upsert` needed.
+    const extension = extensionForContentType(contentType)
+    const path = `${INVITATION_IMAGE_FOLDER(language)}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`
+
+    const upload = await db.storage.from('assets').upload(path, bytes, { contentType })
+    if (upload.error) throw new Error(`upload invitation image: ${upload.error.message}`)
+
+    // Uploading a new image is how an admin REPLACES the active one — it takes
+    // over immediately, the same as before. The old file simply isn't deleted;
+    // it stays in the gallery for listInvitationImages to surface.
+    const { data } = db.storage.from('assets').getPublicUrl(path)
+    const field = language === 'ru' ? 'invitation_image_ru' : 'invitation_image_he'
+    return this.updateConfig({ [field]: `${data.publicUrl}?v=${Date.now()}` })
+  },
+
+  async listInvitationImages(language): Promise<InvitationImage[]> {
+    const db = createAdminClient()
+    const result = await db.storage
+      .from('assets')
+      .list(INVITATION_IMAGE_FOLDER(language), { sortBy: { column: 'created_at', order: 'desc' } })
+    if (result.error) throw new Error(`list invitation images: ${result.error.message}`)
+
+    return result.data.map((entry) => {
+      const path = `${INVITATION_IMAGE_FOLDER(language)}/${entry.name}`
+      return {
+        path,
+        url: db.storage.from('assets').getPublicUrl(path).data.publicUrl,
+        uploadedAt: entry.created_at ?? '',
+      }
+    })
+  },
+
+  async selectInvitationImage(language, path): Promise<WeddingConfig> {
+    assertOwnFolder(language, path)
+    const db = createAdminClient()
+    const { data } = db.storage.from('assets').getPublicUrl(path)
+
+    // Cache-busted the same way as a fresh upload: this URL may have been the
+    // active one before, and a browser should not serve it from cache as if
+    // nothing changed.
+    const field = language === 'ru' ? 'invitation_image_ru' : 'invitation_image_he'
+    return this.updateConfig({ [field]: `${data.publicUrl}?v=${Date.now()}` })
+  },
+
+  async deleteInvitationImage(language, path): Promise<void> {
+    assertOwnFolder(language, path)
+    const db = createAdminClient()
+    const { error } = await db.storage.from('assets').remove([path])
+    if (error) throw new Error(`delete invitation image: ${error.message}`)
   },
 }
 
