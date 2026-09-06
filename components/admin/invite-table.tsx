@@ -15,6 +15,8 @@ import { EmptyState } from '@/components/ui/states'
 import { countInvited } from '@/lib/headcount'
 import {
   SORT_KEYS,
+  filterByRelation,
+  filterBySide,
   filterByStatus,
   filterNeedsPhoneCall,
   searchInvites,
@@ -24,8 +26,12 @@ import {
 import { strings } from '@/lib/strings'
 import {
   INVITE_STATUSES,
+  RELATIONS,
+  SIDES,
   type InviteStatus,
   type InviteWithPeople,
+  type Relation,
+  type Side,
   type WeddingConfig,
 } from '@/lib/types'
 
@@ -39,8 +45,10 @@ export function InviteTable({
 }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<InviteStatus | ''>('')
+  const [relation, setRelation] = useState<Relation | ''>('')
+  const [side, setSide] = useState<Side | ''>('')
   const [onlyNeedsCall, setOnlyNeedsCall] = useState(false)
-  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortKey, setSortKey] = useState<SortKey>('relation')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
@@ -48,9 +56,11 @@ export function InviteTable({
   const visible = useMemo(() => {
     const searched = searchInvites(invites, query)
     const byStatus = filterByStatus(searched, status || null)
-    const flagged = filterNeedsPhoneCall(byStatus, onlyNeedsCall)
+    const byRelation = filterByRelation(byStatus, relation || null)
+    const bySide = filterBySide(byRelation, side || null)
+    const flagged = filterNeedsPhoneCall(bySide, onlyNeedsCall)
     return sortInvites(flagged, sortKey)
-  }, [invites, query, status, onlyNeedsCall, sortKey])
+  }, [invites, query, status, relation, side, onlyNeedsCall, sortKey])
 
   /*
    * Clear the selection whenever the visible set changes.
@@ -132,6 +142,34 @@ export function InviteTable({
           {INVITE_STATUSES.map((value) => (
             <option key={value} value={value}>
               {strings.status[value]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={relation}
+          onChange={(event) => setRelation(event.target.value as Relation | '')}
+          aria-label={strings.toolbar.allRelations}
+          className="rounded-md border border-border px-2 py-1.5 text-sm"
+        >
+          <option value="">{strings.toolbar.allRelations}</option>
+          {RELATIONS.map((value) => (
+            <option key={value} value={value}>
+              {strings.relation[value]}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={side}
+          onChange={(event) => setSide(event.target.value as Side | '')}
+          aria-label={strings.toolbar.allSides}
+          className="rounded-md border border-border px-2 py-1.5 text-sm"
+        >
+          <option value="">{strings.toolbar.allSides}</option>
+          {SIDES.map((value) => (
+            <option key={value} value={value}>
+              {strings.side[value]}
             </option>
           ))}
         </select>

@@ -1,9 +1,13 @@
 # Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v5 — greenfield spec, the source of truth for what gets built.
+**Status:** v7 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
+
+**v7 (2026-09-06):** invitee table gains independent filters by relation and by side, combinable with each other and with the status filter (§6.6).
+
+**v6 (2026-09-06):** invitee table defaults to a staged sort by relation — family, friends, work, invited-by-family (§6.6).
 
 **v5 (2026-08-02):** Israeli phone numbers normalised to international form on input (§6.9).
 
@@ -200,7 +204,7 @@ Add, edit, and delete an invite (name, phone, side, relation). Add, edit, rename
 
 **Table shape:** one row per invite with its derived total ("3 people"). People appear as indented sub-rows behind an expand toggle, each showing approved/declined, with placeholders visibly marked and renameable. Invites with no people have no toggle.
 
-**Search** by name or phone. **Sort** by name, status, headcount, or last-contacted. **Filter** by all five statuses.
+**Search** by name or phone. **Sort** by relation (default — family, friends, work, invited-by-family, in that fixed staged order), name, status, headcount, or last-contacted. **Filter** by all five statuses, by relation, and by side — each of the three independently, and combinable (e.g. side = groom + relation = family narrows to just that combination).
 
 **Duplicate phone warning** on add/edit when the number already exists — a warning, never a block.
 
