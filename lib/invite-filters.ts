@@ -11,6 +11,7 @@ import {
   type InviteStatus,
   type InviteWithPeople,
   type Relation,
+  type Side,
 } from '@/lib/types'
 
 export const SORT_KEYS = ['name', 'relation', 'status', 'headcount', 'lastContacted'] as const
@@ -56,6 +57,22 @@ export function filterByStatus(
   status: InviteStatus | null
 ): InviteWithPeople[] {
   return status ? invites.filter((invite) => invite.status === status) : invites
+}
+
+/** Independent of filterByStatus — the two combine, they don't replace each other. */
+export function filterByRelation(
+  invites: InviteWithPeople[],
+  relation: Relation | null
+): InviteWithPeople[] {
+  return relation ? invites.filter((invite) => invite.relation === relation) : invites
+}
+
+/** Independent of filterByRelation — e.g. side=groom + relation=family narrows to both. */
+export function filterBySide(
+  invites: InviteWithPeople[],
+  side: Side | null
+): InviteWithPeople[] {
+  return side ? invites.filter((invite) => invite.side === side) : invites
 }
 
 export function filterNeedsPhoneCall(

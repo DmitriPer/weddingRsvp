@@ -248,6 +248,8 @@ export const strings = {
   toolbar: {
     searchPlaceholder: 'חיפוש לפי שם או טלפון',
     allStatuses: 'כל הסטטוסים',
+    allRelations: 'כל הקשרים',
+    allSides: 'כל הצדדים',
     onlyNeedsCall: 'רק מי שצריך טלפון',
     sortBy: 'מיון',
     sort: {
