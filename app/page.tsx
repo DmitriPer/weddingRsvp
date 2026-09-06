@@ -11,6 +11,7 @@
 import type { Metadata } from 'next'
 import { getConfig, getInviteByToken } from '@/lib/data'
 import { formatDateTime, isRsvpOpen } from '@/lib/datetime'
+import { invitationImageForLanguage } from '@/lib/invitation-image'
 import { buildAbsoluteUrl } from '@/lib/links'
 import { OG_CARD_HEIGHT, OG_CARD_PATHS, OG_CARD_WIDTH, OG_COUPLE_NAMES } from '@/lib/og'
 import { venueForDisplay, venueForNavigation } from '@/lib/venue'
@@ -136,6 +137,7 @@ export default async function GuestPage({ searchParams }: PageProps) {
     return (
       <GuestShell
         lang={language}
+        backdropImage={invitationImageForLanguage(config, language)}
         bar={
           <ActionBar
             lang={language}
@@ -155,6 +157,7 @@ export default async function GuestPage({ searchParams }: PageProps) {
       {/* Brings its own shell: the greeting and action bar are part of it. */}
       <RsvpScreen
         lang={language}
+        backdropImage={invitationImageForLanguage(config, language)}
         token={invite.token}
         inviteName={invite.name}
         attendees={invite.attendees}

@@ -14,6 +14,7 @@ import 'server-only'
 export type {
   BulkCreateResult,
   DataStore,
+  InvitationImage,
   NewInviteWithPeople,
   RsvpResult,
 } from '@/lib/data/types'
@@ -49,3 +50,7 @@ export const deleteTable = store.deleteTable.bind(store)
 
 export const getConfig = store.getConfig.bind(store)
 export const updateConfig = store.updateConfig.bind(store)
+export const uploadInvitationImage = store.uploadInvitationImage.bind(store)
+export const listInvitationImages = store.listInvitationImages.bind(store)
+export const selectInvitationImage = store.selectInvitationImage.bind(store)
+export const deleteInvitationImage = store.deleteInvitationImage.bind(store)

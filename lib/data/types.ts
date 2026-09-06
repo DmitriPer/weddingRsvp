@@ -51,6 +51,14 @@ export interface BulkCreateResult {
   peopleCreated: number
 }
 
+/** One previously-uploaded invitation backdrop image (PRD §6.16). */
+export interface InvitationImage {
+  /** The Storage object path, e.g. "invitation/he/1735689600000-a1b2c3.jpg". */
+  path: string
+  url: string
+  uploadedAt: string
+}
+
 export interface DataStore {
   // --- invites -------------------------------------------------------------
   listInvites(): Promise<InviteWithPeople[]>
@@ -93,4 +101,25 @@ export interface DataStore {
   // --- config --------------------------------------------------------------
   getConfig(): Promise<WeddingConfig>
   updateConfig(input: Partial<WeddingConfig>): Promise<WeddingConfig>
+  /**
+   * The guest page's backdrop image, per language (PRD §6.16). A gallery, not
+   * a single slot — uploads accumulate, never overwrite. API routes never
+   * touch Storage directly; everything below goes through here.
+   */
+  /** Uploads a new image under a unique path and makes it the active one. */
+  uploadInvitationImage(
+    language: Language,
+    bytes: Uint8Array,
+    contentType: string
+  ): Promise<WeddingConfig>
+  /** Every image previously uploaded for this language, newest first. */
+  listInvitationImages(language: Language): Promise<InvitationImage[]>
+  /** Makes an already-uploaded image active again. No Storage write. */
+  selectInvitationImage(language: Language, path: string): Promise<WeddingConfig>
+  /**
+   * Removes an image from Storage permanently. Refusing to delete the
+   * currently-active image is the CALLER's job (the API route) — this layer
+   * holds no business rules, it does what it's told.
+   */
+  deleteInvitationImage(language: Language, path: string): Promise<void>
 }
