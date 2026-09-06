@@ -5,9 +5,15 @@
 
 import { countAttending } from '@/lib/headcount'
 import { needsPhoneCall } from '@/lib/status'
-import { INVITE_STATUSES, type InviteStatus, type InviteWithPeople } from '@/lib/types'
+import {
+  INVITE_STATUSES,
+  RELATIONS,
+  type InviteStatus,
+  type InviteWithPeople,
+  type Relation,
+} from '@/lib/types'
 
-export const SORT_KEYS = ['name', 'status', 'headcount', 'lastContacted'] as const
+export const SORT_KEYS = ['name', 'relation', 'status', 'headcount', 'lastContacted'] as const
 export type SortKey = (typeof SORT_KEYS)[number]
 
 /**
@@ -60,10 +66,18 @@ export function filterNeedsPhoneCall(
   return invites.filter((invite) => needsPhoneCall(invite.status, invite.contact_attempts))
 }
 
+/** Sorts last when unset, rather than jumping ahead of 'family'. */
+function relationRank(relation: Relation | null): number {
+  return relation ? RELATIONS.indexOf(relation) : RELATIONS.length
+}
+
 function compare(a: InviteWithPeople, b: InviteWithPeople, key: SortKey): number {
   switch (key) {
     case 'name':
       return a.name.localeCompare(b.name, 'he')
+    case 'relation':
+      // Staged order, not alphabetical — family before friend before work…
+      return relationRank(a.relation) - relationRank(b.relation)
     case 'status':
       // Pipeline order, not alphabetical — 'added' before 'pending' before…
       return INVITE_STATUSES.indexOf(a.status) - INVITE_STATUSES.indexOf(b.status)

@@ -252,6 +252,7 @@ export const strings = {
     sortBy: 'מיון',
     sort: {
       name: 'שם',
+      relation: 'קשר',
       status: 'סטטוס',
       headcount: 'מספר אורחים',
       lastContacted: 'פנייה אחרונה',

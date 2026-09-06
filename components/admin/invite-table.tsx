@@ -40,7 +40,7 @@ export function InviteTable({
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<InviteStatus | ''>('')
   const [onlyNeedsCall, setOnlyNeedsCall] = useState(false)
-  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortKey, setSortKey] = useState<SortKey>('relation')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()

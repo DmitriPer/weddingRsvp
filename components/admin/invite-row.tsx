@@ -21,6 +21,14 @@ import { needsPhoneCall } from '@/lib/status'
 import { strings } from '@/lib/strings'
 import type { InviteWithPeople, WeddingConfig } from '@/lib/types'
 
+/** Null when neither is set — the line is then omitted entirely rather than shown empty. */
+function sideRelationLabel(invite: InviteWithPeople): string | null {
+  const side = invite.side ? strings.side[invite.side] : null
+  const relation = invite.relation ? strings.relation[invite.relation] : null
+  if (!side && !relation) return null
+  return [side, relation].filter(Boolean).join(' · ')
+}
+
 function attendanceLabel(invite: InviteWithPeople): string {
   const summary = summarizeAttendance(invite.attending, invite.attendees)
   const labels = strings.guests.summary
@@ -54,6 +62,7 @@ export function InviteRow({
   const [deleting, setDeleting] = useState(false)
 
   const flagged = needsPhoneCall(invite.status, invite.contact_attempts)
+  const sideRelation = sideRelationLabel(invite)
 
   function refresh() {
     router.refresh()
@@ -98,6 +107,9 @@ export function InviteRow({
             <span className="ltr-nums block truncate text-sm text-muted">
               {invite.phone ?? '—'}
             </span>
+            {sideRelation ? (
+              <span className="block truncate text-sm text-muted">{sideRelation}</span>
+            ) : null}
           </span>
         </button>
 
