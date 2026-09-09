@@ -1,6 +1,6 @@
 # Progress & Handoff
 
-**Last updated:** 2026-08-02 · branch `main` · pushed to `DmitriPer/weddingRsvp`
+**Last updated:** 2026-09-09 · branch `main` · pushed to `DmitriPer/weddingRsvp`
 
 The purpose of this file is that a different machine, or a different session, can pick this up with no gaps. **Update it whenever a phase lands** — if it drifts from reality it is worse than not existing.
 
@@ -122,6 +122,7 @@ Verified against the real database, not just compiled:
 | §6.7b | Bilingual guest side (he/ru) | ✅ | `lib/strings.ts` `guestText()`, `guest-shell.tsx` |
 | §6.18 | Admin auth | ✅ | `lib/auth.ts`, `proxy.ts`, `app/admin/login` |
 | §6.19 | Empty / loading / error states | ⚠️ partial | `components/ui/states.tsx` exists, used in some places |
+| §6.21 | First-invitation coordination + language / no-phone filters | ✅ | `components/admin/first-invite-controls.tsx`, `lib/senders.ts`, `lib/invite-filters.ts` |
 
 **Backend is complete; the guest side, settings and the WhatsApp preview are built.** What remains is import/export and seating.
 
@@ -294,6 +295,26 @@ The autumn DST boundary is the case that catches a naive implementation: `02:30`
 **WhatsApp automation was investigated and rejected** (2026-07-30). The Cloud API can genuinely automate sending, costs only a few dollars for this volume, and no longer needs upfront business verification — but WhatsApp's Business Terms require Business Services be used "solely for business, commercial… and not for personal use," and guests have not opted in to business messaging. A new SIM on the regular app gives *no* automation at all (no API; broadcasts only reach people who saved your number) while adding ban risk and worse open rates. Sending stays manual from the personal number. Don't re-open without new information.
 
 ---
+
+## 5b. First-invitation coordination, added 2026-09-09
+
+Two columns on `invites` (`008_first_invitation.sql`, run on the live project the same day) and three new toolbar controls. PRD §6.21 has the reasoning; what matters for picking this up:
+
+**It is deliberately NOT the send pipeline.** `first_invite_sent` / `first_invite_sender` are the couple dividing the list between them; `status` and `contact_attempts` are the wa.me button. Deriving the tick from `status != 'added'` would let a planning note inflate the follow-up counters that drive "needs a phone call". `parseUpdateInvite` whitelists fields, so a request sending `status` alongside is accepted for the planning columns and drops the rest — verified.
+
+**The sender options are split out of `couple_names`, not stored** (`lib/senders.ts`). `ניקול ודימה` → `ניקול` / `דימה`. The Hebrew branch needs whitespace before the vav and a non-space after it, so the vav inside `ויקטוריה` is not a split point. The Russian `и` and English `and` are whitespace-delimited rather than `\b`-delimited on purpose: `\b` is defined against ASCII `\w`, so `\bи\b` can never match a Cyrillic и — it looks right and silently does nothing.
+
+**A stored sender orphaned by a rename stays visible in that row's dropdown.** The column is free text and the options are derived, so renaming the couple can strand a saved value; blanking the control over a decision that was actually recorded is the worse failure.
+
+**The `שליחה ראשונה` toggle is `localStorage`, read through `useSyncExternalStore`.** Not config: the controls are wanted for a few days and then in the way, and a `wedding_config` flag needs a migration to add and another to retire. Reading localStorage during render would disagree with the server, and correcting it from an effect trips React's own `set-state-in-effect` rule — `getServerSnapshot` is the path that does neither.
+
+**Row writes are optimistic and deliberately do not `router.refresh()`.** With 107 households and a tap per row, re-fetching the whole list per tick is the difference between usable and not; nothing else on screen derives from these fields. A change made in another browser needs a reload to show up here.
+
+**Verified 2026-09-09** against the live database, through the real UI: the sender dropdown offered `ניקול` / `דימה` from live config; ticking one row wrote `first_invite_sent: true` with `status` still `added` and `contact_attempts` still `0`; unticking restored it, leaving no flagged rows. Unauthenticated `PATCH /api/invites/[id]` returns 401 and `/admin` still 307s to login. `רק בלי טלפון` showed `80 מתוך 107` and `רוסית` showed `12 מתוך 107`, both matching direct row counts.
+
+**⚠️ The database now holds 107 real invitations, not test data** — no `__test__` rows remain, 80 have no phone number and 12 are Russian. The §3 rule about test-only data no longer describes reality; treat every row as real and reversible-only.
+
+**`npm run lint` is currently unusable as a gate.** It reports ~11,000 problems, all from a stale `.next` build inside the leftover worktree `.claude/worktrees/relation-side-filters/`. Project sources are clean — lint them directly with `npx eslint components lib app` until that directory is removed or ignored.
 
 ## 6. Known issues
 

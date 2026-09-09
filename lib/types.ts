@@ -49,6 +49,16 @@ export interface Invite {
   last_contacted_at: string | null
   contact_attempts: number
 
+  /**
+   * First-invitation coordination (PRD §6.21) — a planning aid, NOT part of the
+   * send pipeline. `status` and `contact_attempts` above are the pipeline and
+   * belong to the wa.me button; these two are the couple dividing the list
+   * between them before the first round and ticking it off as it goes.
+   */
+  first_invite_sent: boolean
+  /** Free text, matched against lib/senders.ts options at render time only. */
+  first_invite_sender: string | null
+
   attending: boolean | null // null = has not answered yet
   responded_at: string | null
   updated_at: string | null
@@ -202,7 +212,17 @@ export interface CreateInviteInput {
   language?: Language
 }
 
-export type UpdateInviteInput = Partial<CreateInviteInput>
+/**
+ * Not `Partial<CreateInviteInput>`: the two first-invitation fields are
+ * editable but not creatable. A new household is always "not sent yet, sender
+ * undecided" — the database defaults say so — and offering them on the add
+ * form would invite ticking a box for a message nobody has sent.
+ */
+export interface UpdateInviteInput extends Partial<CreateInviteInput> {
+  first_invite_sent?: boolean
+  /** null clears it back to undecided. */
+  first_invite_sender?: string | null
+}
 
 export interface CreateAttendeeInput {
   invite_id: string

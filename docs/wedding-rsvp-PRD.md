@@ -5,6 +5,8 @@
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
 
+**v10 (2026-09-09):** first-invitation coordination on each row — a `נשלחה` checkbox, a `שולח` dropdown derived from `couple_names`, and a toolbar toggle that hides both (§6.21). With it, two more invitee-table filters: by language, and households with no phone number (§6.6, §6.21).
+
 **v9 (2026-09-06):** the invitation backdrop upload becomes a gallery per language — uploads accumulate rather than overwrite, any past upload can be reactivated, and a non-active one can be deleted (§6.16).
 
 **v8 (2026-09-06):** the guest page's backdrop image becomes admin-uploadable, per language, from Settings — replacing the hardcoded artwork constant (§6.16).
@@ -208,7 +210,9 @@ Add, edit, and delete an invite (name, phone, side, relation). Add, edit, rename
 
 **Table shape:** one row per invite with its derived total ("3 people"). People appear as indented sub-rows behind an expand toggle, each showing approved/declined, with placeholders visibly marked and renameable. Invites with no people have no toggle.
 
-**Search** by name or phone. **Sort** by relation (default — family, friends, work, invited-by-family, in that fixed staged order), name, status, headcount, or last-contacted. **Filter** by all five statuses, by relation, and by side — each of the three independently, and combinable (e.g. side = groom + relation = family narrows to just that combination).
+**Search** by name or phone. **Sort** by relation (default — family, friends, work, invited-by-family, in that fixed staged order), name, status, headcount, or last-contacted. **Filter** by all five statuses, by relation, by side, and by language — each independently, and combinable (e.g. side = groom + relation = family narrows to just that combination). Two checkbox filters alongside them: `רק מי שצריך טלפון` (§6.10) and `רק בלי טלפון`, households with no number at all (§6.21).
+
+**Toolbar layout: two full-width rows** — search and the checkboxes above, the filter and sort dropdowns below. One wrapping row put every control wherever the window width happened to break, so the same checkbox changed position between sessions.
 
 **Duplicate phone warning** on add/edit when the number already exists — a warning, never a block.
 
@@ -383,6 +387,24 @@ Cross-cutting, not a feature. Every list and every form has all three. First run
 - Dietary tracking — not relevant to this wedding.
 - Attendance / day-of check-in — see §6.14.
 - A "needs re-confirmation" flag for people added after a guest responded. Handled by creating a separate invite or phoning them.
+
+### 6.21 First-invitation coordination
+
+Added 2026-09-09, for the first round of invitations going out by hand. Two controls on each invitee row, plus the toggle that reveals them:
+
+- **`נשלחה`** — a checkbox, `invites.first_invite_sent`.
+- **`שולח`** — a dropdown, `invites.first_invite_sender`, offering the two people in `wedding_config.couple_names`.
+- **`שליחה ראשונה`** — a toolbar checkbox that shows or hides both. Off by default.
+
+**It is not the send pipeline, and must not become it.** `status` and `contact_attempts` (§6.9, §6.10) mean *a message was prepared and its send confirmed*; these two mean *we agreed who is messaging this household, and it has been done*. Deriving the tick from `status != 'added'` was considered and rejected: a planning note would then silently move a household into the pipeline and inflate the follow-up counters that drive the "needs a phone call" flag. Nothing in this feature writes `status`, and `parseUpdateInvite` whitelists fields, so a request carrying both is accepted for the planning columns and ignores the rest.
+
+**The senders are derived, not stored.** `coupleSenders()` in `lib/senders.ts` splits `couple_names` on the Hebrew vav (`ניקול ודימה`), the Russian `и`, `&`, `,`, `+` or ` and `. Renaming the couple in `/admin/settings` therefore changes the dropdown with no migration, and the names stay in one place. Two consequences, both deliberate: a value already saved can be orphaned by a rename, and an orphan **stays visible in that row's dropdown** rather than being blanked — losing a recorded decision silently is the worse failure. Fewer than two names found means one option, the whole string.
+
+**The toggle is a browser preference, not config.** `localStorage`, read through `useSyncExternalStore` so the server and client agree pre-hydration. It exists because these controls are wanted for a few days and then in the way; a `wedding_config` flag would need a migration to add and another to retire, and the controls it reveals already persist their own data. A blocked-storage browser (private window) keeps the toggle for the session and simply doesn't remember it.
+
+**Writes are optimistic and do not refresh the list.** With ~150 households and a tap per row, re-fetching every invitation on each tick is the difference between usable and not. Nothing else on the screen derives from these two fields, so a local value ahead of the server is invisible; a failed write reverts and toasts. The cost is that a change made in another browser needs a reload to appear.
+
+Also added with it, and independent of it: a **language filter** (`כל השפות` / `עברית` / `רוסית`) beside the status, relation and side filters, and a **`רק בלי טלפון`** checkbox for households with no phone number at all — the ones that cannot be messaged until a number is typed in, and are otherwise invisible work. `רק בלי טלפון` is distinct from `רק מי שצריך טלפון` above it: that one is *has a number, isn't answering*, this one is *we have no number*. Neither filter changes any data; "both languages" is the filter's own empty state, not a value a household can hold.
 
 ## 7. Security Architecture
 

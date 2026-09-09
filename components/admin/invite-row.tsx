@@ -13,6 +13,10 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { AttendeeList } from '@/components/admin/attendee-list'
 import { CopyLinkButton } from '@/components/admin/copy-link-button'
+import {
+  FirstInviteControls,
+  type FirstInvitePatch,
+} from '@/components/admin/first-invite-controls'
 import { HistoryModal } from '@/components/admin/history-modal'
 import { InviteEditForm } from '@/components/admin/invite-edit-form'
 import { WaSendButton } from '@/components/admin/wa-send-button'
@@ -50,11 +54,23 @@ export function InviteRow({
   config,
   selected,
   onToggleSelected,
+  showFirstInvite,
+  senders,
+  onPatchFirstInvite,
 }: {
   invite: InviteWithPeople
   config: WeddingConfig
   selected: boolean
   onToggleSelected: (id: string) => void
+  /** The toolbar's toggle (PRD §6.21). Off is the normal state of this screen. */
+  showFirstInvite: boolean
+  senders: string[]
+  /** Owned by InviteTable: a row unmounts, so it cannot hold this state. */
+  onPatchFirstInvite: (
+    id: string,
+    patch: FirstInvitePatch,
+    previous: FirstInvitePatch
+  ) => Promise<void>
 }) {
   const router = useRouter()
   const [expanded, setExpanded] = useState(false)
@@ -150,6 +166,10 @@ export function InviteRow({
           </button>
         </div>
       </div>
+
+      {showFirstInvite ? (
+        <FirstInviteControls invite={invite} senders={senders} onPatch={onPatchFirstInvite} />
+      ) : null}
 
       {editing ? (
         <InviteEditForm invite={invite} onDone={() => setEditing(false)} onSaved={refresh} />
