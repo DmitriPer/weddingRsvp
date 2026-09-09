@@ -48,3 +48,9 @@ env
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent worktrees — a worktree inside the repo gets committed as a stray
+# gitlink (mode 160000) with no .gitmodules, which breaks a fresh clone and
+# puts a whole stale .next build in front of eslint. One was tracked this way
+# until 2026-09-09 and made `npm run lint` report ~11,000 phantom problems.
+.claude/worktrees/

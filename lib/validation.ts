@@ -78,6 +78,19 @@ function optionalEnum<T extends string>(
   return pass(value as T)
 }
 
+function booleanField(value: unknown, field: string): Parsed<boolean> {
+  if (typeof value !== 'boolean') return fail(`${field} must be true or false`)
+  return pass(value)
+}
+
+/**
+ * `invites.first_invite_sender` is free text (008_first_invitation.sql), and the
+ * dropdown that fills it constrains the UI only — PATCH /api/invites/[id] is a
+ * URL, reachable with curl. A ceiling here keeps a free-text column from
+ * becoming somewhere to store a novel.
+ */
+const SENDER_MAX_LENGTH = 80
+
 function nonNegativeInt(value: unknown, field: string): Parsed<number> {
   if (value === undefined || value === null) return pass(0)
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
@@ -147,6 +160,30 @@ export function parseUpdateInvite(body: unknown): Parsed<UpdateInviteInput> {
     if (!language.ok) return language
     // `language` is NOT NULL in the database — clearing it means Hebrew.
     update.language = language.value ?? 'he'
+  }
+
+  /*
+   * First-invitation coordination (PRD §6.21). Both are accepted here and
+   * nowhere else: parseCreateInvite deliberately does not take them, because a
+   * household that was only just added cannot already have been written to.
+   *
+   * Note what these do NOT do — they never touch `status` or
+   * `contact_attempts`. Those belong to the wa.me button, and a planning tick
+   * moving a household into the send pipeline is the bug this separation is for.
+   */
+  if ('first_invite_sent' in body) {
+    const sent = booleanField(body.first_invite_sent, 'First invitation sent')
+    if (!sent.ok) return sent
+    update.first_invite_sent = sent.value
+  }
+  if ('first_invite_sender' in body) {
+    const sender = optionalText(body.first_invite_sender, 'Sender')
+    if (!sender.ok) return sender
+    if (sender.value && sender.value.length > SENDER_MAX_LENGTH) {
+      return fail(`Sender must be ${SENDER_MAX_LENGTH} characters or fewer`)
+    }
+    // null clears it back to undecided, which is a real edit, not a no-op.
+    update.first_invite_sender = sender.value
   }
 
   if (Object.keys(update).length === 0) return fail('Nothing to update')

@@ -253,6 +253,25 @@ export const strings = {
     previewOnly: 'עדיין לא נשמר כלום. בדקו את הרשימה ואשרו.',
   },
 
+  /**
+   * First-invitation coordination (PRD §6.21) — dividing the list between the
+   * two of you before the first round goes out.
+   *
+   * Worded as a plan, not as a send: `נשלחה` is the tick, while the wa.me
+   * button's own confirmation stays `נשלח?`. Nothing here reports what the app
+   * did — it records what the two of you agreed and then did by hand.
+   */
+  firstInvite: {
+    /** The toolbar toggle that shows or hides the two controls on every row. */
+    toggle: 'שליחה ראשונה',
+    toggleHint: 'הצגת סימון ובחירת שולח בכל שורה',
+    sent: 'נשלחה',
+    sender: 'שולח',
+    /** The dropdown's empty option: undecided, not "nobody". */
+    notSet: 'לא נקבע',
+    saveFailed: 'השמירה נכשלה',
+  },
+
   /** Multi-select delete (PRD §6.6). */
   bulk: {
     selectAllShown: (n: number) => `בחירת הכל המוצג (${n})`,
@@ -271,7 +290,14 @@ export const strings = {
     allStatuses: 'כל הסטטוסים',
     allRelations: 'כל הקשרים',
     allSides: 'כל הצדדים',
+    /** Empty means both — there is no bilingual household (lib/invite-filters.ts). */
+    allLanguages: 'כל השפות',
     onlyNeedsCall: 'רק מי שצריך טלפון',
+    /**
+     * Distinct from onlyNeedsCall above, and easy to confuse: that one is
+     * "has a number, isn't answering"; this one is "we have no number at all".
+     */
+    onlyMissingPhone: 'רק בלי טלפון',
     sortBy: 'מיון',
     sort: {
       name: 'שם',

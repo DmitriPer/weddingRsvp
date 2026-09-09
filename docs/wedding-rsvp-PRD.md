@@ -1,9 +1,11 @@
 # Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v9 — greenfield spec, the source of truth for what gets built.
+**Status:** v10 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
+
+**v10 (2026-09-09):** first-invitation coordination on each row — a `נשלחה` checkbox, a `שולח` dropdown derived from `couple_names`, and a toolbar toggle that hides both (§6.21). With it, two more invitee-table filters: by language, and households with no phone number (§6.6, §6.21).
 
 **v9 (2026-09-06):** the invitation backdrop upload becomes a gallery per language — uploads accumulate rather than overwrite, any past upload can be reactivated, and a non-active one can be deleted (§6.16).
 
@@ -33,7 +35,7 @@ This phase delivers a **working, guest-data-safe MVP — function and data first
 
 | In scope | Out of scope |
 |---|---|
-| Full data model and schema | Real guest data (invented test rows only — §8) |
+| Full data model and schema | A second (staging) environment — there is one database, and it holds the real list (§8) |
 | API routes and server logic | Deliberate visual design |
 | Guest RSVP flow end to end | Automated or bulk WhatsApp sending, ever |
 | Admin: list, search, add, edit, delete, import, export | Multi-admin access |
@@ -50,7 +52,7 @@ Carried from `claude-workflow.md`. Not to be relitigated.
 
 1. **No automated, scheduled, or bulk WhatsApp/SMS sending — ever.** Every outbound message is a manual human tap on a per-row `wa.me` button. Reason: risk of the couple's number being flagged or banned. The app *prepares* messages and *flags who needs one*; a human always decides when to send.
 2. **Function and data before styling.**
-3. **No real guest data until explicitly told otherwise.** The Supabase project exists and holds only invented test rows. Dmitri's actual guest list goes in when he says so, not before.
+3. **⚠️ The database holds the real guest list, and there is only one.** Since 2026-09-09 the Supabase project holds Dmitri's actual list — ~107 invitations, no `__test__` rows left — with no staging project behind it. Every write lands on real people's details: never bulk-write, seed or delete, never run `004_seed_test_data.sql` again, and verify a write path with one reversible change to a single row rather than throwaway data. This replaces the original rule ("no real guest data until explicitly told otherwise"), which described the project before the list went in; the protection is the same and now stricter.
 4. **All data access goes through one layer.** Every read and write goes through `lib/data` — never a Supabase client reached directly from a route or a component.
 5. **Never touch the base repo author's live systems or real data.**
 
@@ -208,7 +210,9 @@ Add, edit, and delete an invite (name, phone, side, relation). Add, edit, rename
 
 **Table shape:** one row per invite with its derived total ("3 people"). People appear as indented sub-rows behind an expand toggle, each showing approved/declined, with placeholders visibly marked and renameable. Invites with no people have no toggle.
 
-**Search** by name or phone. **Sort** by relation (default — family, friends, work, invited-by-family, in that fixed staged order), name, status, headcount, or last-contacted. **Filter** by all five statuses, by relation, and by side — each of the three independently, and combinable (e.g. side = groom + relation = family narrows to just that combination).
+**Search** by name or phone. **Sort** by relation (default — family, friends, work, invited-by-family, in that fixed staged order), name, status, headcount, or last-contacted. **Filter** by all five statuses, by relation, by side, and by language — each independently, and combinable (e.g. side = groom + relation = family narrows to just that combination). Two checkbox filters alongside them: `רק מי שצריך טלפון` (§6.10) and `רק בלי טלפון`, households with no number at all (§6.21).
+
+**Toolbar layout: two full-width rows** — search and the checkboxes above, the filter and sort dropdowns below. One wrapping row put every control wherever the window width happened to break, so the same checkbox changed position between sessions.
 
 **Duplicate phone warning** on add/edit when the number already exists — a warning, never a block.
 
@@ -384,6 +388,24 @@ Cross-cutting, not a feature. Every list and every form has all three. First run
 - Attendance / day-of check-in — see §6.14.
 - A "needs re-confirmation" flag for people added after a guest responded. Handled by creating a separate invite or phoning them.
 
+### 6.21 First-invitation coordination
+
+Added 2026-09-09, for the first round of invitations going out by hand. Two controls on each invitee row, plus the toggle that reveals them:
+
+- **`נשלחה`** — a checkbox, `invites.first_invite_sent`.
+- **`שולח`** — a dropdown, `invites.first_invite_sender`, offering the two people in `wedding_config.couple_names`.
+- **`שליחה ראשונה`** — a toolbar checkbox that shows or hides both. Off by default.
+
+**It is not the send pipeline, and must not become it.** `status` and `contact_attempts` (§6.9, §6.10) mean *a message was prepared and its send confirmed*; these two mean *we agreed who is messaging this household, and it has been done*. Deriving the tick from `status != 'added'` was considered and rejected: a planning note would then silently move a household into the pipeline and inflate the follow-up counters that drive the "needs a phone call" flag. Nothing in this feature writes `status`, and `parseUpdateInvite` whitelists fields, so a request carrying both is accepted for the planning columns and ignores the rest.
+
+**The senders are derived, not stored.** `coupleSenders()` in `lib/senders.ts` splits `couple_names` on the Hebrew vav (`ניקול ודימה`), the Russian `и`, `&`, `,`, `+` or ` and `. Renaming the couple in `/admin/settings` therefore changes the dropdown with no migration, and the names stay in one place. Two consequences, both deliberate: a value already saved can be orphaned by a rename, and an orphan **stays visible in that row's dropdown** rather than being blanked — losing a recorded decision silently is the worse failure. Fewer than two names found means one option, the whole string.
+
+**The toggle is a browser preference, not config.** `localStorage`, read through `useSyncExternalStore` so the server and client agree pre-hydration. It exists because these controls are wanted for a few days and then in the way; a `wedding_config` flag would need a migration to add and another to retire, and the controls it reveals already persist their own data. A blocked-storage browser (private window) keeps the toggle for the session and simply doesn't remember it.
+
+**Writes are optimistic and do not refresh the list.** With ~150 households and a tap per row, re-fetching every invitation on each tick is the difference between usable and not. Nothing else on the screen derives from these two fields, so a local value ahead of the server is invisible; a failed write reverts and toasts. The cost is that a change made in another browser needs a reload to appear.
+
+Also added with it, and independent of it: a **language filter** (`כל השפות` / `עברית` / `רוסית`) beside the status, relation and side filters, and a **`רק בלי טלפון`** checkbox for households with no phone number at all — the ones that cannot be messaged until a number is typed in, and are otherwise invisible work. `רק בלי טלפון` is distinct from `רק מי שצריך טלפון` above it: that one is *has a number, isn't answering*, this one is *we have no number*. Neither filter changes any data; "both languages" is the filter's own empty state, not a value a household can hold.
+
 ## 7. Security Architecture
 
 Non-negotiable.
@@ -399,6 +421,8 @@ Non-negotiable.
 ## 8. Test Data
 
 **There is no mock store.** One was specified here originally, and dropped on 2026-07-30 once the real Supabase project was working: maintaining a second implementation meant hand-mirroring Postgres `ON DELETE CASCADE` and `ON DELETE SET NULL` in TypeScript, and anything hand-mirrored drifts from the thing it mirrors. Test data is a seed migration instead, so Postgres enforces the rules rather than code imitating them.
+
+**⚠️ As of 2026-09-09 this section is historical. The database holds the real guest list — ~107 invitations, no `__test__` rows — and `004_seed_test_data.sql` was never run against it and must not be run now: it would add invented households to a live list that is being messaged by hand. What follows describes what that seed was designed to cover, kept because it still documents the states any change has to work against.**
 
 `supabase/migrations/004_seed_test_data.sql` seeds ~12 **invented** invites spanning all five statuses, both sides, several relations, and some at 5+ `contact_attempts`. Every row is marked `__test__` so `delete from invites where name like '%__test__%'` clears it before the real list goes in. Include at least one of each:
 
@@ -471,7 +495,7 @@ Non-negotiable.
 
 ## 12. Definition of Done
 
-- Every requirement in §6 works against mock data.
+- Every requirement in §6 works against the real database (originally "against mock data" — the mock store was dropped on 2026-07-30, see §8).
 - Every headcount comes from the single §5.1 count — no stored counts outside `response_history`.
 - Guests can tick individuals and add +1s; +1s exist as real rows and are seatable.
 - Declining deletes placeholders, unticks everyone, and reads 0.

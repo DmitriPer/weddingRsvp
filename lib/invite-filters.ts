@@ -10,6 +10,7 @@ import {
   RELATIONS,
   type InviteStatus,
   type InviteWithPeople,
+  type Language,
   type Relation,
   type Side,
 } from '@/lib/types'
@@ -73,6 +74,36 @@ export function filterBySide(
   side: Side | null
 ): InviteWithPeople[] {
   return side ? invites.filter((invite) => invite.side === side) : invites
+}
+
+/**
+ * Which language a household reads (PRD §6.7b).
+ *
+ * `null` means both, exactly like the three filters above — there is no `both`
+ * value on a household, and adding one would change the guest page, the
+ * templates and the artwork. This is the filter's own no-op state.
+ */
+export function filterByLanguage(
+  invites: InviteWithPeople[],
+  language: Language | null
+): InviteWithPeople[] {
+  return language ? invites.filter((invite) => invite.language === language) : invites
+}
+
+/**
+ * Households with no phone number — the ones that need one typed in.
+ *
+ * A number is the prerequisite for the whole send workflow: no phone means no
+ * `wa.me` link and no way to reach them, so these rows are invisible work
+ * rather than a state to report. Whitespace counts as missing: a row holding
+ * `" "` is not contactable, however non-empty the column looks.
+ */
+export function filterMissingPhone(
+  invites: InviteWithPeople[],
+  only: boolean
+): InviteWithPeople[] {
+  if (!only) return invites
+  return invites.filter((invite) => !invite.phone?.trim())
 }
 
 export function filterNeedsPhoneCall(
