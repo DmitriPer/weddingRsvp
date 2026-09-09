@@ -83,7 +83,7 @@ npm run build    # this is the type check; there is no test suite
 npm run lint
 ```
 
-**Test data:** `supabase/migrations/004_seed_test_data.sql` has **not been run** on the live project — as of 2026-07-30 it holds one real invite and nothing else. Run it in the SQL Editor for ~12 invented households covering every state. All marked `__test__`; remove with `delete from invites where name like '%__test__%';`
+**⚠️ Data: the live project holds the REAL guest list.** ~107 invitations as of 2026-09-09, no `__test__` rows, and there is no second database. **Do not run `supabase/migrations/004_seed_test_data.sql`** — it would drop ~12 invented households into a list that is actively being messaged by hand. It was never run here, and the window in which running it was the right move closed when the real list went in. Verify a write path with one reversible change to a single row and restore it; never with throwaway rows. Seeding is for a *fresh, empty* project only (`setup-database.md` §Test data).
 
 ---
 
@@ -314,7 +314,11 @@ Two columns on `invites` (`008_first_invitation.sql`, run on the live project th
 
 **⚠️ The database now holds 107 real invitations, not test data** — no `__test__` rows remain, 80 have no phone number and 12 are Russian. The §3 rule about test-only data no longer describes reality; treat every row as real and reversible-only.
 
-**`npm run lint` is currently unusable as a gate.** It reports ~11,000 problems, all from a stale `.next` build inside the leftover worktree `.claude/worktrees/relation-side-filters/`. Project sources are clean — lint them directly with `npx eslint components lib app` until that directory is removed or ignored.
+**`npm run lint` was unusable as a gate, and the cause was not the linter** (fixed 2026-09-09). It reported ~11,000 problems, every one from a stale `.next` build inside a leftover agent worktree at `.claude/worktrees/relation-side-filters/`. Worse, that worktree had been committed as a stray **gitlink** (mode `160000`, pointing at `0983c46`) with no `.gitmodules` — which breaks a fresh clone as well as lint.
+
+`git worktree remove` cleared it; its branch was already merged via PR #2, so nothing was lost. `.claude/worktrees/` is now in `.gitignore` so the next agent worktree cannot repeat either failure. `npm run lint` reports zero problems again.
+
+The lesson: **a lint run that reports thousands of problems in code you did not write is reporting on files you did not mean to lint.** Check the paths before believing the count — and never let a worktree live inside the repo it is a worktree of.
 
 ## 6. Known issues
 

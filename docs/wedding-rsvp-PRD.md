@@ -1,7 +1,7 @@
 # Wedding RSVP App — Product Requirements
 
 **Owner:** Dmitri
-**Status:** v9 — greenfield spec, the source of truth for what gets built.
+**Status:** v10 — greenfield spec, the source of truth for what gets built.
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
 
@@ -35,7 +35,7 @@ This phase delivers a **working, guest-data-safe MVP — function and data first
 
 | In scope | Out of scope |
 |---|---|
-| Full data model and schema | Real guest data (invented test rows only — §8) |
+| Full data model and schema | A second (staging) environment — there is one database, and it holds the real list (§8) |
 | API routes and server logic | Deliberate visual design |
 | Guest RSVP flow end to end | Automated or bulk WhatsApp sending, ever |
 | Admin: list, search, add, edit, delete, import, export | Multi-admin access |
@@ -52,7 +52,7 @@ Carried from `claude-workflow.md`. Not to be relitigated.
 
 1. **No automated, scheduled, or bulk WhatsApp/SMS sending — ever.** Every outbound message is a manual human tap on a per-row `wa.me` button. Reason: risk of the couple's number being flagged or banned. The app *prepares* messages and *flags who needs one*; a human always decides when to send.
 2. **Function and data before styling.**
-3. **No real guest data until explicitly told otherwise.** The Supabase project exists and holds only invented test rows. Dmitri's actual guest list goes in when he says so, not before.
+3. **⚠️ The database holds the real guest list, and there is only one.** Since 2026-09-09 the Supabase project holds Dmitri's actual list — ~107 invitations, no `__test__` rows left — with no staging project behind it. Every write lands on real people's details: never bulk-write, seed or delete, never run `004_seed_test_data.sql` again, and verify a write path with one reversible change to a single row rather than throwaway data. This replaces the original rule ("no real guest data until explicitly told otherwise"), which described the project before the list went in; the protection is the same and now stricter.
 4. **All data access goes through one layer.** Every read and write goes through `lib/data` — never a Supabase client reached directly from a route or a component.
 5. **Never touch the base repo author's live systems or real data.**
 
@@ -422,6 +422,8 @@ Non-negotiable.
 
 **There is no mock store.** One was specified here originally, and dropped on 2026-07-30 once the real Supabase project was working: maintaining a second implementation meant hand-mirroring Postgres `ON DELETE CASCADE` and `ON DELETE SET NULL` in TypeScript, and anything hand-mirrored drifts from the thing it mirrors. Test data is a seed migration instead, so Postgres enforces the rules rather than code imitating them.
 
+**⚠️ As of 2026-09-09 this section is historical. The database holds the real guest list — ~107 invitations, no `__test__` rows — and `004_seed_test_data.sql` was never run against it and must not be run now: it would add invented households to a live list that is being messaged by hand. What follows describes what that seed was designed to cover, kept because it still documents the states any change has to work against.**
+
 `supabase/migrations/004_seed_test_data.sql` seeds ~12 **invented** invites spanning all five statuses, both sides, several relations, and some at 5+ `contact_attempts`. Every row is marked `__test__` so `delete from invites where name like '%__test__%'` clears it before the real list goes in. Include at least one of each:
 
 - several named people, all approved
@@ -493,7 +495,7 @@ Non-negotiable.
 
 ## 12. Definition of Done
 
-- Every requirement in §6 works against mock data.
+- Every requirement in §6 works against the real database (originally "against mock data" — the mock store was dropped on 2026-07-30, see §8).
 - Every headcount comes from the single §5.1 count — no stored counts outside `response_history`.
 - Guests can tick individuals and add +1s; +1s exist as real rows and are seatable.
 - Declining deletes placeholders, unticks everyone, and reads 0.

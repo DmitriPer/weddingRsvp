@@ -115,7 +115,9 @@ npm run dev     # http://localhost:3030
 
 ## Test data
 
-`supabase/migrations/004_seed_test_data.sql` inserts ~12 invented guests covering every state — approved, partly declined, unnamed "+1"s, declined, unanswered, 5+ contact attempts, multi-row history, some seated. Run it the same way as the others when you want something to look at.
+**Only ever on a fresh, empty project.** Dmitri's live project holds the real guest list (~107 invitations since 2026-09-09) and this seed was never run against it. Running it there would insert invented households into a list being messaged by hand, so the `__test__` marker below is a cleanup aid for a scratch environment, not permission to seed the live one.
+
+`supabase/migrations/004_seed_test_data.sql` inserts ~12 invented guests covering every state — approved, partly declined, unnamed "+1"s, declined, unanswered, 5+ contact attempts, multi-row history, some seated. Run it the same way as the others when building a second environment to look at.
 
 Every row it creates is marked `__test__`. Clear them all before your real guest list goes in:
 

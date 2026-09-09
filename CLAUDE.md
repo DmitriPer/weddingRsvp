@@ -117,8 +117,10 @@ Full schema and rationale in PRD §5 and §10; SQL in `supabase/migrations/`.
 - **No automated, scheduled, or bulk WhatsApp/SMS sending — ever.** Every send is a human tap on a per-row `wa.me` button. This protects the couple's number from being flagged. Not a limitation to engineer around.
 - **Function and data before styling.** Screens should be legible and RTL-correct; deliberate visual design is a later phase.
 - **Viewport priority is opposite on the two surfaces.** The **guest page** (`app/page.tsx`, `components/guest/`) is built **mobile first** — guests open their link from a WhatsApp message on a phone — and desktop is adjusted at the end. The **admin area** (`app/admin/`, `components/admin/`) is built **desktop first**, because the invitee table and seating board are worked at a desk; mobile comes after. Start at each surface's primary viewport, never from the middle.
-- **No real guest data until explicitly told otherwise.** The Supabase project holds only invented test rows from `004_seed_test_data.sql`. Dmitri's actual guest list goes in when he says so.
-- **All data access goes through `lib/data`** — never a Supabase client reached directly from a route or component. There is no mock store; test data is a seed migration.
+- **⚠️ The database holds REAL guest data, and there is only one of them.** Since 2026-09-09 the Supabase project holds Dmitri's actual list — ~107 invitations, no `__test__` rows left. There is no staging or test project, so every write lands on the real thing. **Never bulk-write, seed, or delete rows.** Do not run `004_seed_test_data.sql`. Verify a write path with a single reversible change to one row and restore it immediately, or ask first — never create throwaway rows to test against. Bulk delete, truncate and anything irreversible need explicit confirmation each time.
+
+  *(This rule used to read "no real guest data until explicitly told otherwise", describing a project that held only invented rows. That is no longer true. The protection it exists for is unchanged and now stricter: nothing in this repo should ever treat guest rows as disposable.)*
+- **All data access goes through `lib/data`** — never a Supabase client reached directly from a route or component. There is no mock store.
 - **Hebrew / RTL from day one**, not retrofitted.
 
 ## Environment variables
