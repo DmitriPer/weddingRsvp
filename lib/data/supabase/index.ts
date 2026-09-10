@@ -16,7 +16,10 @@ import { nowIso } from '@/lib/datetime'
 import { isUuid } from '@/lib/validation'
 import type {
   Attendee,
+  BudgetItem,
   CreateAttendeeInput,
+  CreateBudgetItemInput,
+  UpdateBudgetItemInput,
   CreateInviteInput,
   CreateTableInput,
   Invite,
@@ -408,6 +411,67 @@ export const supabaseStore: DataStore = {
     // attendees.table_id is ON DELETE SET NULL: people are unseated, not deleted.
     const { data, error } = await db.from('tables').delete().eq('id', id).select('id')
     if (error) throw new Error(`delete table: ${error.message}`)
+    return (data?.length ?? 0) > 0
+  },
+
+  /*
+   * Budget items (PRD §6.22). Persistence only — every price is worked out in
+   * lib/budget.ts, so nothing here multiplies or subtracts anything.
+   *
+   * Ordered by sort_order then created_at: sort_order alone leaves rows added
+   * on the same default (0) in whatever order Postgres feels like returning,
+   * which makes the table reshuffle itself between reloads.
+   */
+  async listBudgetItems(): Promise<BudgetItem[]> {
+    const db = createAdminClient()
+    return unwrap(
+      await db
+        .from('budget_items')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+      'list budget items'
+    ) as BudgetItem[]
+  },
+
+  async createBudgetItem(input: CreateBudgetItemInput): Promise<BudgetItem> {
+    const db = createAdminClient()
+    return unwrap(
+      await db
+        .from('budget_items')
+        .insert({
+          name: input.name,
+          kind: input.kind,
+          pricing: input.pricing,
+          amount: input.amount,
+          paid_in_advance: input.paid_in_advance ?? 0,
+          sort_order: input.sort_order ?? 0,
+        })
+        .select()
+        .single(),
+      'create budget item'
+    ) as BudgetItem
+  },
+
+  async updateBudgetItem(id, input: UpdateBudgetItemInput): Promise<BudgetItem | null> {
+    if (!isUuid(id)) return null
+    const db = createAdminClient()
+    const { data, error } = await db
+      .from('budget_items')
+      .update(input)
+      .eq('id', id)
+      .select()
+      .maybeSingle()
+    if (error) throw new Error(`update budget item: ${error.message}`)
+    return (data as BudgetItem) ?? null
+  },
+
+  async deleteBudgetItem(id): Promise<boolean> {
+    if (!isUuid(id)) return false
+    const db = createAdminClient()
+    // Nothing references a budget item, so this cascades to nothing.
+    const { data, error } = await db.from('budget_items').delete().eq('id', id).select('id')
+    if (error) throw new Error(`delete budget item: ${error.message}`)
     return (data?.length ?? 0) > 0
   },
 

@@ -10,6 +10,9 @@
 
 import type {
   Attendee,
+  BudgetItem,
+  CreateBudgetItemInput,
+  UpdateBudgetItemInput,
   Language,
   Relation,
   Side,
@@ -97,6 +100,13 @@ export interface DataStore {
   createTable(input: CreateTableInput): Promise<SeatingTable>
   updateTable(id: string, input: UpdateTableInput): Promise<SeatingTable | null>
   deleteTable(id: string): Promise<boolean>
+
+  // --- budget --------------------------------------------------------------
+  /** Expenses and income (PRD §6.22). Full prices are derived, not stored. */
+  listBudgetItems(): Promise<BudgetItem[]>
+  createBudgetItem(input: CreateBudgetItemInput): Promise<BudgetItem>
+  updateBudgetItem(id: string, input: UpdateBudgetItemInput): Promise<BudgetItem | null>
+  deleteBudgetItem(id: string): Promise<boolean>
 
   // --- config --------------------------------------------------------------
   getConfig(): Promise<WeddingConfig>

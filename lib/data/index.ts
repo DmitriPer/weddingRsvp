@@ -48,6 +48,11 @@ export const createTable = store.createTable.bind(store)
 export const updateTable = store.updateTable.bind(store)
 export const deleteTable = store.deleteTable.bind(store)
 
+export const listBudgetItems = store.listBudgetItems.bind(store)
+export const createBudgetItem = store.createBudgetItem.bind(store)
+export const updateBudgetItem = store.updateBudgetItem.bind(store)
+export const deleteBudgetItem = store.deleteBudgetItem.bind(store)
+
 export const getConfig = store.getConfig.bind(store)
 export const updateConfig = store.updateConfig.bind(store)
 export const uploadInvitationImage = store.uploadInvitationImage.bind(store)
