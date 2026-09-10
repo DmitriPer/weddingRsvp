@@ -125,6 +125,81 @@ export interface WeddingConfig {
   updated_at: string
 }
 
+/**
+ * One line in the wedding's budget (PRD §6.22).
+ *
+ * `expense` is money out, `income` is money in — gifts, contributions.
+ */
+export type BudgetKind = 'expense' | 'income'
+
+/**
+ * How to read `amount`. This is the toggle on each row.
+ *
+ *   flat        `amount` IS the full price       — a DJ at ₪8,000
+ *   per_person  `amount` is the price per guest  — a caterer at ₪250/head
+ */
+export type BudgetPricing = 'flat' | 'per_person'
+
+export const BUDGET_KINDS: readonly BudgetKind[] = ['expense', 'income'] as const
+export const BUDGET_PRICINGS: readonly BudgetPricing[] = ['flat', 'per_person'] as const
+
+export interface BudgetItem {
+  id: string
+  name: string
+  kind: BudgetKind
+  pricing: BudgetPricing
+  /** AGOROT, always an integer. Meaning depends on `pricing` (lib/money.ts). */
+  amount: number
+  /** AGOROT already handed over. Never derived — a human types this. */
+  paid_in_advance: number
+  sort_order: number
+  created_at: string
+}
+
+/**
+ * What a budget line actually costs, worked out rather than stored.
+ *
+ * Two figures for a per-guest line, because they answer different questions
+ * and both are needed at once: `planned` is what you owe if everyone invited
+ * comes, `confirmed` is what the RSVPs so far commit you to. A flat line has
+ * the same number in both, which is why nothing has to special-case it.
+ */
+export interface BudgetLine {
+  item: BudgetItem
+  plannedFull: number
+  confirmedFull: number
+  plannedToPay: number
+  confirmedToPay: number
+}
+
+/** The four tiles, each on both bases (PRD §6.22). */
+export interface BudgetTotals {
+  plannedExpenses: number
+  confirmedExpenses: number
+
+  plannedIncome: number
+  confirmedIncome: number
+
+  /** income − expenses. Negative means the wedding costs more than it brings. */
+  plannedBalance: number
+  confirmedBalance: number
+
+  /** Unpaid expenses only — income is not something you "still owe". */
+  plannedToPay: number
+  confirmedToPay: number
+}
+
+export interface CreateBudgetItemInput {
+  name: string
+  kind: BudgetKind
+  pricing: BudgetPricing
+  amount: number
+  paid_in_advance?: number
+  sort_order?: number
+}
+
+export type UpdateBudgetItemInput = Partial<CreateBudgetItemInput>
+
 export interface InviteWithPeople extends Invite {
   attendees: Attendee[]
 }

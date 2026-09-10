@@ -4,11 +4,16 @@
  */
 
 import {
+  BUDGET_KINDS,
+  BUDGET_PRICINGS,
   INVITE_STATUSES,
   LANGUAGES,
   RELATIONS,
   SIDES,
+  type BudgetKind,
+  type BudgetPricing,
   type CreateAttendeeInput,
+  type CreateBudgetItemInput,
   type CreateInviteInput,
   type CreateTableInput,
   type InviteStatus,
@@ -17,6 +22,7 @@ import {
   type RsvpSubmission,
   type Side,
   type UpdateAttendeeInput,
+  type UpdateBudgetItemInput,
   type UpdateInviteInput,
   type UpdateTableInput,
 } from '@/lib/types'
@@ -184,6 +190,116 @@ export function parseUpdateInvite(body: unknown): Parsed<UpdateInviteInput> {
     }
     // null clears it back to undecided, which is a real edit, not a no-op.
     update.first_invite_sender = sender.value
+  }
+
+  if (Object.keys(update).length === 0) return fail('Nothing to update')
+  return pass(update)
+}
+
+/**
+ * An amount in AGOROT (PRD §6.22, lib/money.ts).
+ *
+ * Integer-only and non-negative, enforced here as well as by the column's
+ * CHECK: a float would mean fractions of an agora, which no price has, and
+ * would reintroduce the binary-floating-point drift the integer storage exists
+ * to prevent. The UI parses what a person types; this guards the URL, which is
+ * reachable with curl.
+ */
+function agorotField(value: unknown, field: string): Parsed<number> {
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return fail(`${field} must be a whole number of agorot`)
+  }
+  if (value < 0) return fail(`${field} cannot be negative`)
+  if (!Number.isSafeInteger(value)) return fail(`${field} is too large`)
+  return pass(value)
+}
+
+function requiredEnum<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  field: string
+): Parsed<T> {
+  if (typeof value !== 'string' || !allowed.includes(value as T)) {
+    return fail(`${field} must be one of: ${allowed.join(', ')}`)
+  }
+  return pass(value as T)
+}
+
+/**
+ * A new budget line. Name, kind, pricing and amount are all required — a line
+ * missing any of them cannot be displayed or summed, so there is nothing to be
+ * gained by accepting a partial one and rendering a blank row.
+ */
+export function parseCreateBudgetItem(body: unknown): Parsed<CreateBudgetItemInput> {
+  if (!isRecord(body)) return fail('Invalid request body')
+
+  const name = requiredText(body.name, 'Name')
+  if (!name.ok) return name
+  const kind = requiredEnum<BudgetKind>(body.kind, BUDGET_KINDS, 'Kind')
+  if (!kind.ok) return kind
+  const pricing = requiredEnum<BudgetPricing>(body.pricing, BUDGET_PRICINGS, 'Pricing')
+  if (!pricing.ok) return pricing
+  const amount = agorotField(body.amount, 'Amount')
+  if (!amount.ok) return amount
+
+  // Blank means nothing paid yet, which is the normal state of a new line.
+  const paid = body.paid_in_advance === undefined ? pass(0) : agorotField(body.paid_in_advance, 'Paid in advance')
+  if (!paid.ok) return paid
+  const sortOrder = nonNegativeInt(body.sort_order, 'Sort order')
+  if (!sortOrder.ok) return sortOrder
+
+  return pass({
+    name: name.value,
+    kind: kind.value,
+    pricing: pricing.value,
+    amount: amount.value,
+    paid_in_advance: paid.value,
+    sort_order: sortOrder.value,
+  })
+}
+
+/**
+ * An edit. Each field is optional, but a field that IS present must be valid —
+ * the table saves one cell at a time, so most requests carry exactly one key.
+ *
+ * Note that overpayment is NOT rejected here: paid_in_advance above the full
+ * price is a typo the person can see and fix, and the full price of a per-guest
+ * line isn't knowable from this request anyway — it depends on the guest list.
+ * lib/budget.ts clamps the remaining balance at zero instead.
+ */
+export function parseUpdateBudgetItem(body: unknown): Parsed<UpdateBudgetItemInput> {
+  if (!isRecord(body)) return fail('Invalid request body')
+  const update: UpdateBudgetItemInput = {}
+
+  if ('name' in body) {
+    const name = requiredText(body.name, 'Name')
+    if (!name.ok) return name
+    update.name = name.value
+  }
+  if ('kind' in body) {
+    const kind = requiredEnum<BudgetKind>(body.kind, BUDGET_KINDS, 'Kind')
+    if (!kind.ok) return kind
+    update.kind = kind.value
+  }
+  if ('pricing' in body) {
+    const pricing = requiredEnum<BudgetPricing>(body.pricing, BUDGET_PRICINGS, 'Pricing')
+    if (!pricing.ok) return pricing
+    update.pricing = pricing.value
+  }
+  if ('amount' in body) {
+    const amount = agorotField(body.amount, 'Amount')
+    if (!amount.ok) return amount
+    update.amount = amount.value
+  }
+  if ('paid_in_advance' in body) {
+    const paid = agorotField(body.paid_in_advance, 'Paid in advance')
+    if (!paid.ok) return paid
+    update.paid_in_advance = paid.value
+  }
+  if ('sort_order' in body) {
+    const sortOrder = nonNegativeInt(body.sort_order, 'Sort order')
+    if (!sortOrder.ok) return sortOrder
+    update.sort_order = sortOrder.value
   }
 
   if (Object.keys(update).length === 0) return fail('Nothing to update')

@@ -41,6 +41,7 @@ export const strings = {
     tabs: {
       invitees: 'מוזמנים',
       seating: 'סידור שולחנות',
+      budget: 'תקציב',
       settings: 'הגדרות',
     },
     comingSoon: 'בבנייה',
@@ -283,6 +284,75 @@ export const strings = {
       `למחוק ${invites} הזמנות? יימחקו גם ${people} אנשים וכל היסטוריית התשובות שלהם. לצמיתות.`,
     deleted: (n: number) => `${n} הזמנות נמחקו`,
     deleteFailed: 'המחיקה נכשלה',
+  },
+
+  /**
+   * Expenses and income (PRD §6.22).
+   *
+   * Two figures per per-guest line, worded as PLANNING vs CONFIRMED rather
+   * than by which count produced them — "לפי מוזמנים" would read as a filter,
+   * and what the reader needs to know is which number they can rely on.
+   */
+  budget: {
+    title: 'הוצאות והכנסות',
+    hint: 'שורה לכל הוצאה או הכנסה. מחיר לפי אורח מוכפל במספר האנשים אוטומטית.',
+
+    /** Column headers. */
+    name: 'שם',
+    kind: 'סוג',
+    pricing: 'חיוב',
+    amount: 'מחיר',
+    paidInAdvance: 'שולם מראש',
+    fullPrice: 'מחיר מלא',
+    toPay: 'נותר לשלם',
+
+    kinds: {
+      expense: 'הוצאה',
+      income: 'הכנסה',
+    },
+    pricings: {
+      flat: 'לפי שירות',
+      per_person: 'לפי אורח',
+    },
+    /** On the amount cell of a per-guest row, so the unit is never in doubt. */
+    perPersonUnit: 'לאדם',
+
+    /** The small figure under a per-guest line: what the RSVPs so far commit to. */
+    confirmedNote: (formatted: string) => `${formatted} מאושר`,
+    /** Nobody has answered yet, so the confirmed column is honestly nothing. */
+    noneConfirmed: 'אין עדיין אישורים',
+
+    tiles: {
+      expenses: 'סה״כ הוצאות',
+      income: 'סה״כ הכנסות',
+      balance: 'מאזן',
+      toPay: 'נותר לשלם',
+    },
+    /** Under each tile: the same total on the confirmed basis. */
+    confirmedTile: (formatted: string) => `${formatted} לפי אישורים`,
+    /** Spelled out, because "מאזן" alone doesn't say which way is good. */
+    balanceHint: 'הכנסות פחות הוצאות',
+
+    addRow: 'הוספת שורה',
+    adding: 'מוסיף…',
+    namePlaceholder: 'למשל: קייטרינג',
+    /** The add row refuses rather than saving something unusable. */
+    nameRequired: 'צריך שם',
+    amountRequired: 'צריך מחיר',
+    invalidAmount: 'מחיר לא תקין',
+
+    delete: 'מחיקה',
+    confirmDelete: (name: string) => `למחוק את "${name}"?`,
+    deleted: 'השורה נמחקה',
+    saveFailed: 'השמירה נכשלה',
+    deleteFailed: 'המחיקה נכשלה',
+
+    empty: 'אין עדיין שורות בתקציב',
+    emptyHint: 'הוסיפו הוצאה או הכנסה ראשונה למטה.',
+
+    /** Per-guest lines multiply by the invited count until answers arrive. */
+    basis: (invited: number, attending: number) =>
+      `מחיר לפי אורח מוכפל ב-${invited} מוזמנים (${attending} אישרו עד כה).`,
   },
 
   toolbar: {

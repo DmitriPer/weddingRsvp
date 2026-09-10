@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { strings } from '@/lib/strings'
 
 /**
- * Three tabs, not five.
+ * Four tabs, not six.
  *
  * Statistics folded into the top of the invitees screen — they are four numbers
  * and read better beside the list than on their own page. Answers folded into a
@@ -15,6 +15,7 @@ import { strings } from '@/lib/strings'
 const TABS = [
   { href: '/admin', label: strings.admin.tabs.invitees },
   { href: '/admin/seating', label: strings.admin.tabs.seating },
+  { href: '/admin/budget', label: strings.admin.tabs.budget },
   { href: '/admin/settings', label: strings.admin.tabs.settings },
 ] as const
 
