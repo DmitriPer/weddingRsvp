@@ -1,3 +1,4 @@
+import { OG_CARD_VERSION } from '@/lib/og-card-version'
 import type { Language } from '@/lib/types'
 
 /**
@@ -53,6 +54,21 @@ export const OG_CARD_PATHS: Record<Language, string> = {
 
 /** The Hebrew card, where a single default is needed. */
 export const OG_CARD_PATH = OG_CARD_PATHS.he
+
+/**
+ * THE card's URL, path plus cache-busting version. Never advertise a bare
+ * OG_CARD_PATHS entry.
+ *
+ * WhatsApp caches a preview image by its URL and re-fetches nothing, so a
+ * rebuilt card served from the same path keeps showing the old picture in every
+ * new chat — silently, and for as long as its cache holds. `?v=` is the only
+ * lever: the path is a static file, so there are no response headers of ours to
+ * set. The version is a content hash written by `npm run og-card`, which means
+ * it changes exactly when the picture does and never when it doesn't.
+ */
+export function ogCardUrl(language: Language): string {
+  return `${OG_CARD_PATHS[language]}?v=${OG_CARD_VERSION}`
+}
 
 export const OG_CARD_WIDTH = 1200
 export const OG_CARD_HEIGHT = 630

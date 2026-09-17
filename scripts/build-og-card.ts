@@ -18,13 +18,14 @@
  * imported by anything under app/ or lib/ that runs at request time.
  */
 
-import { readFileSync, statSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import sharp from 'sharp'
 import { createElement } from 'react'
 import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
-import { formatDateTime } from '../lib/datetime'
+import { formatDate } from '../lib/datetime'
 import { localeFor } from '../lib/strings'
 import { venueForDisplay } from '../lib/venue'
 import { LANGUAGES, type Language, type WeddingConfig } from '../lib/types'
@@ -149,9 +150,13 @@ async function readCardText(language: Language): Promise<CardText> {
     // The card's own Latin lettering wins; config is the fallback. Identical in
     // both languages — the invitation is lettered "NICOLE & DIMA".
     couple: OG_COUPLE_NAMES.trim() || (data.couple_names ?? '').trim(),
-    // Via lib/datetime, so the card reads the same instant as every screen —
-    // and in the reader's language, which is the point of building two cards.
-    when: formatDateTime(data.wedding_date_time, localeFor(language)),
+    // Via lib/datetime, so the card reads the same day as every screen — and in
+    // the reader's language, which is the point of building two cards. DATE
+    // ONLY, no clock time: the hour a guest needs is the one in the admin's own
+    // message ("קבלת פנים: 19:30 | חופה: 20:30"), and a single time painted on
+    // the card contradicts it. app/page.tsx drops the hour from the line beneath
+    // the picture for the same reason; change them together.
+    when: formatDate(data.wedding_date_time, localeFor(language)),
     // Display, never navigation: the card is read, not tapped (lib/venue.ts).
     venue: venueForDisplay(data as unknown as WeddingConfig, language).trim(),
   }
@@ -330,7 +335,46 @@ async function main(): Promise<void> {
   console.log('')
   }
 
+  writeCardVersion()
+
   console.log('Look at both, then commit them: the cards are served as static files.')
+}
+
+/** Where the generated version lands. Imported by lib/og.ts, never hand-edited. */
+const VERSION_MODULE = 'lib/og-card-version.ts'
+
+/**
+ * Stamps the built cards' content hash into lib/og-card-version.ts.
+ *
+ * WhatsApp caches a preview image by URL. Rebuild a card and serve it from the
+ * same path and the old picture keeps appearing in new chats, silently — the
+ * one failure this whole script cannot otherwise fix. `?v=<hash>` makes a
+ * changed card a different URL.
+ *
+ * Written HERE, from the bytes just produced, rather than bumped by hand: a
+ * version someone has to remember to change is a version that eventually
+ * doesn't. Hashing the output also means a rebuild that produces identical
+ * pixels leaves the file untouched, so caches are not thrown away for nothing.
+ */
+function writeCardVersion(): void {
+  const hash = createHash('sha256')
+  for (const language of LANGUAGES) {
+    hash.update(readFileSync(path.join('public', OG_CARD_PATHS[language].replace(/^\//, ''))))
+  }
+  const version = hash.digest('hex').slice(0, 16)
+
+  const current = readFileSync(VERSION_MODULE, 'utf8')
+  const next = current.replace(
+    /export const OG_CARD_VERSION = '[^']*'/,
+    `export const OG_CARD_VERSION = '${version}'`
+  )
+  if (next === current) {
+    console.log(`Cards unchanged; ${VERSION_MODULE} left at ${version}.`)
+    return
+  }
+
+  writeFileSync(VERSION_MODULE, next)
+  console.log(`${VERSION_MODULE} → ${version}`)
 }
 
 main().catch((error: unknown) => {
