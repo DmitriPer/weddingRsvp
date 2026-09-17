@@ -10,10 +10,10 @@
 
 import type { Metadata } from 'next'
 import { getConfig, getInviteByToken } from '@/lib/data'
-import { formatDateTime, isRsvpOpen } from '@/lib/datetime'
+import { formatDate, formatDateTime, isRsvpOpen } from '@/lib/datetime'
 import { invitationImageForLanguage } from '@/lib/invitation-image'
 import { buildAbsoluteUrl } from '@/lib/links'
-import { OG_CARD_HEIGHT, OG_CARD_PATHS, OG_CARD_WIDTH, OG_COUPLE_NAMES } from '@/lib/og'
+import { OG_CARD_HEIGHT, OG_CARD_WIDTH, OG_COUPLE_NAMES, ogCardUrl } from '@/lib/og'
 import { venueForDisplay, venueForNavigation } from '@/lib/venue'
 import { guestText, localeFor } from '@/lib/strings'
 import { hasAnswered } from '@/lib/status'
@@ -62,8 +62,10 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 
   // The Latin form, so the bold line WhatsApp prints matches the card above it.
   const title = OG_COUPLE_NAMES.trim() || config.couple_names.trim() || t.og.untitled
+  // Date only, matching the card above it: the card paints no clock time, and
+  // the hour that matters is the one in the admin's message template.
   const description = t.og.details(
-    formatDateTime(config.wedding_date_time, localeFor(language)),
+    formatDate(config.wedding_date_time, localeFor(language)),
     venueForDisplay(config, language).trim()
   )
   const url = buildAbsoluteUrl('/')
@@ -89,8 +91,9 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
       images: [
         {
           // Absolute. A relative path is not fetched by a crawler, which has no
-          // page context to resolve it against.
-          url: buildAbsoluteUrl(OG_CARD_PATHS[language]),
+          // page context to resolve it against. Versioned, so a rebuilt card is
+          // a new URL and WhatsApp's image cache cannot serve the old one.
+          url: buildAbsoluteUrl(ogCardUrl(language)),
           width: OG_CARD_WIDTH,
           height: OG_CARD_HEIGHT,
           alt: t.og.imageAlt,
