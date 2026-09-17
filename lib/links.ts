@@ -17,18 +17,19 @@ function siteOrigin(): string {
 /**
  * The guest's personal link. The token is the credential (PRD §7.1).
  *
- * `&lang=` is appended for Russian, and it exists for ONE reason: the WhatsApp
- * preview card carries the invitation artwork, so a Russian household needs a
- * Russian card — but `generateMetadata` must not query the database. Every
- * invite sent triggers two crawler fetches, and putting a lookup on that path
+ * `&lang=` is appended for Russian, and it exists for ONE reason: the title and
+ * description WhatsApp prints beneath the preview follow the household's
+ * language, but `generateMetadata` must not look up the invite to find it. Every
+ * invite sent triggers two crawler fetches, and putting that lookup on the path
  * is what the no-arguments rule in app/page.tsx exists to prevent.
  *
  * The admin already knows each invite's language when it builds this link, so
  * carrying it in the URL lets the crawler be answered with no lookup at all.
  *
- * It is only ever a hint for the preview. The PAGE takes its language from the
- * database, which is authoritative — so a tampered `lang` changes which picture
- * a crawler shows and nothing else.
+ * It does NOT pick the picture: one card serves every household, since nothing
+ * painted on it is in any language. It is only ever a hint for the words. The
+ * PAGE takes its language from the database, which is authoritative — so a
+ * tampered `lang` changes the preview's wording and nothing else.
  *
  * Hebrew is the default and omits it, keeping the common link short.
  */

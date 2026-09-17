@@ -33,6 +33,31 @@ export function formatDate(value: string | Date | null | undefined, locale: stri
 }
 
 /**
+ * "8/10/2026" — the numeric form the invitation itself prints.
+ *
+ * LANGUAGE-NEUTRAL, and that is the point: it is what the WhatsApp preview card
+ * paints, and a card whose date reads the same in Hebrew and Russian is one card
+ * instead of two.
+ *
+ * Assembled from parts rather than handed to a locale, because no locale gives
+ * this: he-IL prints 8.10.2026, ru-RU 08.10.2026, en-GB 08/10/2026 and en-US
+ * reverses the day and month outright. Padding is dropped so the day matches the
+ * artwork's own lettering.
+ */
+export function formatNumericDate(value: string | Date | null | undefined): string {
+  const date = toDate(value)
+  if (!date) return ''
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: WEDDING_TIMEZONE,
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+  }).formatToParts(date)
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  return `${Number(part('day'))}/${Number(part('month'))}/${part('year')}`
+}
+
+/**
  * "19:30" — always 24-hour.
  *
  * `hour12: false` is explicit rather than inherited from the locale. he-IL
