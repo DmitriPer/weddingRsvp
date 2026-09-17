@@ -7,4 +7,4 @@
  * with nothing to indicate why. The hash changes only when the pixels do, so a
  * rebuild that changes nothing costs no cache.
  */
-export const OG_CARD_VERSION = 'da388b467964d2e1'
+export const OG_CARD_VERSION = 'ea8df811aa56a51b'

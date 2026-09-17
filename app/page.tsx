@@ -43,12 +43,15 @@ export const dynamic = 'force-dynamic'
  * whole list to `opened` the moment invitations went OUT, destroying the "who
  * hasn't looked yet" filter §6.10 depends on.
  *
- * It reads `?lang=` instead (PRD §6.7b). The card carries the artwork, so a
- * Russian household needs a Russian card — and the admin already knows each
- * invite's language when it builds the link, so carrying it in the URL answers
- * the crawler with NO LOOKUP AT ALL. A tampered value changes which picture is
- * shown and nothing else; the page itself still takes its language from the
- * database.
+ * It reads `?lang=` instead (PRD §6.7b), which the admin already knows when it
+ * builds each link, so the crawler is answered with NO INVITE LOOKUP AT ALL.
+ *
+ * `lang` no longer picks the PICTURE — there is one card for every household,
+ * because nothing painted on it is in any language: the couple's name is Latin
+ * and the date is the numeric 8/10/2026 the invitation itself prints. It picks
+ * the language of the title and description printed beneath the picture. A
+ * tampered value changes those words and nothing else; the page itself still
+ * takes its language from the database.
  *
  * The date and venue come from wedding_config, so they follow the settings tab
  * with no redeploy. The names are the Latin form in lib/og.ts, shared with the
@@ -93,7 +96,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
           // Absolute. A relative path is not fetched by a crawler, which has no
           // page context to resolve it against. Versioned, so a rebuilt card is
           // a new URL and WhatsApp's image cache cannot serve the old one.
-          url: buildAbsoluteUrl(ogCardUrl(language)),
+          url: buildAbsoluteUrl(ogCardUrl()),
           width: OG_CARD_WIDTH,
           height: OG_CARD_HEIGHT,
           alt: t.og.imageAlt,

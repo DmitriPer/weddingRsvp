@@ -1,5 +1,4 @@
 import { OG_CARD_VERSION } from '@/lib/og-card-version'
-import type { Language } from '@/lib/types'
 
 /**
  * THE WhatsApp preview card's shape (PRD §6.15).
@@ -37,27 +36,26 @@ import type { Language } from '@/lib/types'
 export const OG_COUPLE_NAMES = 'Nicole & Dima'
 
 /**
- * Public path of the built card, per language. Served straight from `public/`.
+ * Public path of the built card. Served straight from `public/`.
  *
- * Two files, because the card PAINTS the date and venue onto the artwork and
- * both differ by language — a Russian household reading a Hebrew date and a
- * Hebrew address in the picture is the thing this exists to fix.
+ * ONE file, for every household. The card paints only the couple's name and the
+ * date, and the date is the numeric 8/10/2026 the invitation itself prints, so
+ * nothing on it is in any language — there is nothing left for a second card to
+ * say differently.
  *
- * `npm run og-card` builds both. They share the artwork; only the painted lines
- * differ. When the designer delivers a Russian invitation, point the script at
- * it and the two will differ in the picture as well.
+ * It was two: a Hebrew card and a Russian one, because the painted date and
+ * venue both read in the household's language. The venue came off the card
+ * (it lives in the line beneath the picture and in the message template), the
+ * date became numeric, and the pair collapsed into this.
+ *
+ * `?lang=` still exists on an invite link — it picks the language of the
+ * description WhatsApp prints under the picture, not the picture.
  */
-export const OG_CARD_PATHS: Record<Language, string> = {
-  he: '/assets/og-card.jpg',
-  ru: '/assets/og-card-ru.jpg',
-}
-
-/** The Hebrew card, where a single default is needed. */
-export const OG_CARD_PATH = OG_CARD_PATHS.he
+export const OG_CARD_PATH = '/assets/og-card.jpg'
 
 /**
- * THE card's URL, path plus cache-busting version. Never advertise a bare
- * OG_CARD_PATHS entry.
+ * THE card's URL, path plus cache-busting version. Never advertise the bare
+ * OG_CARD_PATH.
  *
  * WhatsApp caches a preview image by its URL and re-fetches nothing, so a
  * rebuilt card served from the same path keeps showing the old picture in every
@@ -66,8 +64,8 @@ export const OG_CARD_PATH = OG_CARD_PATHS.he
  * set. The version is a content hash written by `npm run og-card`, which means
  * it changes exactly when the picture does and never when it doesn't.
  */
-export function ogCardUrl(language: Language): string {
-  return `${OG_CARD_PATHS[language]}?v=${OG_CARD_VERSION}`
+export function ogCardUrl(): string {
+  return `${OG_CARD_PATH}?v=${OG_CARD_VERSION}`
 }
 
 export const OG_CARD_WIDTH = 1200

@@ -1,318 +1,119 @@
 /**
- * Builds the WhatsApp preview card (PRD §6.15) from a source image.
+ * Publishes the WhatsApp preview card (PRD §6.15).
  *
- *   npm run og-card                          # rebuild from the current artwork
- *   npm run og-card path/to/new-artwork.jpg  # when the designer's file lands
+ *   npm run og-card
  *
- * Writes public/assets/og-card.jpg at exactly 1200×630: the artwork, with the
- * couple's names, date and venue painted into the middle. The result is
- * COMMITTED, so serving it is a static file read — no rendering on a request
- * WhatsApp abandons after a few seconds.
+ * The card is FINISHED ARTWORK, drawn by hand in a design tool and committed as
+ * assets/card/card-artwork.png. This script does not compose it. It checks the
+ * things that fail silently in production, writes public/assets/og-card.jpg, and
+ * stamps the cache-busting version — no more.
  *
- * **The card does not follow the settings tab.** It is a file, not a page. Edit
- * the date or the venue in /admin/settings and this must be re-run, or the
- * preview keeps advertising the old details while every screen shows the new
- * ones. Nothing enforces that, which is exactly why it is written here.
+ * It used to build the card from the invitation: florals cut out and composed,
+ * lettering rendered through Satori, Hebrew through Pango because Satori has no
+ * bidi. Every position was a constant here. Handing that job to a design tool
+ * removed all of it, and nothing about the card got worse — the only thing lost
+ * is that adjusting it now means new artwork rather than a new number.
  *
- * `sharp` is a devDependency used only by this script. It must never be
- * imported by anything under app/ or lib/ that runs at request time.
+ * `sharp` is a devDependency used only by this script. It must never be imported
+ * by anything under app/ or lib/ that runs at request time.
  */
 
 import { createHash } from 'node:crypto'
 import { readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import sharp from 'sharp'
-import { createElement } from 'react'
-import { ImageResponse } from 'next/og'
 import { createClient } from '@supabase/supabase-js'
-import { formatDate } from '../lib/datetime'
-import { localeFor } from '../lib/strings'
-import { venueForDisplay } from '../lib/venue'
-import { LANGUAGES, type Language, type WeddingConfig } from '../lib/types'
-import {
-  OG_CARD_HEIGHT,
-  OG_CARD_MAX_BYTES,
-  OG_CARD_WIDTH,
-  OG_CARD_PATHS,
-  OG_COUPLE_NAMES,
-} from '../lib/og'
+import { formatNumericDate } from '../lib/datetime'
+import { OG_CARD_HEIGHT, OG_CARD_MAX_BYTES, OG_CARD_WIDTH, OG_CARD_PATH } from '../lib/og'
 
-/** The landscape banner the card is built from. Not the portrait invitation. */
-const DEFAULT_SOURCE = 'public/assets/demo-og-source.jpg'
-
-/** The couple's monogram, sitting above the names. Same mark as the invitation. */
-const LOGO = 'public/assets/wedding-logo.svg'
-const LOGO_HEIGHT = 116
-const LOGO_TOP = 104
+/** The finished card, as delivered. Replace this file to change the card. */
+const ARTWORK = 'assets/card/card-artwork.png'
 
 /**
- * Above this, a source is landscape enough to fill the card by cropping a little
- * off its top and bottom. Below it — a portrait invitation — cropping would eat
- * the artwork, so the whole thing is fitted onto a canvas instead.
+ * THE DATE THE ARTWORK SHOWS, as the database would store it.
  *
- * 1.4 sits between a 16:9 banner (1.78, the shape image tools produce) and a
- * portrait invitation (0.71).
- */
-const CROPPABLE_ASPECT = 1.4
-
-/**
- * The guest palette's greens, mirroring `--bloom-*` in app/globals.css. A
- * script cannot read CSS custom properties, so these are the one copy that
- * exists outside that file; change them together.
- */
-const INK_STRONG = '#475F3B'
-const INK = '#567348'
-const RULE = '#7FA46D'
-
-/**
- * Hebrew is rendered through an SVG overlay, NOT through `next/og`.
+ * The date on the card is drawn, not rendered, so it cannot follow
+ * /admin/settings the way every screen does. This is the tripwire: the build
+ * reads wedding_config and stops if the two have parted company, which turns
+ * "the preview quietly advertises the wrong day" into a failed build that says
+ * what to do. The card sat on a stale 18:30 for six weeks once, and nothing
+ * caught it but a person noticing.
  *
- * Satori — what `next/og` uses — performs no bidirectional reordering, so
- * "ניקול ודימה" comes out as "המידו לוקינ": correct glyphs, laid out
- * left-to-right. It looks like a font problem and is not one; no font fixes it.
- * librsvg shapes text through Pango, which implements the bidi algorithm, and
- * renders both the Hebrew and the mixed Hebrew/number date line correctly.
- *
- * The consequence is that the HEBREW font comes from the machine, via
- * fontconfig, rather than from a file this repo controls: Heebo when installed,
- * otherwise Noto Sans Hebrew. Close enough, and unavoidable — Pango has no API
- * for handing it a buffer. The Latin name escapes this by going through Satori
- * instead (see DISPLAY_FONT), which is why only that line is guaranteed to look
- * the same everywhere. The output is committed and looked at, so a bad
- * substitution in the Hebrew is caught by eye before it ships.
+ * Change this only alongside new artwork.
  */
-const FONT_STACK = "Heebo, 'Noto Sans Hebrew', 'Droid Sans Hebrew', sans-serif"
-
-/**
- * The invitation's own lettering, as closely as a free face gets it: Cormorant
- * SC, a light Garamond-style small caps with fine hairlines. Compared against a
- * crop of the artwork alongside Cormorant Garamond, EB Garamond and Cinzel —
- * the Garamonds have no small caps at all and Cinzel is wider and more evenly
- * stroked.
- *
- * The file is vendored because this is the one thing fontconfig cannot give us:
- * the SVG path renders through Pango, which can only use fonts INSTALLED ON THE
- * MACHINE, and a card that looks different depending on who built it is not a
- * design decision. Satori takes a font as a buffer, so the Latin name goes
- * through it instead — see renderCoupleName().
- */
-const DISPLAY_FONT = 'assets/fonts/CormorantSC-Light.ttf'
-const DISPLAY_SIZE = 100
-const DISPLAY_TOP = 244
-const DISPLAY_BLOCK_HEIGHT = 132
-
-/** Hebrew needs RTL; a Latin name set RTL centres oddly and gains nothing. */
-function textDirection(value: string): 'rtl' | 'ltr' {
-  return /[֐-׿]/.test(value) ? 'rtl' : 'ltr'
-}
-
-interface CardText {
-  couple: string
-  when: string
-  venue: string
-}
+const ARTWORK_DATE = '8/10/2026'
 
 function readEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
-    throw new Error(
-      `Missing ${name}. This script reads it from .env.local — run it through npm run og-card.`
-    )
+    throw new Error(`${name} is not set. Run through npm run og-card, which loads .env.local.`)
   }
   return value
 }
 
 /**
- * The details, from wedding_config.
+ * Stops the build when the artwork and the database disagree about the date.
  *
  * Read with the Supabase client directly rather than through lib/data: that
  * module is marked `server-only`, which throws the moment it is imported outside
  * a React Server Component. scripts/create-admin.ts talks to Supabase the same
  * way for the same reason.
  */
-async function readCardText(language: Language): Promise<CardText> {
+async function assertArtworkMatchesConfig(): Promise<void> {
   const supabase = createClient(
     readEnv('NEXT_PUBLIC_SUPABASE_URL'),
     readEnv('SUPABASE_SECRET_KEY'),
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data, error } = await supabase
-    .from('wedding_config')
-    .select('couple_names, wedding_date_time, venue_name, venue_name_ru')
-    .single()
-
+  const { data, error } = await supabase.from('wedding_config').select('wedding_date_time').single()
   if (error) {
     throw new Error(`Could not read wedding_config: ${error.message}`)
   }
 
-  return {
-    // The card's own Latin lettering wins; config is the fallback. Identical in
-    // both languages — the invitation is lettered "NICOLE & DIMA".
-    couple: OG_COUPLE_NAMES.trim() || (data.couple_names ?? '').trim(),
-    // Via lib/datetime, so the card reads the same day as every screen — and in
-    // the reader's language, which is the point of building two cards. DATE
-    // ONLY, no clock time: the hour a guest needs is the one in the admin's own
-    // message ("קבלת פנים: 19:30 | חופה: 20:30"), and a single time painted on
-    // the card contradicts it. app/page.tsx drops the hour from the line beneath
-    // the picture for the same reason; change them together.
-    when: formatDate(data.wedding_date_time, localeFor(language)),
-    // Display, never navigation: the card is read, not tapped (lib/venue.ts).
-    venue: venueForDisplay(data as unknown as WeddingConfig, language).trim(),
-  }
-}
-
-/** `&` and `<` in a venue name would otherwise produce invalid SVG. */
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-/** Long names would run into the florals, so the display size gives way first. */
-function coupleFontSize(couple: string): number {
-  if (couple.length <= 14) return 92
-  if (couple.length <= 22) return 72
-  return 56
-}
-
-/** `coupleDrawnSeparately` — the Latin name is a Satori layer, so skip it here. */
-function textOverlay({ couple, when, venue }: CardText, coupleDrawnSeparately: boolean): Buffer {
-  const centre = OG_CARD_WIDTH / 2
-  const line = (
-    y: number,
-    size: number,
-    fill: string,
-    weight: number,
-    value: string,
-    { font = FONT_STACK, extra = '' }: { font?: string; extra?: string } = {}
-  ) =>
-    `<text x="${centre}" y="${y}" font-family="${font}" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="middle" direction="${textDirection(value)}"${extra}>${escapeXml(value)}</text>`
-
-  // Each line is omitted rather than rendered blank when its field is unset, so
-  // a half-filled wedding_config gives a sparser card, never a stray rule.
-  const parts = [
-    // Only reached by a Hebrew name falling back from config; the Latin form is
-    // drawn by Satori with the invitation's own typeface.
-    couple && !coupleDrawnSeparately && line(352, coupleFontSize(couple), INK_STRONG, 700, couple),
-    couple &&
-      (when || venue) &&
-      `<line x1="${centre - 75}" y1="406" x2="${centre + 75}" y2="406" stroke="${RULE}" stroke-width="1.5"/>`,
-    when && line(464, 44, INK, 400, when),
-    venue && line(516, 34, INK, 400, venue),
-  ].filter(Boolean)
-
-  return Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_CARD_WIDTH}" height="${OG_CARD_HEIGHT}">${parts.join('')}</svg>`
-  )
-}
-
-/**
- * The couple's name, rendered by Satori with the vendored font.
- *
- * Satori is used HERE and nowhere else in this script, because it does no
- * bidirectional reordering — Hebrew comes out reversed. A Latin name has no bidi
- * to get wrong, and in exchange Satori accepts the typeface as a buffer, which
- * is the only way to guarantee the same lettering on every machine.
- *
- * Returns null for a Hebrew name, which then goes down the Pango path with
- * everything else rather than being silently reversed.
- */
-async function renderCoupleName(couple: string): Promise<Buffer | null> {
-  if (textDirection(couple) === 'rtl') return null
-
-  // createElement rather than an object literal: this file is .ts, so there is
-  // no JSX, and ImageResponse takes a real ReactElement — a hand-shaped object
-  // matches at runtime but fails the type check that `next build` runs over
-  // every file in the project, scripts included.
-  const element = createElement(
-    'div',
-    {
-      style: {
-        width: `${OG_CARD_WIDTH}px`,
-        height: `${DISPLAY_BLOCK_HEIGHT}px`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: INK_STRONG,
-        fontSize: DISPLAY_SIZE,
-        // The invitation sets the names wide apart; without this they read as a
-        // word rather than a title.
-        letterSpacing: 7,
-      },
-    },
-    couple
-  )
-
-  const response = new ImageResponse(element, {
-    width: OG_CARD_WIDTH,
-    height: DISPLAY_BLOCK_HEIGHT,
-    fonts: [{ name: 'Display', data: readFileSync(DISPLAY_FONT), weight: 300, style: 'normal' }],
-  })
-
-  return Buffer.from(await response.arrayBuffer())
-}
-
-async function composeArtwork(source: string): Promise<Buffer> {
-  const { width, height } = await sharp(source).metadata()
-  if (!width || !height) {
-    throw new Error(`Could not read the dimensions of ${source}`)
+  const configured = formatNumericDate(data.wedding_date_time)
+  if (configured !== ARTWORK_DATE) {
+    throw new Error(
+      `The card's artwork shows ${ARTWORK_DATE}, but wedding_config says ${configured || '(no date set)'}.\n` +
+        'The date on the card is drawn, not rendered, so it cannot be re-generated: get new ' +
+        `artwork showing the new date, replace ${ARTWORK}, and update ARTWORK_DATE in this file.`
+    )
   }
 
-  // Landscape enough: fill the frame, losing a sliver top and bottom.
-  if (width / height >= CROPPABLE_ASPECT) {
-    return sharp(source)
-      .resize({ width: OG_CARD_WIDTH, height: OG_CARD_HEIGHT, fit: 'cover', position: 'centre' })
-      .toBuffer()
-  }
-
-  // Portrait: the whole image, centred, on its own paper colour. The bars either
-  // side read as margin rather than a gap — the same reason the guest page's
-  // backdrop uses `contain` (components/guest/invitation-backdrop.tsx).
-  const fitted = await sharp(source).resize({ height: OG_CARD_HEIGHT, fit: 'inside' }).toBuffer()
-  const { data } = await sharp(source)
-    .extract({ left: 0, top: 0, width: 12, height: 12 })
-    .raw()
-    .toBuffer({ resolveWithObject: true })
-
-  return sharp({
-    create: {
-      width: OG_CARD_WIDTH,
-      height: OG_CARD_HEIGHT,
-      channels: 3,
-      background: { r: data[0], g: data[1], b: data[2] },
-    },
-  })
-    .composite([{ input: fitted }])
-    .toBuffer()
+  console.log(`wedding_config agrees with the artwork: ${configured}`)
 }
 
 async function main(): Promise<void> {
-  const source = process.argv[2] ?? DEFAULT_SOURCE
-  readFileSync(source) // fail here, with the path, rather than inside sharp
+  await assertArtworkMatchesConfig()
 
-  // The monogram is composited as its own layer rather than embedded in the SVG
-  // overlay: librsvg would have to resolve a nested file reference, and a
-  // silently-missing one is a card that ships with a hole in it.
-  const logo = await sharp(LOGO).resize({ height: LOGO_HEIGHT }).png().toBuffer()
-  const { width: logoWidth } = await sharp(logo).metadata()
+  const { width, height } = await sharp(ARTWORK).metadata()
+  if (!width || !height) {
+    throw new Error(`Could not read the dimensions of ${ARTWORK}`)
+  }
 
-  // One card per language. They share the artwork and the Latin couple name;
-  // the painted date and venue are what differ.
-  for (const language of LANGUAGES) {
-  const text = await readCardText(language)
-  const destination = path.join('public', OG_CARD_PATHS[language].replace(/^\//, ''))
-  const coupleName = await renderCoupleName(text.couple)
+  /*
+   * Resized to the card's exact frame with `fill`, which stretches rather than
+   * crops. Artwork delivered at a slightly different aspect — 1950×1024 is
+   * 1.9043 against the card's 1.9048 — would otherwise lose a sliver of its
+   * edge, and on a design whose flowers deliberately run off the sides, the
+   * sliver is the part that was drawn to be there. A mismatch big enough to
+   * distort visibly is caught below instead.
+   */
+  const aspect = width / height
+  const target = OG_CARD_WIDTH / OG_CARD_HEIGHT
+  if (Math.abs(aspect - target) / target > 0.02) {
+    throw new Error(
+      `${ARTWORK} is ${width}×${height} (aspect ${aspect.toFixed(4)}), too far from the card's ` +
+        `${OG_CARD_WIDTH}×${OG_CARD_HEIGHT} (${target.toFixed(4)}). Stretching it to fit would ` +
+        'visibly distort the artwork — redraw or re-export it at the card\'s proportions.'
+    )
+  }
 
-  await sharp(await composeArtwork(source))
-    .composite([
-      { input: logo, top: LOGO_TOP, left: Math.round((OG_CARD_WIDTH - (logoWidth ?? 0)) / 2) },
-      ...(coupleName ? [{ input: coupleName, top: DISPLAY_TOP, left: 0 }] : []),
-      { input: textOverlay(text, Boolean(coupleName)) },
-    ])
-    .jpeg({ quality: 86, mozjpeg: true })
+  const destination = path.join('public', OG_CARD_PATH.replace(/^\//, ''))
+
+  await sharp(ARTWORK)
+    .resize({ width: OG_CARD_WIDTH, height: OG_CARD_HEIGHT, fit: 'fill' })
+    .jpeg({ quality: 88, mozjpeg: true })
     .toFile(destination)
 
   const bytes = statSync(destination).size
@@ -327,29 +128,25 @@ async function main(): Promise<void> {
     )
   }
 
-  console.log(`[${language}] ${source} → ${destination}`)
+  console.log(`${ARTWORK} (${width}×${height}) → ${destination}`)
   console.log(`      ${OG_CARD_WIDTH}×${OG_CARD_HEIGHT}, ${kb} KB (budget ${OG_CARD_MAX_BYTES / 1024} KB)`)
-  console.log(`      ${text.couple || '(no couple names set)'}`)
-  console.log(`      ${text.when || '(no date set)'}`)
-  console.log(`      ${text.venue || '(no venue set)'}`)
   console.log('')
-  }
 
   writeCardVersion()
 
-  console.log('Look at both, then commit them: the cards are served as static files.')
+  console.log('Look at it, then commit it: the card is served as a static file.')
 }
 
 /** Where the generated version lands. Imported by lib/og.ts, never hand-edited. */
 const VERSION_MODULE = 'lib/og-card-version.ts'
 
 /**
- * Stamps the built cards' content hash into lib/og-card-version.ts.
+ * Stamps the built card's content hash into lib/og-card-version.ts.
  *
- * WhatsApp caches a preview image by URL. Rebuild a card and serve it from the
- * same path and the old picture keeps appearing in new chats, silently — the
- * one failure this whole script cannot otherwise fix. `?v=<hash>` makes a
- * changed card a different URL.
+ * WhatsApp caches a preview image by URL. Replace the card and serve it from the
+ * same path and the old picture keeps appearing in new chats, silently — the one
+ * failure this script cannot otherwise prevent. `?v=<hash>` makes a changed card
+ * a different URL.
  *
  * Written HERE, from the bytes just produced, rather than bumped by hand: a
  * version someone has to remember to change is a version that eventually
@@ -358,9 +155,7 @@ const VERSION_MODULE = 'lib/og-card-version.ts'
  */
 function writeCardVersion(): void {
   const hash = createHash('sha256')
-  for (const language of LANGUAGES) {
-    hash.update(readFileSync(path.join('public', OG_CARD_PATHS[language].replace(/^\//, ''))))
-  }
+  hash.update(readFileSync(path.join('public', OG_CARD_PATH.replace(/^\//, ''))))
   const version = hash.digest('hex').slice(0, 16)
 
   const current = readFileSync(VERSION_MODULE, 'utf8')
@@ -369,7 +164,7 @@ function writeCardVersion(): void {
     `export const OG_CARD_VERSION = '${version}'`
   )
   if (next === current) {
-    console.log(`Cards unchanged; ${VERSION_MODULE} left at ${version}.`)
+    console.log(`Card unchanged; ${VERSION_MODULE} left at ${version}.`)
     return
   }
 
