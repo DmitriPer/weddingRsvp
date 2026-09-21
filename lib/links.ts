@@ -1,3 +1,4 @@
+import { OG_CARD_VERSION } from '@/lib/og-card-version'
 import type { Language } from '@/lib/types'
 
 /**
@@ -32,10 +33,24 @@ function siteOrigin(): string {
  * tampered `lang` changes the preview's wording and nothing else.
  *
  * Hebrew is the default and omits it, keeping the common link short.
+ *
+ * `&c=` IS THE CARD'S VERSION, and it is the only thing that makes a changed
+ * preview reach a link that has already been shared.
+ *
+ * WhatsApp caches a link's preview — title, description and image address
+ * together — against the page URL, and never re-reads that page. So the `?v=`
+ * on the image cannot help: WhatsApp never fetches the page to discover the new
+ * image URL. The card can be rebuilt, deployed and confirmed correct by every
+ * other tool, and the chat still shows the old picture, with no way to clear it.
+ *
+ * Carrying the card's hash in the invite link makes every link change when the
+ * card changes, so there is no cached preview to serve and WhatsApp must fetch
+ * afresh. The page ignores `c` entirely — it is read by nothing.
  */
 export function buildInviteLink(token: string, language: Language = 'he'): string {
   const base = `${siteOrigin()}/?token=${encodeURIComponent(token)}`
-  return language === 'he' ? base : `${base}&lang=${language}`
+  const withLanguage = language === 'he' ? base : `${base}&lang=${language}`
+  return `${withLanguage}&c=${OG_CARD_VERSION.slice(0, 8)}`
 }
 
 /** Absolute URL for OpenGraph images — relative paths are not fetched by crawlers. */
