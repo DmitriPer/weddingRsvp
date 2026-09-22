@@ -44,7 +44,7 @@ export default async function InviteesPage() {
         * The glyphs are the same ones a person's row already uses — ○ waiting,
         * ✓ coming — so the bar and the list speak one language.
         */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-6">
         <Tile label={strings.stats.records} value={stats.totalInvites} />
         <Tile label={strings.stats.invited} value={stats.totalInvitedPeople} />
         <Tile
@@ -52,6 +52,15 @@ export default async function InviteesPage() {
           value={stats.totalAwaitingPeople}
           sub={strings.stats.invites(stats.totalAwaitingInvites)}
           icon="○"
+          tone="text-muted"
+        />
+        {/* Its own tile rather than folded into "ממתין לתשובה": these
+            households replied, and need chasing rather than inviting. */}
+        <Tile
+          label={strings.stats.undecided}
+          value={stats.totalUndecidedPeople}
+          sub={strings.stats.invites(stats.totalUndecidedInvites)}
+          icon="?"
           tone="text-muted"
         />
         <Tile

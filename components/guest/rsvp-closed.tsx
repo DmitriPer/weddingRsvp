@@ -10,19 +10,19 @@
 import { guestText } from '@/lib/strings'
 import { Confirmation } from '@/components/guest/confirmation'
 import { WeddingDetails } from '@/components/guest/wedding-details'
-import type { Attendee, Language } from '@/lib/types'
+import type { Answer, Attendee, Language } from '@/lib/types'
 
 interface RsvpClosedProps {
   lang: Language
   /** null = never answered, and now never will through the form. */
-  attending: boolean | null
+  answer: Answer | null
   attendees: Attendee[]
   when: string
   venue: string
   phone: string
 }
 
-export function RsvpClosed({ lang, attending, attendees, when, venue, phone }: RsvpClosedProps) {
+export function RsvpClosed({ lang, answer, attendees, when, venue, phone }: RsvpClosedProps) {
   const t = guestText(lang)
 
   return (
@@ -41,7 +41,7 @@ export function RsvpClosed({ lang, attending, attendees, when, venue, phone }: R
         )}
       </div>
 
-      {attending === null ? (
+      {answer === null ? (
         <section className="space-y-6 text-center">
           <p className="text-sm text-bloom-ink">{t.rsvp.closed.yourAnswer}</p>
           <p>{t.rsvp.closed.noAnswer}</p>
@@ -49,7 +49,7 @@ export function RsvpClosed({ lang, attending, attendees, when, venue, phone }: R
         </section>
       ) : (
         // No onChangeAnswer: there is nothing to change any more.
-        <Confirmation lang={lang} attending={attending} attendees={attendees} when={when} venue={venue} />
+        <Confirmation lang={lang} answer={answer} attendees={attendees} when={when} venue={venue} />
       )}
     </div>
   )

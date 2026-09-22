@@ -325,12 +325,23 @@ export const supabaseStore: DataStore = {
     const invite = await this.getInviteByToken(submission.token)
     if (!invite) return null
 
-    if (submission.attending) {
+    const coming = submission.answer === 'yes'
+
+    if (coming) {
       await applyTicks(invite, submission.attendingIds)
       await applyPlaceholderPlan(invite, submission.extraAdults, submission.extraKids)
     } else {
+      // 'no' and 'undecided' both leave nobody attending: see parseRsvpSubmission.
       await clearEverything(invite)
     }
+
+    /*
+     * The legacy boolean, written alongside `answer` so migration 010 stays
+     * reversible for the two answers it can express. 'undecided' has no boolean
+     * to be, which is the whole reason `answer` exists. Migration 011 drops the
+     * column and this line goes with it.
+     */
+    const legacyAttending = submission.answer === 'undecided' ? null : coming
 
     // Re-read: the rows just changed, and the snapshot must match what was stored.
     const attendees = await fetchAttendees(invite.id)
@@ -339,7 +350,8 @@ export const supabaseStore: DataStore = {
 
     const historyResult = await db.from('response_history').insert({
       invite_id: invite.id,
-      attending: submission.attending,
+      answer: submission.answer,
+      attending: legacyAttending,
       adult_count: adults,
       kid_count: kids,
       submitted_at: timestamp,
@@ -350,7 +362,8 @@ export const supabaseStore: DataStore = {
       await db
         .from('invites')
         .update({
-          attending: submission.attending,
+          answer: submission.answer,
+          attending: legacyAttending,
           status: statusAfterSubmit(invite.status),
           updated_at: timestamp,
           responded_at: invite.responded_at ?? timestamp,

@@ -6,6 +6,7 @@
 import { countAttending } from '@/lib/headcount'
 import { hasBeenSent, needsPhoneCall } from '@/lib/status'
 import {
+  ANSWERS,
   INVITE_STATUSES,
   RELATIONS,
   type InviteStatus,
@@ -88,6 +89,31 @@ export function filterByStatus(
   if (statuses.length === 0) return invites
   const wanted = new Set(statuses)
   return invites.filter((invite) => wanted.has(invite.status))
+}
+
+/**
+ * What the household answered, several at once.
+ *
+ * 'none' is a value here rather than an absence: "has not answered" is one of
+ * the things worth filtering for, and it is what `answer IS NULL` means in the
+ * database. An EMPTY list is the no-op, as with the status chips.
+ *
+ * This is NOT the status filter in different clothes. Status says how far the
+ * invitation got — sent, opened, answered; this says what the answer was. The
+ * pair that matters most is 'undecided', which is a household to chase, and
+ * there is no status that identifies them: they sit on 'submitted' alongside
+ * everyone who gave a straight yes.
+ */
+export const ANSWER_FILTERS = [...ANSWERS, 'none'] as const
+export type AnswerFilter = (typeof ANSWER_FILTERS)[number]
+
+export function filterByAnswer(
+  invites: InviteWithPeople[],
+  answers: readonly AnswerFilter[]
+): InviteWithPeople[] {
+  if (answers.length === 0) return invites
+  const wanted = new Set(answers)
+  return invites.filter((invite) => wanted.has(invite.answer ?? 'none'))
 }
 
 /** Whether the invitation has gone out. `null` is both, as everywhere here. */

@@ -83,14 +83,24 @@ export function HistoryModal({ inviteId, name }: { inviteId: string; name: strin
                 {entries.map((entry, index) => (
                   <li key={entry.id} className="rounded-md border border-border px-3 py-2 text-sm">
                     <div className="flex justify-between gap-3">
-                      <span className={entry.attending ? 'text-accent' : 'text-danger'}>
-                        {entry.attending ? strings.row.attending : strings.guests.declined}
+                      {/* Three answers, so this cannot be a ternary on a
+                          boolean — an undecided entry read as "declined". */}
+                      <span
+                        className={
+                          entry.answer === 'yes'
+                            ? 'text-accent'
+                            : entry.answer === 'no'
+                              ? 'text-danger'
+                              : 'text-muted'
+                        }
+                      >
+                        {strings.toolbar.answer[entry.answer]}
                       </span>
                       <span className="ltr-nums text-xs text-muted">
                         {formatShort(entry.submitted_at)}
                       </span>
                     </div>
-                    {entry.attending ? (
+                    {entry.answer === 'yes' ? (
                       <p className="mt-1 text-muted">
                         {strings.guests.adults}: {entry.adult_count} · {strings.guests.kids}:{' '}
                         {entry.kid_count}

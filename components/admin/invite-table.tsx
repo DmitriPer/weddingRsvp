@@ -15,9 +15,11 @@ import { InviteRow } from '@/components/admin/invite-row'
 import { EmptyState } from '@/components/ui/states'
 import { countInvited } from '@/lib/headcount'
 import {
+  ANSWER_FILTERS,
   DEFAULT_SORT_DIRECTION,
   SORT_KEYS,
   filterByLanguage,
+  filterByAnswer,
   filterByRelation,
   filterBySent,
   filterBySide,
@@ -26,6 +28,7 @@ import {
   filterNeedsPhoneCall,
   searchInvites,
   sortInvites,
+  type AnswerFilter,
   type SentFilter,
   type SortDirection,
   type SortKey,
@@ -122,6 +125,8 @@ export function InviteTable({
   const [query, setQuery] = useState('')
   /** Empty means every status — see filterByStatus. */
   const [statuses, setStatuses] = useState<InviteStatus[]>([])
+  /** Empty means every answer — see filterByAnswer. */
+  const [answers, setAnswers] = useState<AnswerFilter[]>([])
   const [sent, setSent] = useState<SentFilter | ''>('')
   const [relation, setRelation] = useState<Relation | ''>('')
   const [side, setSide] = useState<Side | ''>('')
@@ -203,7 +208,8 @@ export function InviteTable({
   const visible = useMemo(() => {
     const searched = searchInvites(patched, query)
     const byStatus = filterByStatus(searched, statuses)
-    const bySent = filterBySent(byStatus, sent || null)
+    const byAnswer = filterByAnswer(byStatus, answers)
+    const bySent = filterBySent(byAnswer, sent || null)
     const byRelation = filterByRelation(bySent, relation || null)
     const bySide = filterBySide(byRelation, side || null)
     const byLanguage = filterByLanguage(bySide, language || null)
@@ -214,6 +220,7 @@ export function InviteTable({
     patched,
     query,
     statuses,
+    answers,
     sent,
     relation,
     side,
@@ -375,6 +382,50 @@ export function InviteTable({
                 }`}
               >
                 {strings.status[value]}
+              </button>
+            )
+          })}
+        </div>
+
+        <div
+          className="flex flex-wrap items-center gap-1"
+          role="group"
+          aria-label={strings.toolbar.allAnswers}
+        >
+          <button
+            type="button"
+            onClick={() => setAnswers([])}
+            aria-pressed={answers.length === 0}
+            className={`rounded-md border px-2 py-1.5 text-sm ${
+              answers.length === 0
+                ? 'border-bloom-ink bg-bloom-ink/10 text-bloom-strong'
+                : 'border-border text-muted'
+            }`}
+          >
+            {strings.toolbar.allAnswers}
+          </button>
+
+          {ANSWER_FILTERS.map((value) => {
+            const on = answers.includes(value)
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() =>
+                  setAnswers((current) =>
+                    current.includes(value)
+                      ? current.filter((each) => each !== value)
+                      : [...current, value]
+                  )
+                }
+                aria-pressed={on}
+                className={`rounded-md border px-2 py-1.5 text-sm ${
+                  on
+                    ? 'border-bloom-ink bg-bloom-ink/10 text-bloom-strong'
+                    : 'border-border text-muted'
+                }`}
+              >
+                {strings.toolbar.answer[value]}
               </button>
             )
           })}

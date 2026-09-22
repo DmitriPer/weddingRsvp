@@ -4,12 +4,14 @@
  */
 
 import {
+  ANSWERS,
   BUDGET_KINDS,
   BUDGET_PRICINGS,
   INVITE_STATUSES,
   LANGUAGES,
   RELATIONS,
   SIDES,
+  type Answer,
   type BudgetKind,
   type BudgetPricing,
   type CreateAttendeeInput,
@@ -387,13 +389,19 @@ export function parseRsvpSubmission(body: unknown): Parsed<RsvpSubmission> {
 
   const token = requiredText(body.token, 'Token')
   if (!token.ok) return token
-  if (typeof body.attending !== 'boolean') return fail('An answer is required')
+  if (!ANSWERS.includes(body.answer as Answer)) return fail('An answer is required')
+  const answer = body.answer as Answer
 
-  // Declining zeroes everything, so the rest of the payload is ignored (PRD §6.1).
-  if (!body.attending) {
+  /*
+   * Only 'yes' carries people. Declining zeroes everything (PRD §6.1), and so
+   * does 'undecided' — a household that cannot say whether it is coming cannot
+   * say who is, and storing a provisional list would feed the caterer a number
+   * nobody committed to.
+   */
+  if (answer !== 'yes') {
     return pass({
       token: token.value,
-      attending: false,
+      answer,
       attendingIds: [],
       extraAdults: 0,
       extraKids: 0,
@@ -413,7 +421,7 @@ export function parseRsvpSubmission(body: unknown): Parsed<RsvpSubmission> {
 
   return pass({
     token: token.value,
-    attending: true,
+    answer,
     attendingIds: attendingIds.value,
     extraAdults: extraAdults.value,
     extraKids: extraKids.value,

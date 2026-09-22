@@ -13,6 +13,7 @@
 import {
   countAttending,
   countAwaiting,
+  countUndecided,
   countDeclined,
   countExtras,
   countInvited,
@@ -34,6 +35,8 @@ export function computeStats(invites: InviteWithPeople[]): Stats {
   let totalAwaitingPeople = 0
   let totalAwaitingInvites = 0
   let totalAttendingInvites = 0
+  let totalUndecidedInvites = 0
+  let totalUndecidedPeople = 0
   let totalDeclinedPeople = 0
   let totalDeclined = 0
   let totalExtras = 0
@@ -44,14 +47,16 @@ export function computeStats(invites: InviteWithPeople[]): Stats {
     totalInvitedPeople += countInvited(invite.attendees)
     totalExtras += countExtras(invite.attendees)
 
-    const awaiting = countAwaiting(invite.attending, invite.attendees)
-    totalAwaitingPeople += awaiting
-    if (invite.attending === null) totalAwaitingInvites += 1
+    totalAwaitingPeople += countAwaiting(invite.answer, invite.attendees)
+    if (invite.answer === null) totalAwaitingInvites += 1
 
-    if (invite.attending === true) totalAttendingInvites += 1
-    if (invite.attending === false) totalDeclined += 1
+    totalUndecidedPeople += countUndecided(invite.answer, invite.attendees)
+    if (invite.answer === 'undecided') totalUndecidedInvites += 1
 
-    totalDeclinedPeople += countDeclined(invite.attending, invite.attendees)
+    if (invite.answer === 'yes') totalAttendingInvites += 1
+    if (invite.answer === 'no') totalDeclined += 1
+
+    totalDeclinedPeople += countDeclined(invite.answer, invite.attendees)
   }
 
   const headcount = sumHeadcounts(invites.map((invite) => countAttending(invite.attendees)))
@@ -66,6 +71,9 @@ export function computeStats(invites: InviteWithPeople[]): Stats {
 
     totalAttending: headcount.total,
     totalAttendingInvites,
+
+    totalUndecidedInvites,
+    totalUndecidedPeople,
 
     totalDeclinedPeople,
     totalDeclined,

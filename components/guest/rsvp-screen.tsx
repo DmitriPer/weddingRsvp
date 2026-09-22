@@ -21,7 +21,7 @@ import { GuestGreeting, GuestShell } from '@/components/guest/guest-shell'
 import { InvitationForm } from '@/components/guest/invitation-form'
 import { RsvpClosed } from '@/components/guest/rsvp-closed'
 import { RsvpSheet } from '@/components/guest/rsvp-sheet'
-import type { Attendee, Language, RsvpResult } from '@/lib/types'
+import type { Answer, Attendee, Language, RsvpResult } from '@/lib/types'
 
 interface RsvpScreenProps {
   lang: Language
@@ -30,8 +30,8 @@ interface RsvpScreenProps {
   token: string
   inviteName: string
   attendees: Attendee[]
-  /** null = never answered. */
-  attending: boolean | null
+  /** null = never answered, which is distinct from having answered 'undecided'. */
+  answer: Answer | null
   when: string
   /** What the guest READS. Follows their language (lib/venue.ts). */
   venue: string
@@ -44,7 +44,7 @@ interface RsvpScreenProps {
 }
 
 interface SavedAnswer {
-  attending: boolean
+  answer: Answer
   attendees: Attendee[]
 }
 
@@ -54,7 +54,7 @@ export function RsvpScreen({
   token,
   inviteName,
   attendees,
-  attending,
+  answer,
   when,
   venue,
   venueForNav,
@@ -64,16 +64,16 @@ export function RsvpScreen({
 }: RsvpScreenProps) {
   const t = guestText(lang)
   const [saved, setSaved] = useState<SavedAnswer | null>(
-    attending === null ? null : { attending, attendees }
+    answer === null ? null : { answer, attendees }
   )
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [editing, setEditing] = useState(attending === null)
+  const [editing, setEditing] = useState(answer === null)
 
   function handleSubmitted(result: RsvpResult) {
     setSaved({
-      // The route always writes a boolean; null only exists before a first
-      // answer, which by definition is no longer the case here.
-      attending: result.invite.attending ?? false,
+      // The route always writes an answer; null only exists before a first one,
+      // which by definition is no longer the case here.
+      answer: result.invite.answer ?? 'undecided',
       attendees: result.invite.attendees,
     })
     setEditing(false)
@@ -104,7 +104,7 @@ export function RsvpScreen({
         {!rsvpOpen ? (
           <RsvpClosed
             lang={lang}
-            attending={saved ? saved.attending : attending}
+            answer={saved ? saved.answer : answer}
             attendees={saved?.attendees ?? attendees}
             when={when}
             venue={venue}
@@ -113,7 +113,7 @@ export function RsvpScreen({
         ) : saved && !editing ? (
           <Confirmation
             lang={lang}
-            attending={saved.attending}
+            answer={saved.answer}
             attendees={saved.attendees}
             when={when}
             venue={venue}
@@ -124,7 +124,7 @@ export function RsvpScreen({
             lang={lang}
             token={token}
             attendees={saved?.attendees ?? attendees}
-            initialAttending={saved?.attending ?? attending}
+            initialAnswer={saved?.answer ?? answer}
             onSubmitted={handleSubmitted}
             onCancel={saved ? () => setEditing(false) : undefined}
           />

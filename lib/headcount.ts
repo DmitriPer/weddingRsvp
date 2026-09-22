@@ -9,7 +9,7 @@
  * invite counts to zero naturally rather than by special case.
  */
 
-import type { Attendee, Headcount } from '@/lib/types'
+import type { Answer, Attendee, Headcount } from '@/lib/types'
 
 export function countAttending(attendees: Attendee[]): Headcount {
   let adults = 0
@@ -37,17 +37,19 @@ export function countAttending(attendees: Attendee[]): Headcount {
 export type AttendanceSummary =
   | { kind: 'noPeople' }
   | { kind: 'awaiting'; invited: number }
+  | { kind: 'undecided'; invited: number }
   | { kind: 'declined'; invited: number }
   | { kind: 'coming'; coming: number; invited: number }
 
 export function summarizeAttendance(
-  attending: boolean | null,
+  answer: Answer | null,
   attendees: Attendee[]
 ): AttendanceSummary {
   const invited = attendees.length
   if (invited === 0) return { kind: 'noPeople' }
-  if (attending === null) return { kind: 'awaiting', invited }
-  if (attending === false) return { kind: 'declined', invited }
+  if (answer === null) return { kind: 'awaiting', invited }
+  if (answer === 'undecided') return { kind: 'undecided', invited }
+  if (answer === 'no') return { kind: 'declined', invited }
   return { kind: 'coming', coming: countAttending(attendees).total, invited }
 }
 
@@ -72,8 +74,9 @@ export function countInvited(attendees: Attendee[]): number {
  * Nobody has declined until the invitation itself has answered — before that
  * `is_attending` is merely its `false` default, not a decision.
  */
-export function countDeclined(attending: boolean | null, attendees: Attendee[]): number {
-  if (attending === null) return 0
+export function countDeclined(answer: Answer | null, attendees: Attendee[]): number {
+  // Undecided declines nobody: the household has answered, but not about who.
+  if (answer === null || answer === 'undecided') return 0
   return attendees.filter((person) => !person.is_attending && !person.is_placeholder).length
 }
 
@@ -84,8 +87,20 @@ export function countDeclined(attending: boolean | null, attendees: Attendee[]):
  *
  * This is the number that says how much the caterer count could still move.
  */
-export function countAwaiting(attending: boolean | null, attendees: Attendee[]): number {
-  return attending === null ? attendees.length : 0
+export function countAwaiting(answer: Answer | null, attendees: Attendee[]): number {
+  return answer === null ? attendees.length : 0
+}
+
+/**
+ * People on an invitation that answered 'undecided'.
+ *
+ * Counted apart from `countAwaiting` rather than added to it. Both are people
+ * whose seat is unsettled, but they are reached differently — one household has
+ * never been asked, the other has answered and needs a nudge — and a single
+ * number that quietly means both is the kind that gets acted on wrongly.
+ */
+export function countUndecided(answer: Answer | null, attendees: Attendee[]): number {
+  return answer === 'undecided' ? attendees.length : 0
 }
 
 /** Guest-added "+1"s among those coming — people who were never on the list. */

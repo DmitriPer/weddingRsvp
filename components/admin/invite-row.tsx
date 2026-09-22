@@ -34,7 +34,7 @@ function sideRelationLabel(invite: InviteWithPeople): string | null {
 }
 
 function attendanceLabel(invite: InviteWithPeople): string {
-  const summary = summarizeAttendance(invite.attending, invite.attendees)
+  const summary = summarizeAttendance(invite.answer, invite.attendees)
   const labels = strings.guests.summary
 
   switch (summary.kind) {
@@ -42,6 +42,8 @@ function attendanceLabel(invite: InviteWithPeople): string {
       return labels.noPeople
     case 'awaiting':
       return labels.awaiting(summary.invited)
+    case 'undecided':
+      return labels.undecided(summary.invited)
     case 'declined':
       return labels.declined(summary.invited)
     case 'coming':

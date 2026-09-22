@@ -121,11 +121,17 @@ export const strings = {
     },
   },
 
+  /**
+   * The workflow stage, NOT the answer. `submitted` reads 'ענה' rather than
+   * 'אישר' because a household that answered "עדיין לא יודעים" lands here too,
+   * and calling that confirmed is simply false. What they said is the `answer`
+   * column, shown by the row's own summary line and its filter chips.
+   */
   status: {
     added: 'נוסף',
     pending: 'הוזמן',
     opened: 'נפתח',
-    submitted: 'אישר',
+    submitted: 'ענה',
     edited: 'עודכן',
   },
 
@@ -164,6 +170,8 @@ export const strings = {
     summary: {
       noPeople: 'אין אנשים בהזמנה',
       awaiting: (invited: number) => `${invited} מוזמנים · טרם ענו`,
+      /** Answered, and does not know yet — not the same as not having answered. */
+      undecided: (invited: number) => `${invited} מוזמנים · עדיין לא יודעים`,
       declined: (invited: number) => `${invited} מוזמנים · לא מגיעים`,
       coming: (coming: number, invited: number) =>
         coming === invited ? `${coming} מגיעים` : `${coming} מגיעים מתוך ${invited}`,
@@ -214,6 +222,8 @@ export const strings = {
     records: 'רשומות',
     invited: 'מוזמנים',
     awaiting: 'ממתין לתשובה',
+    /** Answered, undecided — a nudge, not an invitation. Kept apart from awaiting. */
+    undecided: 'עדיין לא יודעים',
     coming: 'מגיעים',
     notComing: 'לא מגיעים',
     /** The small line under a tile: the same figure counted in invitations. */
@@ -368,6 +378,14 @@ export const strings = {
     allRelations: 'כל הקשרים',
     /** Whether the invitation has gone out — 'added' is the not-yet list. */
     allSent: 'נשלחו וטרם נשלחו',
+    /** The answer chips. 'none' is "has not answered", which is a real filter. */
+    allAnswers: 'כל התשובות',
+    answer: {
+      yes: 'מגיעים',
+      no: 'לא מגיעים',
+      undecided: 'עדיין לא יודעים',
+      none: 'טרם ענו',
+    },
     sentOnly: 'נשלחו',
     unsentOnly: 'טרם נשלחו',
     allSides: 'כל הצדדים',
@@ -460,6 +478,12 @@ const he = {
     intro: 'נשמח לדעת אם תגיעו',
     yes: 'מגיעים',
     no: 'לא נגיע',
+    /**
+     * A real answer, not a way out of answering: the household replied and
+     * cannot say yet. Plural, matching the two above — the invitation is
+     * addressed to a household, never to one person.
+     */
+    undecided: 'עדיין לא יודעים',
 
     whoIsComing: 'מי מגיע?',
     whoIsComingHint: 'סמנו את מי שמגיע',
@@ -479,7 +503,15 @@ const he = {
     confirmation: {
       titleAttending: 'תודה! נרשמתם',
       titleDeclined: 'תודה שעדכנתם',
-      declined: 'רשמנו שלא תגיעו. חבל, נתגעגע!',
+      /** Answered without deciding — thank them, and say the door is open. */
+      titleUndecided: 'תודה! נשמח לעדכון כשתדעו',
+      /**
+       * Shown to anyone who did NOT say yes — undecided and declining alike.
+       * A household that cannot come today may be able to next month, and the
+       * link keeps working either way, so telling only the undecided would be
+       * leaving the other half to assume their answer is final.
+       */
+      changeAnytime: 'אפשר לחזור לקישור ולעדכן בכל רגע.',
       attending: 'מגיע',
       extraGuest: 'אורח נוסף',
       total: (count: number) => `סה״כ ${count === 1 ? 'אורח אחד' : `${count} אורחים`}`,
@@ -553,6 +585,8 @@ const ru: typeof he = {
     intro: 'Будем рады узнать, придёте ли вы',
     yes: 'Придём',
     no: 'Не придём',
+    /** Plural like the other two, and first person: the household answering. */
+    undecided: 'Ещё не знаем',
 
     whoIsComing: 'Кто придёт?',
     whoIsComingHint: 'Отметьте тех, кто придёт',
@@ -574,7 +608,8 @@ const ru: typeof he = {
     confirmation: {
       titleAttending: 'Спасибо! Мы вас записали',
       titleDeclined: 'Спасибо, что сообщили',
-      declined: 'Мы записали, что вы не придёте. Жаль, будем скучать!',
+      titleUndecided: 'Спасибо! Будем рады узнать, когда решите',
+      changeAnytime: 'Вы можете вернуться по ссылке и обновить ответ в любой момент.',
       attending: 'Придёт',
       extraGuest: 'Дополнительный гость',
       // 1 гость · 2 гостя · 5 гостей
