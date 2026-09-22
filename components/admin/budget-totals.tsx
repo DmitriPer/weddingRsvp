@@ -3,11 +3,18 @@
  *
  * A Server Component: it renders numbers and holds no state. Same shape as the
  * stats bar on the invitees tab — a large figure with a smaller one beneath —
- * so the two screens speak one language. There, the small number is the same
- * figure in invitations; here it is the same total on the CONFIRMED basis.
+ * so the two screens speak one language.
+ *
+ * EVERY TILE LEADS WITH THE CONFIRMED FIGURE — what the answers received so far
+ * commit to — with the everyone-invited figure small beneath it. Once replies
+ * start arriving, that is the number being worked with; the everyone-invited
+ * total is the ceiling to stay inside, not the position. The sub-line names its
+ * basis in words, so the two can never be mistaken for one another.
  *
  * Flat lines contribute identically to both bases, so a budget with no
- * per-guest lines shows no sub-line at all rather than repeating itself.
+ * per-guest lines shows no sub-line at all rather than repeating itself — and
+ * as more people accept, the two converge and the sub-line disappears on its
+ * own.
  */
 
 import { formatAmount, formatSignedAmount } from '@/lib/money'
@@ -21,34 +28,38 @@ export function BudgetTotalsBar({ totals }: { totals: BudgetTotals }) {
     <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Tile
         label={labels.expenses}
-        planned={totals.plannedExpenses}
-        confirmed={totals.confirmedExpenses}
+        lead={totals.confirmedExpenses}
+        sub={totals.plannedExpenses}
       />
-      <Tile label={labels.income} planned={totals.plannedIncome} confirmed={totals.confirmedIncome} />
+      <Tile
+        label={labels.income}
+        lead={totals.confirmedIncome}
+        sub={totals.plannedIncome}
+      />
       <Tile
         label={labels.balance}
-        planned={totals.plannedBalance}
-        confirmed={totals.confirmedBalance}
+        lead={totals.confirmedBalance}
+        sub={totals.plannedBalance}
         hint={strings.budget.balanceHint}
         signed
       />
-      <Tile label={labels.toPay} planned={totals.plannedToPay} confirmed={totals.confirmedToPay} />
+      <Tile label={labels.toPay} lead={totals.confirmedToPay} sub={totals.plannedToPay} />
     </section>
   )
 }
 
 function Tile({
   label,
-  planned,
-  confirmed,
+  lead,
+  sub,
   hint,
   signed = false,
 }: {
   label: string
-  /** Everyone invited comes — the figure you must be ready to pay. */
-  planned: number
-  /** What the answers so far commit to. Omitted when identical to planned. */
-  confirmed: number
+  /** The large figure: the confirmed basis, what the replies so far commit to. */
+  lead: number
+  /** Small, beneath: everyone invited. Omitted when identical to the lead. */
+  sub: number
   hint?: string
   signed?: boolean
 }) {
@@ -59,15 +70,15 @@ function Tile({
    * one figure that gets a colour. Expenses are not "bad" — they are the
    * wedding — and colouring them would make the whole bar red.
    */
-  const tone = signed && planned < 0 ? 'text-danger' : undefined
+  const tone = signed && lead < 0 ? 'text-danger' : undefined
 
   return (
     <div className="rounded-lg border border-border px-4 py-3">
       <p className="text-sm text-muted">{label}</p>
-      <p className={`ltr-nums text-2xl font-semibold ${tone ?? ''}`}>{format(planned)}</p>
-      {confirmed !== planned ? (
+      <p className={`ltr-nums text-2xl font-semibold ${tone ?? ''}`}>{format(lead)}</p>
+      {sub !== lead ? (
         <p className="ltr-nums text-xs text-muted">
-          {strings.budget.confirmedTile(format(confirmed))}
+          {strings.budget.plannedTile(format(sub))}
         </p>
       ) : null}
       {hint ? <p className="text-xs text-muted">{hint}</p> : null}
