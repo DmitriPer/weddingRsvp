@@ -167,7 +167,7 @@ export default async function GuestPage({ searchParams }: PageProps) {
         token={invite.token}
         inviteName={invite.name}
         attendees={invite.attendees}
-        attending={invite.attending}
+        answer={invite.answer}
         when={when}
         venue={venueForDisplay(config, language)}
         venueForNav={venueForNavigation(config)}

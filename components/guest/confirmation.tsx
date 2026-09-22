@@ -9,11 +9,11 @@
 import { guestText } from '@/lib/strings'
 import { attendingPeople, countAttending } from '@/lib/headcount'
 import { WeddingDetails } from '@/components/guest/wedding-details'
-import type { Attendee, Language } from '@/lib/types'
+import type { Answer, Attendee, Language } from '@/lib/types'
 
 interface ConfirmationProps {
   lang: Language
-  attending: boolean
+  answer: Answer
   attendees: Attendee[]
   when: string
   venue: string
@@ -23,7 +23,7 @@ interface ConfirmationProps {
 
 export function Confirmation({
   lang,
-  attending,
+  answer,
   attendees,
   when,
   venue,
@@ -38,12 +38,21 @@ export function Confirmation({
   return (
     <section className="space-y-6 text-center">
       <h1 className="text-2xl text-bloom-display">
-        {attending
+        {answer === 'yes'
           ? t.rsvp.confirmation.titleAttending
-          : t.rsvp.confirmation.titleDeclined}
+          : answer === 'undecided'
+            ? t.rsvp.confirmation.titleUndecided
+            : t.rsvp.confirmation.titleDeclined}
       </h1>
 
-      {attending ? (
+      {/* Shown to both non-yes answers. There is no headcount to print for
+          either — "0 guests" would read as a refusal an undecided household
+          never gave — so this line stands in its place. */}
+      {answer !== 'yes' ? (
+        <p className="text-bloom-strong">{t.rsvp.confirmation.changeAnytime}</p>
+      ) : null}
+
+      {answer === 'yes' ? (
         <div className="space-y-3">
           <ul className="space-y-1 text-bloom-strong">
             {coming.map((person) => (
@@ -61,11 +70,7 @@ export function Confirmation({
             {breakdown ? <p className="text-sm text-bloom-strong/80">{breakdown}</p> : null}
           </div>
         </div>
-      ) : (
-        <p className="rounded-2xl border border-bloom-ink/25 bg-paper/60 px-4 py-3 text-bloom-strong">
-          {t.rsvp.confirmation.declined}
-        </p>
-      )}
+      ) : null}
 
       <WeddingDetails when={when} venue={venue} />
 

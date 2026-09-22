@@ -16,6 +16,16 @@ export type Language = 'he' | 'ru'
 export type Side = 'bride' | 'groom' | 'shared'
 export type Relation = 'family' | 'friend' | 'work' | 'invited_by_family'
 
+/**
+ * What a household answered (PRD §5.2, migration 010).
+ *
+ * Three values, which is why this is not a boolean. `undecided` is a real
+ * answer — the household replied and does not know yet — and is distinct from
+ * having said nothing, which is `answer: null`.
+ */
+export type Answer = 'yes' | 'no' | 'undecided'
+export const ANSWERS: readonly Answer[] = ['yes', 'no', 'undecided'] as const
+
 export const INVITE_STATUSES: readonly InviteStatus[] = [
   'added',
   'pending',
@@ -59,7 +69,18 @@ export interface Invite {
   /** Free text, matched against lib/senders.ts options at render time only. */
   first_invite_sender: string | null
 
-  attending: boolean | null // null = has not answered yet
+  /**
+   * What the household answered. `null` is "has not answered yet".
+   *
+   * Three answers, so this cannot be a boolean — which is what `attending`
+   * below was, and why it is being retired (migration 010).
+   */
+  answer: Answer | null
+  /**
+   * @deprecated Superseded by `answer`. Still written for the two values it can
+   * express, so migration 010 stays reversible; dropped in 011. Read `answer`.
+   */
+  attending: boolean | null
   responded_at: string | null
   updated_at: string | null
 
@@ -93,7 +114,13 @@ export interface SeatingTable {
 export interface ResponseHistoryEntry {
   id: string
   invite_id: string
-  attending: boolean
+  /** What was answered at the time. Snapshotted, like the counts beside it. */
+  answer: Answer
+  /**
+   * @deprecated Superseded by `answer`; null for an undecided entry, which is
+   * why the column had to become nullable in migration 010.
+   */
+  attending: boolean | null
   adult_count: number
   kid_count: number
   submitted_at: string
@@ -242,6 +269,15 @@ export interface Stats {
   totalAttending: number
   totalAttendingInvites: number
 
+  /**
+   * Answered 'undecided'. Deliberately NOT folded into the awaiting counts:
+   * "nobody has replied" and "replied, cannot say" are different problems — the
+   * first needs an invitation, the second needs a nudge. A screen wanting "how
+   * much could the headcount still move" adds the two.
+   */
+  totalUndecidedInvites: number
+  totalUndecidedPeople: number
+
   /** Not coming — including someone unticked from a household that IS coming. */
   totalDeclinedPeople: number
   /** Invitations that answered no outright. */
@@ -259,10 +295,10 @@ export interface Stats {
 /** What the guest's form sends. They tick people and choose extra counts. */
 export interface RsvpSubmission {
   token: string
-  attending: boolean
-  /** attendee ids the guest ticked. Ignored when attending is false. */
+  answer: Answer
+  /** attendee ids the guest ticked. Empty unless the answer is 'yes'. */
   attendingIds: string[]
-  /** Unnamed guests to add. Ignored when attending is false. */
+  /** Unnamed guests to add. Empty unless the answer is 'yes'. */
   extraAdults: number
   extraKids: number
 }

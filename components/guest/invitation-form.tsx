@@ -17,14 +17,14 @@
 
 import { useState } from 'react'
 import { guestText } from '@/lib/strings'
-import type { Attendee, Language, RsvpResult } from '@/lib/types'
+import type { Answer, Attendee, Language, RsvpResult } from '@/lib/types'
 
 interface InvitationFormProps {
   lang: Language
   token: string
   attendees: Attendee[]
   /** null = never answered. Decides whether ticks are pre-filled or stored. */
-  initialAttending: boolean | null
+  initialAnswer: Answer | null
   onSubmitted: (result: RsvpResult) => void
   onCancel?: () => void
 }
@@ -49,17 +49,16 @@ export function InvitationForm({
   lang,
   token,
   attendees,
-  initialAttending,
+  initialAnswer,
   onSubmitted,
   onCancel,
 }: InvitationFormProps) {
   const t = guestText(lang)
   const named = attendees.filter((person) => !person.is_placeholder)
 
-  const [attending, setAttending] = useState<boolean | null>(initialAttending)
-  const [ticked, setTicked] = useState<string[]>(() =>
-    initialTicks(named, initialAttending !== null)
-  )
+  /** null = nothing picked yet, which is not the same as answering 'undecided'. */
+  const [answer, setAnswer] = useState<Answer | null>(initialAnswer)
+  const [ticked, setTicked] = useState<string[]>(() => initialTicks(named, initialAnswer !== null))
   const [extraAdults, setExtraAdults] = useState(() => countPlaceholders(attendees, false))
   const [extraKids, setExtraKids] = useState(() => countPlaceholders(attendees, true))
   const [saving, setSaving] = useState(false)
@@ -74,11 +73,11 @@ export function InvitationForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
 
-    if (attending === null) {
+    if (answer === null) {
       setError(t.rsvp.chooseAnswer)
       return
     }
-    if (attending && ticked.length === 0 && extraAdults + extraKids === 0) {
+    if (answer === 'yes' && ticked.length === 0 && extraAdults + extraKids === 0) {
       setError(t.rsvp.pickSomeone)
       return
     }
@@ -92,7 +91,7 @@ export function InvitationForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token,
-          attending,
+          answer,
           attendingIds: ticked,
           extraAdults,
           extraKids,
@@ -121,22 +120,36 @@ export function InvitationForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <fieldset className="space-y-3" disabled={saving}>
         <legend className="sr-only">{t.rsvp.intro}</legend>
-        <div className="grid grid-cols-2 gap-3">
+        {/*
+          * One row, and "עדיין לא יודעים" sits between the two definite
+          * answers — yes, not sure, no is a scale, and putting the middle
+          * answer in the middle is the only arrangement that reads as one.
+          *
+          * Equal columns, so the longest label sets the height of all three and
+          * they stay a single block rather than three buttons of different
+          * sizes. Its two words wrap on a narrow phone; the row grows.
+          */}
+        <div className="grid grid-cols-3 items-stretch gap-2">
           <AnswerButton
             label={t.rsvp.yes}
-            selected={attending === true}
-            onClick={() => setAttending(true)}
+            selected={answer === 'yes'}
+            onClick={() => setAnswer('yes')}
+          />
+          <AnswerButton
+            label={t.rsvp.undecided}
+            selected={answer === 'undecided'}
+            onClick={() => setAnswer('undecided')}
           />
           <AnswerButton
             label={t.rsvp.no}
-            selected={attending === false}
-            onClick={() => setAttending(false)}
+            selected={answer === 'no'}
+            onClick={() => setAnswer('no')}
           />
         </div>
       </fieldset>
 
       {/* Declining zeroes everything, so the UI must not imply otherwise. */}
-      {attending === true ? (
+      {answer === 'yes' ? (
         <>
           {named.length > 0 ? (
             <fieldset className="space-y-2" disabled={saving}>
@@ -220,7 +233,7 @@ function AnswerButton({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`rounded-xl border px-4 py-3.5 transition-colors ${
+      className={`flex h-full items-center justify-center rounded-xl border px-2 py-3.5 text-center leading-tight text-balance transition-colors ${
         selected
           ? 'border-bloom-ink bg-bloom-ink font-semibold text-paper'
           : 'border-bloom-ink/30 text-bloom-ink'
