@@ -35,6 +35,24 @@ export function statusAfterSubmit(current: InviteStatus): InviteStatus {
   return hasAnsweredBefore ? 'edited' : 'submitted'
 }
 
+/**
+ * An invitation has actually gone out.
+ *
+ * Measured by the CONTACT RECORD, not by the status, and the difference is not
+ * academic: `opened` is set from the guest page's own JavaScript, so opening a
+ * link to check it — or copying it and viewing it yourself — advances a
+ * household past `added` without anyone having been invited. Three households
+ * with no phone number at all sat at `opened`, with zero attempts and no
+ * timestamp, which is how this was found.
+ *
+ * Tapping wa.me is the only thing that records a send (app/api/invites/[id]/
+ * contacted), and it writes both fields together. Either is accepted, so a row
+ * carrying one without the other still counts.
+ */
+export function hasBeenSent(contactAttempts: number, lastContactedAt: string | null): boolean {
+  return contactAttempts > 0 || Boolean(lastContactedAt)
+}
+
 export function hasAnswered(status: InviteStatus): boolean {
   return status === 'submitted' || status === 'edited'
 }

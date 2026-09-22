@@ -366,6 +366,10 @@ export const strings = {
     searchPlaceholder: 'חיפוש לפי שם או טלפון',
     allStatuses: 'כל הסטטוסים',
     allRelations: 'כל הקשרים',
+    /** Whether the invitation has gone out — 'added' is the not-yet list. */
+    allSent: 'נשלחו וטרם נשלחו',
+    sentOnly: 'נשלחו',
+    unsentOnly: 'טרם נשלחו',
     allSides: 'כל הצדדים',
     /** Empty means both — there is no bilingual household (lib/invite-filters.ts). */
     allLanguages: 'כל השפות',
@@ -376,6 +380,13 @@ export const strings = {
      */
     onlyMissingPhone: 'רק בלי טלפון',
     sortBy: 'מיון',
+    /**
+     * The direction toggle. Labelled by what pressing it DOES, not by the state
+     * it is in — a button reading "עולה" is ambiguous about whether that is the
+     * current order or the one you would get.
+     */
+    sortAscending: 'סדר עולה',
+    sortDescending: 'סדר יורד',
     sort: {
       name: 'שם',
       relation: 'קשר',
