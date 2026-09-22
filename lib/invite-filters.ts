@@ -3,7 +3,7 @@
  * list out. The component holds the state; the rules live here.
  */
 
-import { countAttending } from '@/lib/headcount'
+import { countAttendingAnswered } from '@/lib/headcount'
 import { hasBeenSent, needsPhoneCall } from '@/lib/status'
 import {
   ANSWERS,
@@ -212,7 +212,12 @@ function compare(a: InviteWithPeople, b: InviteWithPeople, key: SortKey): number
       // Pipeline order, not alphabetical — 'added' before 'pending' before…
       return INVITE_STATUSES.indexOf(a.status) - INVITE_STATUSES.indexOf(b.status)
     case 'headcount':
-      return countAttending(a.attendees).total - countAttending(b.attendees).total
+      // Answered only, matching the tiles: an unanswered invitation carrying a
+      // stray tick must not sort as though those people were coming.
+      return (
+        countAttendingAnswered(a.answer, a.attendees).total -
+        countAttendingAnswered(b.answer, b.attendees).total
+      )
     case 'lastContacted':
       // Ascending puts the empty string first, which is never-contacted — the
       // rows that need action. That is why this key opens ascending.

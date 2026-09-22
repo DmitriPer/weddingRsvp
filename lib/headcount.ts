@@ -4,9 +4,12 @@
  * Do not reimplement this anywhere — not in a component, not in a route, not in
  * an export. A second copy is how the "no stored counts" guarantee dies quietly.
  *
- * There is no `attending` flag to check here: declining sets every person's
- * is_attending to false and deletes placeholders (PRD §6.1), so a declined
- * invite counts to zero naturally rather than by special case.
+ * Declining needs no special case: it sets every person's is_attending to false
+ * and deletes placeholders (PRD §6.1), so a declined invite counts to zero
+ * naturally.
+ *
+ * An UNANSWERED invitation does need one — see countAttendingAnswered. A tick
+ * can exist without an answer, and then it must not count.
  */
 
 import type { Answer, Attendee, Headcount } from '@/lib/types'
@@ -22,6 +25,22 @@ export function countAttending(attendees: Attendee[]): Headcount {
   }
 
   return { adults, kids, total: adults + kids }
+}
+
+/**
+ * The headcount an INVITATION contributes — zero unless it answered 'yes'.
+ *
+ * Use this for any total. `countAttending` above counts ticks, and a tick is
+ * only meaningful as part of an answer: `is_attending` is written by applyTicks
+ * during a submission, so a tick on an unanswered invitation is the residue of
+ * a submission that did not finish. One such row existed — a household that
+ * opened its link, never saved an answer, and was still counted as coming,
+ * putting the dashboard one person above the list of everyone who had actually
+ * replied. The caterer's number must come from answers, not from flags that can
+ * outlive them.
+ */
+export function countAttendingAnswered(answer: Answer | null, attendees: Attendee[]): Headcount {
+  return answer === 'yes' ? countAttending(attendees) : { adults: 0, kids: 0, total: 0 }
 }
 
 /**

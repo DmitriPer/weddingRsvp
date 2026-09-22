@@ -11,7 +11,7 @@
  */
 
 import {
-  countAttending,
+  countAttendingAnswered,
   countAwaiting,
   countUndecided,
   countDeclined,
@@ -59,7 +59,10 @@ export function computeStats(invites: InviteWithPeople[]): Stats {
     totalDeclinedPeople += countDeclined(invite.answer, invite.attendees)
   }
 
-  const headcount = sumHeadcounts(invites.map((invite) => countAttending(invite.attendees)))
+  // Answered invitations only: a tick without an answer is not a seat.
+  const headcount = sumHeadcounts(
+    invites.map((invite) => countAttendingAnswered(invite.answer, invite.attendees))
+  )
 
   return {
     byStatus,
