@@ -328,8 +328,15 @@ export const strings = {
       balance: 'מאזן',
       toPay: 'נותר לשלם',
     },
-    /** Under each tile: the same total on the confirmed basis. */
-    confirmedTile: (formatted: string) => `${formatted} לפי אישורים`,
+    /**
+     * Under every tile: the same total if everyone invited comes.
+     *
+     * The tiles lead with the CONFIRMED figure, so this names the other basis.
+     * Phrased as a condition rather than "לפי מוזמנים", for the reason above:
+     * naming the count reads as a filter, where what the reader needs is which
+     * number they can rely on.
+     */
+    plannedTile: (formatted: string) => `${formatted} אם כולם יגיעו`,
     /** Spelled out, because "מאזן" alone doesn't say which way is good. */
     balanceHint: 'הכנסות פחות הוצאות',
 
