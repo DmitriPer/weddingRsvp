@@ -4,7 +4,7 @@
  */
 
 import { countAttending } from '@/lib/headcount'
-import { needsPhoneCall } from '@/lib/status'
+import { hasBeenSent, needsPhoneCall } from '@/lib/status'
 import {
   INVITE_STATUSES,
   RELATIONS,
@@ -17,6 +17,25 @@ import {
 
 export const SORT_KEYS = ['name', 'relation', 'status', 'headcount', 'lastContacted'] as const
 export type SortKey = (typeof SORT_KEYS)[number]
+
+export type SortDirection = 'asc' | 'desc'
+
+/**
+ * Which way each key points when you first pick it.
+ *
+ * Not all ascending: the useful end differs per column. The biggest households
+ * are the ones that drive the catering, so `headcount` opens descending, while
+ * `lastContacted` opens ascending because never-contacted comes first and those
+ * are the rows that need work. `compare` below is ALWAYS ascending; this table
+ * is what the toggle starts from.
+ */
+export const DEFAULT_SORT_DIRECTION: Record<SortKey, SortDirection> = {
+  name: 'asc',
+  relation: 'asc',
+  status: 'asc',
+  headcount: 'desc',
+  lastContacted: 'asc',
+}
 
 /**
  * Reduces a phone number to its national significant digits, so the same number
@@ -53,11 +72,47 @@ export function searchInvites(invites: InviteWithPeople[], query: string): Invit
   })
 }
 
+/**
+ * Several statuses at once — the follow-up workflow asks for combinations, not
+ * one state: "who has been sent an invite but hasn't answered" is `pending` and
+ * `opened` together, and there is no single value that means it.
+ *
+ * An EMPTY list means all, the same no-op convention the other filters use for
+ * `null`. It is not "show nothing": a filter that hides every row when you
+ * deselect the last chip reads as a bug.
+ */
 export function filterByStatus(
   invites: InviteWithPeople[],
-  status: InviteStatus | null
+  statuses: readonly InviteStatus[]
 ): InviteWithPeople[] {
-  return status ? invites.filter((invite) => invite.status === status) : invites
+  if (statuses.length === 0) return invites
+  const wanted = new Set(statuses)
+  return invites.filter((invite) => wanted.has(invite.status))
+}
+
+/** Whether the invitation has gone out. `null` is both, as everywhere here. */
+export type SentFilter = 'sent' | 'unsent'
+
+/**
+ * Sent or not yet sent, by the contact record rather than the status.
+ *
+ * NOT the same as the status chips, which is why it earns its own control: a
+ * household can reach `opened` without ever being invited, because that status
+ * comes from the guest page's JavaScript and fires for anyone who opens the
+ * link — including whoever copied it to check. Filtering on 'נוסף' alone would
+ * miss those, and call them sent.
+ *
+ * It ANDs with the status filter like every other filter here.
+ */
+export function filterBySent(
+  invites: InviteWithPeople[],
+  sent: SentFilter | null
+): InviteWithPeople[] {
+  if (!sent) return invites
+  const want = sent === 'sent'
+  return invites.filter(
+    (invite) => hasBeenSent(invite.contact_attempts, invite.last_contacted_at) === want
+  )
 }
 
 /** Independent of filterByStatus — the two combine, they don't replace each other. */
@@ -119,10 +174,11 @@ function relationRank(relation: Relation | null): number {
   return relation ? RELATIONS.indexOf(relation) : RELATIONS.length
 }
 
+/** ALWAYS ascending. Direction is applied by `sortInvites`, never in here. */
 function compare(a: InviteWithPeople, b: InviteWithPeople, key: SortKey): number {
   switch (key) {
     case 'name':
-      return a.name.localeCompare(b.name, 'he')
+      return byName(a, b)
     case 'relation':
       // Staged order, not alphabetical — family before friend before work…
       return relationRank(a.relation) - relationRank(b.relation)
@@ -130,13 +186,38 @@ function compare(a: InviteWithPeople, b: InviteWithPeople, key: SortKey): number
       // Pipeline order, not alphabetical — 'added' before 'pending' before…
       return INVITE_STATUSES.indexOf(a.status) - INVITE_STATUSES.indexOf(b.status)
     case 'headcount':
-      return countAttending(b.attendees).total - countAttending(a.attendees).total
+      return countAttending(a.attendees).total - countAttending(b.attendees).total
     case 'lastContacted':
-      // Never-contacted first: they are the ones needing action.
+      // Ascending puts the empty string first, which is never-contacted — the
+      // rows that need action. That is why this key opens ascending.
       return (a.last_contacted_at ?? '').localeCompare(b.last_contacted_at ?? '')
   }
 }
 
-export function sortInvites(invites: InviteWithPeople[], key: SortKey): InviteWithPeople[] {
-  return [...invites].sort((a, b) => compare(a, b, key))
+function byName(a: InviteWithPeople, b: InviteWithPeople): number {
+  return a.name.localeCompare(b.name, 'he')
+}
+
+/**
+ * Sorted by one key, then always by name.
+ *
+ * The tiebreaker is the point. Sorting a hundred households by relation leaves
+ * everyone inside 'family' in whatever order the database returned — newest
+ * first — which reads as random and reshuffles whenever a row is added. Falling
+ * back to the name makes the list identical every time it is opened.
+ *
+ * The tiebreaker does NOT follow the direction. Reversing "by status" should
+ * bring 'edited' to the top; it should not also flip the names within each
+ * status, which helps nobody scanning for a household.
+ */
+export function sortInvites(
+  invites: InviteWithPeople[],
+  key: SortKey,
+  direction: SortDirection = DEFAULT_SORT_DIRECTION[key]
+): InviteWithPeople[] {
+  const sign = direction === 'asc' ? 1 : -1
+  return [...invites].sort((a, b) => {
+    const primary = compare(a, b, key) * sign
+    return primary !== 0 ? primary : byName(a, b)
+  })
 }

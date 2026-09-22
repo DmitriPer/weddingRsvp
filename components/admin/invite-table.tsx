@@ -15,15 +15,19 @@ import { InviteRow } from '@/components/admin/invite-row'
 import { EmptyState } from '@/components/ui/states'
 import { countInvited } from '@/lib/headcount'
 import {
+  DEFAULT_SORT_DIRECTION,
   SORT_KEYS,
   filterByLanguage,
   filterByRelation,
+  filterBySent,
   filterBySide,
   filterByStatus,
   filterMissingPhone,
   filterNeedsPhoneCall,
   searchInvites,
   sortInvites,
+  type SentFilter,
+  type SortDirection,
   type SortKey,
 } from '@/lib/invite-filters'
 import { coupleSenders } from '@/lib/senders'
@@ -116,13 +120,18 @@ export function InviteTable({
   config: WeddingConfig
 }) {
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState<InviteStatus | ''>('')
+  /** Empty means every status — see filterByStatus. */
+  const [statuses, setStatuses] = useState<InviteStatus[]>([])
+  const [sent, setSent] = useState<SentFilter | ''>('')
   const [relation, setRelation] = useState<Relation | ''>('')
   const [side, setSide] = useState<Side | ''>('')
   const [language, setLanguage] = useState<Language | ''>('')
   const [onlyNeedsCall, setOnlyNeedsCall] = useState(false)
   const [onlyMissingPhone, setOnlyMissingPhone] = useState(false)
   const [sortKey, setSortKey] = useState<SortKey>('relation')
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    DEFAULT_SORT_DIRECTION.relation
+  )
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
@@ -193,23 +202,26 @@ export function InviteTable({
 
   const visible = useMemo(() => {
     const searched = searchInvites(patched, query)
-    const byStatus = filterByStatus(searched, status || null)
-    const byRelation = filterByRelation(byStatus, relation || null)
+    const byStatus = filterByStatus(searched, statuses)
+    const bySent = filterBySent(byStatus, sent || null)
+    const byRelation = filterByRelation(bySent, relation || null)
     const bySide = filterBySide(byRelation, side || null)
     const byLanguage = filterByLanguage(bySide, language || null)
     const flagged = filterNeedsPhoneCall(byLanguage, onlyNeedsCall)
     const missingPhone = filterMissingPhone(flagged, onlyMissingPhone)
-    return sortInvites(missingPhone, sortKey)
+    return sortInvites(missingPhone, sortKey, sortDirection)
   }, [
     patched,
     query,
-    status,
+    statuses,
+    sent,
     relation,
     side,
     language,
     onlyNeedsCall,
     onlyMissingPhone,
     sortKey,
+    sortDirection,
   ])
 
   /*
@@ -322,18 +334,61 @@ export function InviteTable({
       </div>
 
       <div className="flex w-full flex-wrap items-center gap-2">
+        {/*
+          * Chips rather than a <select multiple>: multi-select needs ctrl-click
+          * to combine and ctrl-click to deselect, which nobody discovers, and
+          * it collapses to an unusable scroller on a narrow screen. Five short
+          * labels fit on one line here.
+          */}
+        <div className="flex flex-wrap items-center gap-1" role="group" aria-label={strings.toolbar.allStatuses}>
+          <button
+            type="button"
+            onClick={() => setStatuses([])}
+            aria-pressed={statuses.length === 0}
+            className={`rounded-md border px-2 py-1.5 text-sm ${
+              statuses.length === 0
+                ? 'border-bloom-ink bg-bloom-ink/10 text-bloom-strong'
+                : 'border-border text-muted'
+            }`}
+          >
+            {strings.toolbar.allStatuses}
+          </button>
+
+          {INVITE_STATUSES.map((value) => {
+            const on = statuses.includes(value)
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() =>
+                  setStatuses((current) =>
+                    current.includes(value)
+                      ? current.filter((each) => each !== value)
+                      : [...current, value]
+                  )
+                }
+                aria-pressed={on}
+                className={`rounded-md border px-2 py-1.5 text-sm ${
+                  on
+                    ? 'border-bloom-ink bg-bloom-ink/10 text-bloom-strong'
+                    : 'border-border text-muted'
+                }`}
+              >
+                {strings.status[value]}
+              </button>
+            )
+          })}
+        </div>
+
         <select
-          value={status}
-          onChange={(event) => setStatus(event.target.value as InviteStatus | '')}
-          aria-label={strings.toolbar.allStatuses}
+          value={sent}
+          onChange={(event) => setSent(event.target.value as SentFilter | '')}
+          aria-label={strings.toolbar.allSent}
           className="rounded-md border border-border px-2 py-1.5 text-sm"
         >
-          <option value="">{strings.toolbar.allStatuses}</option>
-          {INVITE_STATUSES.map((value) => (
-            <option key={value} value={value}>
-              {strings.status[value]}
-            </option>
-          ))}
+          <option value="">{strings.toolbar.allSent}</option>
+          <option value="sent">{strings.toolbar.sentOnly}</option>
+          <option value="unsent">{strings.toolbar.unsentOnly}</option>
         </select>
 
         <select
@@ -380,7 +435,14 @@ export function InviteTable({
 
         <select
           value={sortKey}
-          onChange={(event) => setSortKey(event.target.value as SortKey)}
+          onChange={(event) => {
+            const key = event.target.value as SortKey
+            setSortKey(key)
+            // Each key has a useful end to start from, so picking a new one
+            // resets the toggle rather than carrying the previous direction
+            // into a column where it means something else.
+            setSortDirection(DEFAULT_SORT_DIRECTION[key])
+          }}
           aria-label={strings.toolbar.sortBy}
           className="rounded-md border border-border px-2 py-1.5 text-sm"
         >
@@ -390,6 +452,20 @@ export function InviteTable({
             </option>
           ))}
         </select>
+
+        <button
+          type="button"
+          onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
+          aria-label={
+            sortDirection === 'asc' ? strings.toolbar.sortDescending : strings.toolbar.sortAscending
+          }
+          title={
+            sortDirection === 'asc' ? strings.toolbar.sortDescending : strings.toolbar.sortAscending
+          }
+          className="rounded-md border border-border px-2 py-1.5 text-sm"
+        >
+          {sortDirection === 'asc' ? '↑' : '↓'}
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
