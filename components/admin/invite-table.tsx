@@ -7,10 +7,9 @@
  * component only decides what the current state is.
  */
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import type { FirstInvitePatch } from '@/components/admin/first-invite-controls'
 import { InviteRow } from '@/components/admin/invite-row'
 import { EmptyState } from '@/components/ui/states'
 import { countInvited } from '@/lib/headcount'
@@ -33,7 +32,6 @@ import {
   type SortDirection,
   type SortKey,
 } from '@/lib/invite-filters'
-import { coupleSenders } from '@/lib/senders'
 import { strings } from '@/lib/strings'
 import {
   INVITE_STATUSES,
@@ -54,66 +52,6 @@ import {
  * config column would need a migration to add and another to retire, and the
  * controls it reveals write to the database on their own.
  */
-const FIRST_INVITE_TOGGLE_KEY = 'wedding-rsvp:show-first-invite'
-
-/*
- * The toggle is read through useSyncExternalStore rather than corrected from
- * localStorage in an effect.
- *
- * localStorage does not exist on the server, so reading it during render would
- * make the server and the client disagree; setting state in an effect instead
- * causes a cascading render and React's own lint rule rejects it. This is the
- * documented path: `getServerSnapshot` supplies the pre-hydration value and
- * React re-reads after hydrating.
- *
- * `fallback` covers a private window or blocked site data, where an accessor
- * itself throws — the toggle then works for the session and simply isn't
- * remembered, instead of appearing broken. Reads and writes fail
- * independently: a quota-exhausted browser, or an extension that permits
- * getItem and blocks setItem, throws only on the WRITE, and reading the stored
- * value back would then flip the checkbox straight back to where it was. So a
- * broken write latches, and every later read prefers the in-memory value.
- */
-let toggleFallback = false
-let toggleStorageBroken = false
-const toggleListeners = new Set<() => void>()
-
-function subscribeToggle(onChange: () => void): () => void {
-  toggleListeners.add(onChange)
-  // 'storage' only fires in OTHER tabs; a write here notifies through the set.
-  window.addEventListener('storage', onChange)
-  return () => {
-    toggleListeners.delete(onChange)
-    window.removeEventListener('storage', onChange)
-  }
-}
-
-function readToggle(): boolean {
-  if (toggleStorageBroken) return toggleFallback
-  try {
-    return window.localStorage.getItem(FIRST_INVITE_TOGGLE_KEY) === 'true'
-  } catch {
-    return toggleFallback
-  }
-}
-
-/** Hidden is the right pre-hydration state, and the right default. */
-function readToggleOnServer(): boolean {
-  return false
-}
-
-function writeToggle(next: boolean): void {
-  toggleFallback = next
-  try {
-    window.localStorage.setItem(FIRST_INVITE_TOGGLE_KEY, String(next))
-  } catch {
-    // Not persisted. Latch it, so readToggle stops trusting a stored value
-    // that can no longer be updated and the checkbox doesn't spring back.
-    toggleStorageBroken = true
-  }
-  toggleListeners.forEach((listener) => listener())
-}
-
 export function InviteTable({
   invites,
   config,
@@ -142,72 +80,8 @@ export function InviteTable({
   const [exporting, setExporting] = useState(false)
   const router = useRouter()
 
-  const showFirstInvite = useSyncExternalStore(
-    subscribeToggle,
-    readToggle,
-    readToggleOnServer
-  )
-
-  /** The two names in couple_names, for every row's sender dropdown. */
-  const senders = useMemo(() => coupleSenders(config.couple_names), [config.couple_names])
-
-  /*
-   * Optimistic first-invitation values, held HERE rather than in the row.
-   *
-   * A row unmounts whenever a filter stops matching it or the toolbar toggle is
-   * switched off, and these writes deliberately don't refresh the server data
-   * (see patchFirstInvite). State inside the row would therefore be discarded
-   * on unmount and the row would come back reading "not sent" over a send that
-   * did happen — the worst possible direction for a field whose only job is
-   * remembering who has already been messaged. This map outlives every row.
-   */
-  const [firstInvitePatches, setFirstInvitePatches] = useState<Record<string, FirstInvitePatch>>({})
-
-  const patched = useMemo(() => {
-    if (Object.keys(firstInvitePatches).length === 0) return invites
-    return invites.map((invite) =>
-      firstInvitePatches[invite.id] ? { ...invite, ...firstInvitePatches[invite.id] } : invite
-    )
-  }, [invites, firstInvitePatches])
-
-  /*
-   * Applies the value immediately, then writes it.
-   *
-   * No router.refresh(): with 107 households and a tap per row, re-fetching
-   * every invitation per tick is the difference between usable and not, and
-   * nothing else on this screen derives from these two fields. A reload shows
-   * server truth.
-   *
-   * `previous` is what the row was displaying, so a failure restores exactly
-   * that rather than falling back to the prop — after an earlier successful
-   * write the prop is stale, and reverting to it would contradict the database.
-   */
-  async function patchFirstInvite(
-    id: string,
-    patch: FirstInvitePatch,
-    previous: FirstInvitePatch
-  ): Promise<void> {
-    setFirstInvitePatches((current) => ({ ...current, [id]: { ...current[id], ...patch } }))
-
-    try {
-      const response = await fetch(`/api/invites/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.firstInvite.saveFailed)
-    } catch (thrown) {
-      // Covers a rejected fetch and a non-JSON body too, not just !success:
-      // offline or a restarted dev server must never leave a tick standing for
-      // a write that did not happen.
-      setFirstInvitePatches((current) => ({ ...current, [id]: { ...current[id], ...previous } }))
-      toast.error(thrown instanceof Error ? thrown.message : strings.firstInvite.saveFailed)
-    }
-  }
-
   const visible = useMemo(() => {
-    const searched = searchInvites(patched, query)
+    const searched = searchInvites(invites, query)
     const byStatus = filterByStatus(searched, statuses)
     const byAnswer = filterByAnswer(byStatus, answers)
     const bySent = filterBySent(byAnswer, sent || null)
@@ -218,7 +92,7 @@ export function InviteTable({
     const missingPhone = filterMissingPhone(flagged, onlyMissingPhone)
     return sortInvites(missingPhone, sortKey, sortDirection)
   }, [
-    patched,
+    invites,
     query,
     statuses,
     answers,
@@ -359,18 +233,6 @@ export function InviteTable({
           {strings.toolbar.onlyMissingPhone}
         </label>
 
-        {/* Reveals the per-row checkbox and sender dropdown (PRD §6.21). */}
-        <label
-          className="flex items-center gap-1.5 text-sm text-muted"
-          title={strings.firstInvite.toggleHint}
-        >
-          <input
-            type="checkbox"
-            checked={showFirstInvite}
-            onChange={(event) => writeToggle(event.target.checked)}
-          />
-          {strings.firstInvite.toggle}
-        </label>
       </div>
 
       <div className="flex w-full flex-wrap items-center gap-2">
@@ -602,9 +464,6 @@ export function InviteTable({
               config={config}
               selected={selected.has(invite.id)}
               onToggleSelected={toggleSelected}
-              showFirstInvite={showFirstInvite}
-              senders={senders}
-              onPatchFirstInvite={patchFirstInvite}
             />
           ))}
         </ul>

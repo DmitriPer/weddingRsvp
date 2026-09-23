@@ -194,17 +194,6 @@ export const strings = {
     notAttending: 'לא מגיע',
   },
 
-  firstInvite: {
-    /** The toolbar toggle that shows or hides the two controls on every row. */
-    toggle: 'שליחה ראשונה',
-    toggleHint: 'הצגת סימון ובחירת שולח בכל שורה',
-    sent: 'נשלחה',
-    sender: 'שולח',
-    /** The dropdown's empty option: undecided, not "nobody". */
-    notSet: 'לא נקבע',
-    saveFailed: 'השמירה נכשלה',
-  },
-
   inviteForm: {
     addInvite: 'הוספת מוזמן',
     title: 'מוזמן חדש',
