@@ -266,6 +266,7 @@ export const strings = {
     noTables: 'עדיין אין שולחנות',
     noTablesHint: 'מוסיפים שולחן כדי להתחיל.',
 
+    exportPlan: 'ייצוא לאקסל',
     print: 'הדפסה / PDF',
     printTitle: 'סידור הושבה',
 
