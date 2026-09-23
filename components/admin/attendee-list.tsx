@@ -9,20 +9,36 @@
  *
  * `is_attending` is NOT editable here. That is the guest's answer, and the
  * admin overwriting it would make the headcount a claim rather than a record.
+ *
+ * The glyph beside each name is that person's OWN answer, not the tick. A tick
+ * only means "coming" once the household has said it is coming, so reading the
+ * raw flag would show a ✓ against someone on an invitation that never replied.
  */
 
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { answerForPerson } from '@/lib/headcount'
 import { strings } from '@/lib/strings'
-import type { Attendee } from '@/lib/types'
+import type { Answer, Attendee } from '@/lib/types'
+
+/** Glyph and tone per answer, so the list reads at a glance. */
+const MARKS: Record<'yes' | 'no' | 'undecided' | 'none', { glyph: string; tone: string }> = {
+  yes: { glyph: '✓', tone: 'text-accent' },
+  no: { glyph: '✕', tone: 'text-danger' },
+  undecided: { glyph: '?', tone: 'text-muted' },
+  none: { glyph: '○', tone: 'text-muted' },
+}
 
 export function AttendeeList({
   inviteId,
+  answer,
   attendees,
   editable,
   onChanged,
 }: {
   inviteId: string
+  /** The household's answer — needed to read each person's (lib/headcount.ts). */
+  answer: Answer | null
   attendees: Attendee[]
   editable: boolean
   onChanged: () => void
@@ -98,13 +114,16 @@ export function AttendeeList({
   return (
     <div className="mt-2 border-t border-border pt-2">
       <ul className="space-y-1 text-sm">
-        {attendees.map((person) => (
+        {attendees.map((person) => {
+          const personAnswer = answerForPerson(answer, person) ?? 'none'
+          const mark = MARKS[personAnswer]
+          return (
           <li key={person.id} className="flex items-center gap-2">
             <span
-              className={`shrink-0 ${person.is_attending ? 'text-accent' : 'text-muted'}`}
-              title={person.is_attending ? strings.row.attending : strings.row.notAttending}
+              className={`shrink-0 ${mark.tone}`}
+              title={strings.toolbar.answer[personAnswer]}
             >
-              {person.is_attending ? '✓' : '○'}
+              {mark.glyph}
             </span>
 
             {editable ? (
@@ -146,7 +165,8 @@ export function AttendeeList({
               </span>
             )}
           </li>
-        ))}
+          )
+        })}
       </ul>
 
       {editable ? (

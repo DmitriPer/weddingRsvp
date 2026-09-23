@@ -44,6 +44,27 @@ export function countAttendingAnswered(answer: Answer | null, attendees: Attende
 }
 
 /**
+ * What a SINGLE PERSON's attendance is, which is not the same as their
+ * household's answer.
+ *
+ * A household that answers 'yes' can still leave someone out: נטלי answered
+ * yes for three people and unticked one, so two are coming and one is not.
+ * Reading the household's answer for each of its people reports that person as
+ * coming — which is how a name reached a seating list after being explicitly
+ * removed from it.
+ *
+ * Returns null for a household that has not answered, so callers can label it
+ * the same way they label the invitation.
+ */
+export function answerForPerson(answer: Answer | null, person: Attendee): Answer | null {
+  if (answer === null) return null
+  // 'no' and 'undecided' apply to everyone on the invitation; only 'yes'
+  // distinguishes between them, and the tick is what distinguishes.
+  if (answer !== 'yes') return answer
+  return person.is_attending ? 'yes' : 'no'
+}
+
+/**
  * What a row should say about attendance.
  *
  * Showing only the attending count is misleading before anyone answers: a
