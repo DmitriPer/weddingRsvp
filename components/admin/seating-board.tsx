@@ -142,6 +142,15 @@ export function SeatingBoard({
         <span className="text-sm text-muted">
           {t.totals(totals.seated, totals.people, totals.chairs)}
         </span>
+        {/* A plain link: the arrangement has nothing to filter, so the file
+            is the same for everyone and a GET can be downloaded directly. */}
+        <a
+          href="/api/tables/export"
+          download
+          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface print:hidden"
+        >
+          {t.exportPlan}
+        </a>
         <button
           type="button"
           onClick={() => window.print()}
