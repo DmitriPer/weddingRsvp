@@ -139,6 +139,7 @@ export function InviteTable({
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const router = useRouter()
 
   const showFirstInvite = useSyncExternalStore(
@@ -230,6 +231,38 @@ export function InviteTable({
     sortKey,
     sortDirection,
   ])
+
+  /**
+   * Downloads the seating sheet for the rows currently on screen.
+   *
+   * A POST, so it cannot be a plain <a download>: the ids go in the body,
+   * which is what makes the file match the filters without this component
+   * having to describe them in a query string.
+   */
+  async function exportSeating() {
+    setExporting(true)
+    try {
+      const response = await fetch('/api/invites/export/seating', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: visible.map((invite) => invite.id) }),
+      })
+      if (!response.ok) throw new Error(strings.toolbar.exportFailed)
+
+      // Object URL rather than a data: URL — a few hundred rows is comfortably
+      // past the length some browsers will accept in a href.
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'wedding-seating.xlsx'
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch (thrown) {
+      toast.error(thrown instanceof Error ? thrown.message : strings.toolbar.exportFailed)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   /*
    * Clear the selection whenever the visible set changes.
@@ -521,6 +554,17 @@ export function InviteTable({
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
         <span>{strings.toolbar.showing(visible.length, invites.length)}</span>
+
+        {visible.length > 0 ? (
+          <button
+            type="button"
+            onClick={exportSeating}
+            disabled={exporting}
+            className="rounded-md border border-border px-2 py-1 hover:bg-surface disabled:opacity-60"
+          >
+            {exporting ? strings.toolbar.exporting : strings.toolbar.exportSeating}
+          </button>
+        ) : null}
 
         {visible.length > 0 ? (
           <label className="flex items-center gap-1.5">

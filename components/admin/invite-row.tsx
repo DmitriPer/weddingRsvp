@@ -180,6 +180,7 @@ export function InviteRow({
       {expanded ? (
         <AttendeeList
           inviteId={invite.id}
+          answer={invite.answer}
           attendees={invite.attendees}
           editable={editing}
           onChanged={refresh}

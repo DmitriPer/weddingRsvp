@@ -412,6 +412,10 @@ export const strings = {
       headcount: 'מספר אורחים',
       lastContacted: 'פנייה אחרונה',
     },
+    /** Exports exactly the rows the filters are showing, not the whole list. */
+    exportSeating: 'ייצוא לסידור הושבה',
+    exporting: 'מייצא…',
+    exportFailed: 'הייצוא נכשל',
     showing: (shown: number, total: number) =>
       shown === total ? `${total} הזמנות` : `${shown} מתוך ${total}`,
   },
