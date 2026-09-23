@@ -194,6 +194,17 @@ export const strings = {
     notAttending: 'לא מגיע',
   },
 
+  firstInvite: {
+    /** The toolbar toggle that shows or hides the two controls on every row. */
+    toggle: 'שליחה ראשונה',
+    toggleHint: 'הצגת סימון ובחירת שולח בכל שורה',
+    sent: 'נשלחה',
+    sender: 'שולח',
+    /** The dropdown's empty option: undecided, not "nobody". */
+    notSet: 'לא נקבע',
+    saveFailed: 'השמירה נכשלה',
+  },
+
   inviteForm: {
     addInvite: 'הוספת מוזמן',
     title: 'מוזמן חדש',
@@ -215,6 +226,63 @@ export const strings = {
     duplicatePhone: (names: string[]) => `מספר הטלפון הזה מופיע גם אצל: ${names.join(', ')}`,
     created: 'המוזמן נוסף',
     failed: 'ההוספה נכשלה',
+  },
+
+  /** The seating board (PRD §6.17). */
+  seating: {
+    title: 'סידור שולחנות',
+    hint: 'בוחרים אנשים מהרשימה ולוחצים על שולחן. לחיצה על אדם שכבר יושב מסירה אותו.',
+
+    tables: 'שולחנות',
+    addTable: 'הוספת שולחן',
+    tableName: 'שם השולחן',
+    namePlaceholder: 'למשל: שולחן 1',
+    shape: 'צורה',
+    capacity: 'מקומות',
+    shapes: {
+      round: 'עגול',
+      ellipse: 'אליפסה',
+      rectangle: 'מלבן',
+    },
+    /** The shape's expected range, shown beside the capacity field. */
+    shapeHint: (min: number, max: number) =>
+      min === max ? `${max} מקומות` : `${min}–${max} מקומות`,
+    deleteTable: 'מחיקת שולחן',
+    editTable: 'עריכת שולחן',
+    saveTable: 'שמירה',
+    cancelEdit: 'ביטול',
+    mapTitle: 'מפת האולם',
+    mapHint: 'גוררים שולחן כדי לסדר אותו כמו באולם. המיקום נשמר.',
+    rotateTable: 'סיבוב השולחן',
+    confirmDeleteTable: (name: string) =>
+      `למחוק את "${name}"? מי שיושב שם יחזור לרשימת הלא־מושבים.`,
+
+    unseated: 'ללא שולחן',
+    noneUnseated: 'כולם מושבים',
+    searchPeople: 'חיפוש לפי שם או הזמנה',
+    /** Selected but not yet placed. */
+    selected: (n: number) => (n === 1 ? 'אדם אחד נבחר' : `${n} אנשים נבחרו`),
+    clearSelection: 'ביטול הבחירה',
+    unseatSelected: 'הסרה מהשולחן',
+
+    /** Seated against capacity, e.g. "8 / 10". */
+    occupancy: (seated: number, capacity: number) => `${seated} / ${capacity}`,
+    over: 'מעל הקיבולת',
+    /** Of those seated, how many have not confirmed yet. */
+    undecidedHere: (n: number) => `${n} עדיין לא יודעים`,
+    emptyTable: 'ריק',
+
+    totals: (seated: number, people: number, chairs: number) =>
+      `${seated} מתוך ${people} מושבים · ${chairs} מקומות בשולחנות`,
+    noTables: 'עדיין אין שולחנות',
+    noTablesHint: 'מוסיפים שולחן כדי להתחיל.',
+
+    print: 'הדפסה / PDF',
+    printTitle: 'סידור הושבה',
+
+    saveFailed: 'השמירה נכשלה',
+    /** The child marker in a seat list — the caterer counts them separately. */
+    child: 'ילד',
   },
 
   /** The dashboard bar (PRD §6.11). */
@@ -272,16 +340,6 @@ export const strings = {
    * button's own confirmation stays `נשלח?`. Nothing here reports what the app
    * did — it records what the two of you agreed and then did by hand.
    */
-  firstInvite: {
-    /** The toolbar toggle that shows or hides the two controls on every row. */
-    toggle: 'שליחה ראשונה',
-    toggleHint: 'הצגת סימון ובחירת שולח בכל שורה',
-    sent: 'נשלחה',
-    sender: 'שולח',
-    /** The dropdown's empty option: undecided, not "nobody". */
-    notSet: 'לא נקבע',
-    saveFailed: 'השמירה נכשלה',
-  },
 
   /** Multi-select delete (PRD §6.6). */
   bulk: {
