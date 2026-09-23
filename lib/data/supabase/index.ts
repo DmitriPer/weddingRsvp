@@ -403,7 +403,15 @@ export const supabaseStore: DataStore = {
     return unwrap(
       await db
         .from('tables')
-        .insert({ name: input.name, capacity: input.capacity, sort_order: input.sort_order ?? 0 })
+        /*
+         * Spread the validated input rather than naming columns one by one.
+         * Naming them meant `shape` was silently dropped when it was added in
+         * migration 011: every table saved as the default 'round' however it
+         * was created, and the only symptom was a floor plan of identical
+         * circles. parseCreateTable is the allow-list; this does not need to be
+         * a second one.
+         */
+        .insert({ ...input, sort_order: input.sort_order ?? 0 })
         .select()
         .single(),
       'create table'

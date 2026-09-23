@@ -101,12 +101,47 @@ export interface Attendee {
   created_at: string
 }
 
+/**
+ * What shape a table is (PRD §6.17, migration 011).
+ *
+ * Not decoration — it is what decides how many people fit, so it drives the
+ * capacity the seating page suggests and the point at which it warns.
+ */
+export type TableShape = 'round' | 'ellipse' | 'rectangle'
+export const TABLE_SHAPES: readonly TableShape[] = ['round', 'ellipse', 'rectangle'] as const
+
+/**
+ * Seats per shape, as the venue works: a round table takes eight to ten, an
+ * ellipse twelve or thirteen, a rectangle fourteen.
+ *
+ * `max` is a warning threshold, not a limit. `capacity` is its own column and
+ * stays editable, because an eleventh chair squeezed around a round table is a
+ * real thing and the app's job is to say so, not to refuse to record it.
+ */
+export const TABLE_SEATS: Record<TableShape, { min: number; max: number; default: number }> = {
+  round: { min: 8, max: 10, default: 10 },
+  ellipse: { min: 12, max: 13, default: 12 },
+  rectangle: { min: 12, max: 14, default: 14 },
+}
+
 /** Named `SeatingTable`, not `Table`, to avoid confusion with a UI table. */
 export interface SeatingTable {
   id: string
   name: string
+  shape: TableShape
   capacity: number
   sort_order: number
+  /**
+   * Where the table stands in the room, as a percentage of the floor plan
+   * (migration 012). Null until it has been dragged — the map grids those.
+   */
+  pos_x: number | null
+  pos_y: number | null
+  /**
+   * Degrees clockwise (migration 013). Meaningless for a round table, which
+   * looks the same at any angle — the map hides the control for those.
+   */
+  rotation: number
   created_at: string
 }
 
@@ -351,8 +386,12 @@ export interface UpdateAttendeeInput {
 
 export interface CreateTableInput {
   name: string
+  shape: TableShape
   capacity: number
   sort_order?: number
+  pos_x?: number | null
+  pos_y?: number | null
+  rotation?: number
 }
 
 export type UpdateTableInput = Partial<CreateTableInput>

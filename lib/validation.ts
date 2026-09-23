@@ -6,6 +6,7 @@
 import {
   ANSWERS,
   BUDGET_KINDS,
+  TABLE_SHAPES,
   BUDGET_PRICINGS,
   INVITE_STATUSES,
   LANGUAGES,
@@ -23,6 +24,7 @@ import {
   type Relation,
   type RsvpSubmission,
   type Side,
+  type TableShape,
   type UpdateAttendeeInput,
   type UpdateBudgetItemInput,
   type UpdateInviteInput,
@@ -350,13 +352,21 @@ export function parseCreateTable(body: unknown): Parsed<CreateTableInput> {
 
   const name = requiredText(body.name, 'Table name')
   if (!name.ok) return name
+  if (!TABLE_SHAPES.includes(body.shape as TableShape)) return fail('Unknown table shape')
   if (typeof body.capacity !== 'number' || !Number.isInteger(body.capacity) || body.capacity < 1) {
     return fail('Capacity must be a whole number of one or more')
   }
   const sortOrder = nonNegativeInt(body.sort_order, 'Sort order')
   if (!sortOrder.ok) return sortOrder
 
-  return pass({ name: name.value, capacity: body.capacity, sort_order: sortOrder.value })
+  // Capacity above the shape's maximum is allowed and warned about on screen,
+  // not rejected here: the venue decides how many chairs fit, not this file.
+  return pass({
+    name: name.value,
+    shape: body.shape as TableShape,
+    capacity: body.capacity,
+    sort_order: sortOrder.value,
+  })
 }
 
 export function parseUpdateTable(body: unknown): Parsed<UpdateTableInput> {
@@ -367,6 +377,36 @@ export function parseUpdateTable(body: unknown): Parsed<UpdateTableInput> {
     const name = requiredText(body.name, 'Table name')
     if (!name.ok) return name
     update.name = name.value
+  }
+  if ('shape' in body) {
+    if (!TABLE_SHAPES.includes(body.shape as TableShape)) return fail('Unknown table shape')
+    update.shape = body.shape as TableShape
+  }
+  if ('rotation' in body) {
+    const rotation = body.rotation
+    if (
+      typeof rotation !== 'number' ||
+      !Number.isInteger(rotation) ||
+      rotation < 0 ||
+      rotation >= 360
+    ) {
+      return fail('Rotation must be a whole number of degrees from 0 to 359')
+    }
+    update.rotation = rotation
+  }
+  // Position is a percentage of the floor plan, so the bounds are the schema's
+  // own check constraint restated where the message can be useful.
+  for (const axis of ['pos_x', 'pos_y'] as const) {
+    if (!(axis in body)) continue
+    const value = body[axis]
+    if (value === null) {
+      update[axis] = null
+      continue
+    }
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+      return fail(`${axis} must be a percentage between 0 and 100`)
+    }
+    update[axis] = value
   }
   if ('capacity' in body) {
     if (typeof body.capacity !== 'number' || !Number.isInteger(body.capacity) || body.capacity < 1) {
