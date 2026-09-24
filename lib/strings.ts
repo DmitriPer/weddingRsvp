@@ -266,6 +266,23 @@ export const strings = {
     noTables: 'עדיין אין שולחנות',
     noTablesHint: 'מוסיפים שולחן כדי להתחיל.',
 
+    /** Card filters and ordering (docs/seating-order-filters-PRD.md). */
+    filterByName: 'חיפוש לפי שם שולחן',
+    allShapes: 'כל הצורות',
+    allFullness: 'כל השולחנות',
+    fullness: {
+      empty: 'ריקים',
+      room: 'יש מקום',
+      full: 'מלאים',
+      over: 'מעל הקיבולת',
+    },
+    clearFilters: 'ניקוי הסינון',
+    noTablesMatch: 'אין שולחנות שמתאימים לסינון',
+    moveUp: 'הזזה למקום הקודם',
+    moveDown: 'הזזה למקום הבא',
+    position: 'מיקום בסדר',
+    orderLockedHint: 'שינוי הסדר זמין רק כשאין סינון.',
+
     exportPlan: 'ייצוא לאקסל',
     print: 'הדפסה / PDF',
     printTitle: 'סידור הושבה',

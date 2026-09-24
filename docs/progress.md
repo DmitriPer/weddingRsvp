@@ -320,6 +320,14 @@ Two columns on `invites` (`008_first_invitation.sql`, run on the live project th
 
 The lesson: **a lint run that reports thousands of problems in code you did not write is reporting on files you did not mean to lint.** Check the paths before believing the count — and never let a worktree live inside the repo it is a worktree of.
 
+## 5c. Seating board: table order and filters, added 2026-09-24
+
+Spec: `docs/seating-order-filters-PRD.md`. No migration — it uses the existing `tables.sort_order`.
+
+**The order is saved and shared.** Each card shows its position; ▲▼ or a typed position moves it. `reorderTables()` (`lib/seating.ts`) renumbers every table `0…n−1` and returns only the rows that changed, which the board PATCHes one by one. The first move therefore normalises any duplicate `sort_order` values left from older tables. `listTables()` now tie-breaks on `created_at`, so duplicates can't shuffle numbers between loads before that happens.
+
+**Filters (name, shape, fullness) touch the cards only** and reset on refresh. Map, printout, export and the unseated list always show everything. A filtered card keeps its real number, and **ordering is disabled while any filter is on** — "one up" among visible cards is not one up in the order.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.

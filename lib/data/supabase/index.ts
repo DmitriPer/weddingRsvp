@@ -393,7 +393,13 @@ export const supabaseStore: DataStore = {
   async listTables(): Promise<SeatingTable[]> {
     const db = createAdminClient()
     return unwrap(
-      await db.from('tables').select('*').order('sort_order', { ascending: true }),
+      // created_at breaks ties: older rows can share a sort_order, and without
+      // it their order — and so their board numbers — could change per load.
+      await db
+        .from('tables')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
       'list tables'
     ) as SeatingTable[]
   },

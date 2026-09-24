@@ -5,7 +5,12 @@
  */
 
 import { answerForPerson } from '@/lib/headcount'
-import { TABLE_SEATS, type InviteWithPeople, type SeatingTable } from '@/lib/types'
+import {
+  TABLE_SEATS,
+  type InviteWithPeople,
+  type SeatingTable,
+  type TableShape,
+} from '@/lib/types'
 
 /**
  * A person as the seating board needs them: their own name, their household's,
@@ -113,6 +118,70 @@ export function searchPeople(people: SeatablePerson[], query: string): SeatableP
       person.name.toLowerCase().includes(needle) ||
       person.inviteName.toLowerCase().includes(needle)
   )
+}
+
+/** How full a table is. `over` is kept apart from `full` so it can be found. */
+export const FULLNESS = ['empty', 'room', 'full', 'over'] as const
+export type Fullness = (typeof FULLNESS)[number]
+
+export function fullness(spot: TableOccupancy): Fullness {
+  if (spot.seated === 0) return 'empty'
+  if (spot.seated < spot.table.capacity) return 'room'
+  if (spot.seated === spot.table.capacity) return 'full'
+  return 'over'
+}
+
+/** The board's card filters. An empty string means "any". */
+export interface TableFilters {
+  name: string
+  shape: TableShape | ''
+  fullness: Fullness | ''
+}
+
+export const NO_TABLE_FILTERS: TableFilters = { name: '', shape: '', fullness: '' }
+
+export function hasTableFilter(filters: TableFilters): boolean {
+  return filters.name.trim() !== '' || filters.shape !== '' || filters.fullness !== ''
+}
+
+/** Every filter must match. Generic so callers can carry extra fields along. */
+export function filterBoard<T extends { spot: TableOccupancy }>(
+  entries: T[],
+  filters: TableFilters
+): T[] {
+  const needle = filters.name.trim().toLowerCase()
+  return entries.filter(
+    ({ spot }) =>
+      (!needle || spot.table.name.toLowerCase().includes(needle)) &&
+      (!filters.shape || spot.table.shape === filters.shape) &&
+      (!filters.fullness || fullness(spot) === filters.fullness)
+  )
+}
+
+/**
+ * Moves one table to `toIndex` and renumbers everything 0…n−1.
+ *
+ * Returns only the rows whose sort_order actually changes, so a move writes as
+ * few rows as it can. Renumbering the whole list — rather than swapping two
+ * values — also repairs rows that share a sort_order, which older tables do.
+ */
+export function reorderTables(
+  tables: SeatingTable[],
+  id: string,
+  toIndex: number
+): { id: string; sort_order: number }[] {
+  const from = tables.findIndex((table) => table.id === id)
+  if (from === -1) return []
+
+  const to = Math.min(Math.max(toIndex, 0), tables.length - 1)
+  const ordered = [...tables]
+  const [moved] = ordered.splice(from, 1)
+  ordered.splice(to, 0, moved)
+
+  return ordered
+    .map((table, index) => ({ id: table.id, sort_order: index, current: table.sort_order }))
+    .filter((row) => row.sort_order !== row.current)
+    .map(({ id, sort_order }) => ({ id, sort_order }))
 }
 
 /** Total chairs across every table, against the people who need one. */
