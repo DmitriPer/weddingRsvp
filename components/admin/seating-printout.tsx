@@ -39,7 +39,7 @@ export function SeatingPrintout({
           <article key={spot.table.id} className="break-inside-avoid border-b border-border pb-3">
             <h2 className="font-semibold">
               {spot.table.name}
-              <span className="ltr-nums mr-2 text-sm font-normal text-muted">
+              <span className="ltr-nums ms-2 text-sm font-normal text-muted">
                 {t.occupancy(spot.seated, spot.table.capacity)} · {t.shapes[spot.table.shape]}
               </span>
             </h2>

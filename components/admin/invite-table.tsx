@@ -199,10 +199,10 @@ export function InviteTable({
   return (
     <div className="space-y-3">
       {/*
-        Two full-width rows, deliberately: search and the checkboxes above, the
-        filter and sort dropdowns below. One wrapping row put every control
-        wherever the window width happened to break, so the same checkbox moved
-        position between sessions.
+        Three full-width rows, deliberately: search and the checkboxes, then the
+        status and answer chips, then the filter and sort dropdowns. One
+        wrapping row put every control wherever the window width happened to
+        break, so the same checkbox moved position between sessions.
       */}
       <div className="flex w-full flex-wrap items-center gap-x-4 gap-y-2">
         <input
@@ -211,7 +211,7 @@ export function InviteTable({
           onChange={(event) => setQuery(event.target.value)}
           placeholder={strings.toolbar.searchPlaceholder}
           aria-label={strings.app.search}
-          className="min-w-48 flex-1 rounded-md border border-border px-3 py-1.5 text-sm"
+          className="min-w-48 flex-1 basis-full rounded-md border border-border px-3 py-1.5 text-sm sm:basis-auto"
         />
 
         <label className="flex items-center gap-1.5 text-sm text-muted">
@@ -325,7 +325,9 @@ export function InviteTable({
             )
           })}
         </div>
+      </div>
 
+      <div className="flex w-full flex-wrap items-center gap-2">
         <select
           value={sent}
           onChange={(event) => setSent(event.target.value as SentFilter | '')}

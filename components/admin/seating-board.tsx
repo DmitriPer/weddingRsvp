@@ -69,6 +69,11 @@ export function SeatingBoard({
   )
   const totals = useMemo(() => capacityTotals(tables, people), [tables, people])
   const waiting = useMemo(() => searchPeople(unseated(people), query), [people, query])
+  /** Who is selected, by name, for the selection bar. */
+  const chosen = useMemo(
+    () => people.filter((person) => selected.has(person.id)),
+    [people, selected]
+  )
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -218,25 +223,51 @@ export function SeatingBoard({
       <p className="text-sm text-muted print:hidden">{t.hint}</p>
 
       {/* The selection bar only exists while something is selected, so the
-          actions that need a selection are never present and inert. */}
+          actions that need a selection are never present and inert. Pinned to
+          the bottom at every width: the tables can be a long scroll from the
+          unseated list, and the selection must stay visible on the way. */}
       {selected.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-bloom-ink bg-bloom-ink/10 px-3 py-2 text-sm print:hidden">
-          <span className="font-semibold text-bloom-strong">{t.selected(selected.size)}</span>
-          <button
-            type="button"
-            onClick={() => place(null)}
-            disabled={busy}
-            className="rounded-md border border-border bg-paper px-2 py-1 disabled:opacity-60"
-          >
-            {t.unseatSelected}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelected(new Set())}
-            className="rounded-md border border-border bg-paper px-2 py-1"
-          >
-            {t.clearSelection}
-          </button>
+        <div className="fixed inset-x-4 bottom-4 z-20 mx-auto max-w-3xl space-y-2 rounded-lg border border-bloom-ink bg-paper px-3 py-2 text-sm shadow-lg print:hidden">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-semibold text-bloom-strong">{t.selected(selected.size)}</span>
+            <button
+              type="button"
+              onClick={() => place(null)}
+              disabled={busy}
+              className="rounded-md border border-border bg-paper px-2 py-1 disabled:opacity-60"
+            >
+              {t.unseatSelected}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="rounded-md border border-border bg-paper px-2 py-1"
+            >
+              {t.clearSelection}
+            </button>
+          </div>
+
+          {/* Capped and scrollable: a whole household selected at once must
+              not turn the bar into a wall over the tables on a phone. */}
+          <ul className="flex max-h-20 flex-wrap gap-1 overflow-y-auto">
+            {chosen.map((person) => {
+              const label = person.isUnnamed ? strings.guests.placeholder : person.name
+              return (
+                <li key={person.id}>
+                  <button
+                    type="button"
+                    onClick={() => toggle(person.id)}
+                    aria-label={t.deselect(label)}
+                    title={t.deselect(label)}
+                    className="inline-flex items-center gap-1 rounded-full border border-bloom-ink/40 bg-bloom-ink/10 px-2 py-0.5 text-xs text-bloom-strong hover:bg-bloom-ink/20"
+                  >
+                    {label}
+                    <span aria-hidden>✕</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       ) : null}
 
@@ -384,95 +415,109 @@ export function SeatingBoard({
                       </div>
                     </div>
                   ) : (
-                    <header className="mb-2 flex items-baseline justify-between gap-2">
-                      <h3 className="font-semibold">
-                        <span className="ltr-nums text-muted" title={t.position}>
-                          {position}.
-                        </span>{' '}
-                        <ShapeMark shape={spot.table.shape} /> {spot.table.name}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setEditing({
-                              id: spot.table.id,
-                              name: spot.table.name,
-                              capacity: spot.table.capacity,
-                            })
-                          }
-                          aria-label={t.editTable}
-                          title={t.editTable}
-                          /*
-                           * Sized and coloured rather than a faint glyph: these
-                           * sit on a card full of names, and an edit control
-                           * that has to be hunted for gets clicked by accident
-                           * on the way to finding it. A touch target of 1.75rem
-                           * is also the smallest that is comfortable on a
-                           * trackpad.
-                           */
-                          className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-md border border-bloom-ink/30 text-base text-bloom-strong hover:bg-bloom-ink/10"
+                    <header className="mb-2 space-y-1.5">
+                      {/* Line 1, never wraps: which table, and how full. The
+                          name truncates rather than pushing the count down. */}
+                      <div className="flex items-center gap-2">
+                        {/* A badge, not "1.": the period lands on the wrong
+                            side of the number in RTL. */}
+                        <span
+                          className="ltr-nums inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-border px-1.5 text-xs text-muted"
+                          title={t.position}
                         >
-                          ✎
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeTable(spot.table.id, spot.table.name)}
-                          aria-label={t.deleteTable}
-                          title={t.deleteTable}
-                          className="mr-1 inline-flex h-7 w-7 items-center justify-center rounded-md border border-danger/40 text-base text-danger hover:bg-danger/10"
+                          {position}
+                        </span>
+                        <ShapeMark shape={spot.table.shape} />
+                        <h3 className="min-w-0 flex-1 truncate font-semibold" title={spot.table.name}>
+                          {spot.table.name}
+                        </h3>
+                        <span
+                          className={`ltr-nums shrink-0 whitespace-nowrap text-sm ${spot.over ? 'font-semibold text-danger' : 'text-muted'}`}
                         >
-                          ✕
-                        </button>
-                      </h3>
-                      <span
-                        className={`ltr-nums text-sm ${spot.over ? 'font-semibold text-danger' : 'text-muted'}`}
-                      >
-                        {t.occupancy(spot.seated, spot.table.capacity)}
-                      </span>
-                    </header>
-                  )}
+                          {t.occupancy(spot.seated, spot.table.capacity)}
+                        </span>
+                      </div>
 
-                  {editing?.id === spot.table.id ? null : (
-                    <div className="mb-2 flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => reorder(spot.table.id, position - 2)}
-                        disabled={busy || filtering || position === 1}
-                        aria-label={t.moveUp}
-                        title={t.moveUp}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
-                      >
-                        ▲
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => reorder(spot.table.id, position)}
-                        disabled={busy || filtering || position === board.length}
-                        aria-label={t.moveDown}
-                        title={t.moveDown}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
-                      >
-                        ▼
-                      </button>
-                      {/* Uncontrolled, keyed by position: a refresh after a move
-                          resets it to the table's new place. */}
-                      <input
-                        key={`${spot.table.id}-${position}`}
-                        type="number"
-                        min={1}
-                        max={board.length}
-                        defaultValue={position}
-                        disabled={busy || filtering}
-                        aria-label={t.position}
-                        title={t.position}
-                        onBlur={(event) =>
-                          commitPosition(spot.table.id, position, event.target.value)
-                        }
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') event.currentTarget.blur()
-                        }}
-                        className="ltr-nums w-14 rounded-md border border-border px-2 py-0.5 text-sm disabled:opacity-40"
-                      />
-                    </div>
+                      {/* Line 2: ordering at the start, edit/delete at the end. */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => reorder(spot.table.id, position - 2)}
+                            disabled={busy || filtering || position === 1}
+                            aria-label={t.moveUp}
+                            title={t.moveUp}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => reorder(spot.table.id, position)}
+                            disabled={busy || filtering || position === board.length}
+                            aria-label={t.moveDown}
+                            title={t.moveDown}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
+                          >
+                            ▼
+                          </button>
+                          {/* Uncontrolled, keyed by position: a refresh after a
+                              move resets it to the table's new place. */}
+                          <input
+                            key={`${spot.table.id}-${position}`}
+                            type="number"
+                            min={1}
+                            max={board.length}
+                            defaultValue={position}
+                            disabled={busy || filtering}
+                            aria-label={t.position}
+                            title={t.position}
+                            onBlur={(event) =>
+                              commitPosition(spot.table.id, position, event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') event.currentTarget.blur()
+                            }}
+                            className="ltr-nums h-7 w-14 rounded-md border border-border px-2 text-sm disabled:opacity-40"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditing({
+                                id: spot.table.id,
+                                name: spot.table.name,
+                                capacity: spot.table.capacity,
+                              })
+                            }
+                            aria-label={t.editTable}
+                            title={t.editTable}
+                            /*
+                             * Sized and coloured rather than a faint glyph: these
+                             * sit on a card full of names, and an edit control
+                             * that has to be hunted for gets clicked by accident
+                             * on the way to finding it. A touch target of 1.75rem
+                             * is also the smallest that is comfortable on a
+                             * trackpad.
+                             */
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-bloom-ink/30 text-base text-bloom-strong hover:bg-bloom-ink/10"
+                          >
+                            ✎
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeTable(spot.table.id, spot.table.name)}
+                            aria-label={t.deleteTable}
+                            title={t.deleteTable}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-danger/40 text-base text-danger hover:bg-danger/10"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </header>
                   )}
 
                   {spot.over ? (
@@ -544,7 +589,7 @@ function PersonChip({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`flex w-full items-baseline gap-2 rounded-md border px-2 py-1 text-right text-sm ${
+      className={`flex w-full items-baseline gap-2 rounded-md border px-2 py-1 text-start text-sm ${
         selected ? 'border-bloom-ink bg-bloom-ink/10' : 'border-transparent hover:bg-surface'
       }`}
     >

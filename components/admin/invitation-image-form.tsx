@@ -140,8 +140,7 @@ function LanguageGallery({
 
   return (
     <div>
-      <label className="block text-sm font-medium">{label}</label>
-      {hint ? <p className="mb-1 mt-0.5 text-xs text-muted">{hint}</p> : <div className="mt-1" />}
+      <label className="mb-1 block text-sm font-medium">{label}</label>
 
       {images.length === 0 ? (
         <p className="mb-2 text-xs text-muted">{strings.settings.image.empty}</p>
@@ -166,7 +165,7 @@ function LanguageGallery({
                 </button>
 
                 {isActive ? (
-                  <span className="absolute right-1 top-1 rounded bg-accent px-1.5 py-0.5 text-[10px] text-white">
+                  <span className="absolute start-1 top-1 rounded bg-accent px-1.5 py-0.5 text-[10px] text-white">
                     {strings.settings.image.active}
                   </span>
                 ) : (
@@ -175,7 +174,7 @@ function LanguageGallery({
                     disabled={busy}
                     onClick={() => handleDelete(image.path)}
                     aria-label={strings.row.delete}
-                    className="absolute left-1 top-1 rounded bg-danger/90 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50"
+                    className="absolute end-1 top-1 rounded bg-danger/90 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50"
                   >
                     {strings.row.delete}
                   </button>
@@ -201,6 +200,9 @@ function LanguageGallery({
       >
         {uploading ? strings.settings.image.uploading : strings.settings.image.choose}
       </label>
+      {/* Last, like the settings fields: above the gallery it dropped only the
+          Russian slot lower than the Hebrew one. */}
+      {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
     </div>
   )
 }

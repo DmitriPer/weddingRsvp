@@ -86,7 +86,7 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             placeholder="+972501234567"
-            className="w-full rounded-md border border-border px-3 py-1.5"
+            className="w-full rounded-md border border-border px-3 py-1.5 text-right"
           />
         </Field>
 
@@ -106,7 +106,7 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
           <DateTimeField id="deadline" value={deadline} onChange={setDeadline} />
         </Field>
 
-        <div className="sm:col-span-2">
+        <div className="space-y-4 sm:col-span-2">
           <Field label={strings.settings.venue} htmlFor="venue" hint={strings.settings.venueHint}>
             <input
               id="venue"
@@ -127,7 +127,7 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
               value={venueRu}
               onChange={(event) => setVenueRu(event.target.value)}
               placeholder="Двор Роз, ха-Мелаха 27, Нетания"
-              className="w-full rounded-md border border-border px-3 py-1.5"
+              className="w-full rounded-md border border-border px-3 py-1.5 text-right"
             />
           </Field>
         </div>
@@ -242,11 +242,14 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium" htmlFor={htmlFor}>
+      <label className="mb-1 block text-sm font-medium" htmlFor={htmlFor}>
         {label}
       </label>
-      {hint ? <p className="mb-1 mt-0.5 text-xs text-muted">{hint}</p> : <div className="mt-1" />}
       {children}
+      {/* Under the input, not between it and the label: hints differ in
+          length, and above the input they pushed side-by-side fields to
+          different heights. */}
+      {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
     </div>
   )
 }

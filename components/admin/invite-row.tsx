@@ -91,7 +91,7 @@ export function InviteRow({
 
   return (
     <li className="px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 md:flex-nowrap md:justify-start">
         <input
           type="checkbox"
           checked={selected}
@@ -102,10 +102,10 @@ export function InviteRow({
         <button
           type="button"
           onClick={() => setExpanded((value) => !value)}
-          className="flex min-w-0 flex-1 items-start gap-2 text-right"
+          className="flex min-w-0 flex-1 items-start gap-2 text-start md:w-72 md:flex-none"
           aria-expanded={expanded}
         >
-          <span className="mt-0.5 shrink-0 text-muted">{expanded ? '▾' : '▸'}</span>
+          <span className="mt-0.5 shrink-0 text-muted">{expanded ? '▾' : '◂'}</span>
           <span className="min-w-0">
             <span className="block truncate">{invite.name}</span>
             <span className="ltr-nums block truncate text-sm text-muted">
@@ -117,7 +117,7 @@ export function InviteRow({
           </span>
         </button>
 
-        <div className="shrink-0 text-left text-sm">
+        <div className="shrink-0 text-end text-sm md:w-48 md:text-start">
           <p className="text-muted">
             {strings.status[invite.status]}
             {invite.language !== 'he' ? (
@@ -130,7 +130,11 @@ export function InviteRow({
           {flagged ? <p className="text-warning">{strings.guests.needsPhoneCall}</p> : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+        {/* Own full-width line below md: five buttons that never shrink need
+            ~350px, which pushed the whole page sideways on a phone. From md
+            up, fixed name and status columns put them right beside the status
+            instead of across the screen from the name. */}
+        <div className="flex basis-full flex-wrap justify-start gap-1 md:basis-auto md:flex-1">
           <WaSendButton invite={invite} config={config} />
           <CopyLinkButton token={invite.token} language={invite.language} />
           <HistoryModal inviteId={invite.id} name={invite.name} />
