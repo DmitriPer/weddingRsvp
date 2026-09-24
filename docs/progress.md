@@ -328,6 +328,16 @@ Spec: `docs/seating-order-filters-PRD.md`. No migration — it uses the existing
 
 **Filters (name, shape, fullness) touch the cards only** and reset on refresh. Map, printout, export and the unseated list always show everything. A filtered card keeps its real number, and **ordering is disabled while any filter is on** — "one up" among visible cards is not one up in the order.
 
+## 5d. Admin UI pass, 2026-09-24
+
+Spec: `docs/admin-ui-pass-PRD.md`. Layout, alignment and direction only — same look, no behaviour change.
+
+**The mobile break was one element.** The invitee row's button group was `shrink-0` and needed ~350px, which widened `/admin` to 559px on a 352px phone. Below `md` it now takes its own wrapping line. If a phone ever scrolls sideways again, look for a `shrink-0` group before anything else.
+
+Also: invitee rows use fixed name/status columns on desktop, the toolbar is three rows, import is a closed `<details>`, settings hints sit under their inputs, seating card headers are two non-wrapping lines with a number badge, and the seating selection bar is pinned to the bottom on phones. The shell is `max-w-7xl`; settings and budget keep `max-w-6xl`.
+
+**Checking mobile from Chrome:** the window can't go below ~485px and refuses to resize when partly off-screen. Loading the page in a 390px same-origin `<iframe>` injected into the tab gives a true phone width.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.

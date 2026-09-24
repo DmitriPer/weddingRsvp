@@ -252,6 +252,8 @@ export const strings = {
     /** Selected but not yet placed. */
     selected: (n: number) => (n === 1 ? 'אדם אחד נבחר' : `${n} אנשים נבחרו`),
     clearSelection: 'ביטול הבחירה',
+    /** The ✕ on a name in the selection bar — deselects, never unseats. */
+    deselect: (name: string) => `הסרת ${name} מהבחירה`,
     unseatSelected: 'הסרה מהשולחן',
 
     /** Seated against capacity, e.g. "8 / 10". */

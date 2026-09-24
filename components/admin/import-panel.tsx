@@ -88,9 +88,11 @@ export function ImportPanel() {
   }
 
   return (
-    <section className="rounded-lg border border-border p-4">
-      <h2 className="mb-1 font-semibold">{strings.importer.title}</h2>
-      <p className="mb-3 text-sm text-muted">{strings.importer.downloadTemplateHint}</p>
+    // Closed by default, like the stats breakdown: importing happens a few
+    // times in total, and open it took a large block above the list.
+    <details className="rounded-lg border border-border p-4">
+      <summary className="cursor-pointer font-semibold">{strings.importer.title}</summary>
+      <p className="mb-3 mt-2 text-sm text-muted">{strings.importer.downloadTemplateHint}</p>
 
       <div className="flex flex-wrap items-center gap-2">
         {/*
@@ -193,6 +195,6 @@ export function ImportPanel() {
           </div>
         </div>
       ) : null}
-    </section>
+    </details>
   )
 }

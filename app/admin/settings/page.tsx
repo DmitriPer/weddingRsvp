@@ -37,7 +37,8 @@ export default async function SettingsPage() {
     russianHouseholds > 0 && !config.invite_message_template_ru.trim()
 
   return (
-    <div className="space-y-8">
+    // Forms read badly stretched wide, so settings keeps its own width.
+    <div className="mx-auto max-w-6xl space-y-8">
       <section className="space-y-3">
         <div>
           <h2 className="text-lg font-semibold">{strings.settings.detailsTitle}</h2>

@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-2.5">
             {/* The couple's monogram, the same mark the invitation carries.
                 Decorative beside the title, so it is hidden from screen
@@ -37,12 +37,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           <SignOutButton />
         </div>
-        <div className="mx-auto max-w-6xl px-4 pb-2">
+        <div className="mx-auto max-w-7xl px-4 pb-2">
           <AdminTabs />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
     </div>
   )
 }
