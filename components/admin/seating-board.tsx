@@ -19,13 +19,20 @@ import { toast } from 'sonner'
 import { strings } from '@/lib/strings'
 import {
   capacityTotals,
+  filterBoard,
+  FULLNESS,
+  hasTableFilter,
+  NO_TABLE_FILTERS,
   occupancy,
+  reorderTables,
   searchPeople,
   seatablePeople,
   unseated,
+  type Fullness,
   type SeatablePerson,
+  type TableFilters,
 } from '@/lib/seating'
-import type { InviteWithPeople, SeatingTable, TableShape } from '@/lib/types'
+import { TABLE_SHAPES, type InviteWithPeople, type SeatingTable, type TableShape } from '@/lib/types'
 
 export function SeatingBoard({
   invites,
@@ -45,8 +52,21 @@ export function SeatingBoard({
     null
   )
 
+  /** Card filters only — the map, printout and unseated list ignore them. */
+  const [filters, setFilters] = useState<TableFilters>(NO_TABLE_FILTERS)
+  const filtering = hasTableFilter(filters)
+
   const people = useMemo(() => seatablePeople(invites), [invites])
   const board = useMemo(() => occupancy(tables, people), [tables, people])
+  // Numbered before filtering, so a card keeps its real place in the order.
+  const cards = useMemo(
+    () =>
+      filterBoard(
+        board.map((spot, index) => ({ spot, position: index + 1 })),
+        filters
+      ),
+    [board, filters]
+  )
   const totals = useMemo(() => capacityTotals(tables, people), [tables, people])
   const waiting = useMemo(() => searchPeople(unseated(people), query), [people, query])
 
@@ -82,6 +102,41 @@ export function SeatingBoard({
     } finally {
       setBusy(false)
     }
+  }
+
+  /**
+   * Moves a table to `toIndex` in the saved order. Disabled while filtering:
+   * "one place up" among the visible cards is not one place up in the order.
+   */
+  async function reorder(id: string, toIndex: number) {
+    if (busy || filtering) return
+    const changes = reorderTables(tables, id, toIndex)
+    if (changes.length === 0) return
+
+    setBusy(true)
+    try {
+      // Sequential for the same reason as place(): a partial failure stays readable.
+      for (const change of changes) {
+        const response = await fetch(`/api/tables/${change.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sort_order: change.sort_order }),
+        })
+        if (!response.ok) throw new Error(t.saveFailed)
+      }
+      router.refresh()
+    } catch (thrown) {
+      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Commits a typed position (1-based). Anything unparseable is ignored. */
+  function commitPosition(id: string, current: number, typed: string) {
+    const position = Number.parseInt(typed, 10)
+    if (!Number.isFinite(position) || position === current) return
+    void reorder(id, position - 1)
   }
 
   /**
@@ -217,14 +272,72 @@ export function SeatingBoard({
         </section>
 
         <section className="space-y-3">
+          {board.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={filters.name}
+                onChange={(event) => setFilters({ ...filters, name: event.target.value })}
+                placeholder={t.filterByName}
+                aria-label={t.filterByName}
+                className="w-48 rounded-md border border-border px-2 py-1.5 text-sm"
+              />
+              <select
+                value={filters.shape}
+                onChange={(event) =>
+                  setFilters({ ...filters, shape: event.target.value as TableShape | '' })
+                }
+                aria-label={t.allShapes}
+                className="rounded-md border border-border px-2 py-1.5 text-sm"
+              >
+                <option value="">{t.allShapes}</option>
+                {TABLE_SHAPES.map((shape) => (
+                  <option key={shape} value={shape}>
+                    {t.shapes[shape]}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.fullness}
+                onChange={(event) =>
+                  setFilters({ ...filters, fullness: event.target.value as Fullness | '' })
+                }
+                aria-label={t.allFullness}
+                className="rounded-md border border-border px-2 py-1.5 text-sm"
+              >
+                <option value="">{t.allFullness}</option>
+                {FULLNESS.map((level) => (
+                  <option key={level} value={level}>
+                    {t.fullness[level]}
+                  </option>
+                ))}
+              </select>
+              {filtering ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setFilters(NO_TABLE_FILTERS)}
+                    className="rounded-md border border-border px-2 py-1.5 text-sm hover:bg-surface"
+                  >
+                    {t.clearFilters}
+                  </button>
+                  <span className="text-xs text-muted">{t.orderLockedHint}</span>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
           {board.length === 0 ? (
             <div className="rounded-lg border border-border p-6 text-center">
               <p className="font-semibold">{t.noTables}</p>
               <p className="text-sm text-muted">{t.noTablesHint}</p>
             </div>
+          ) : cards.length === 0 ? (
+            <p className="rounded-lg border border-border p-6 text-center text-sm text-muted">
+              {t.noTablesMatch}
+            </p>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {board.map((spot) => (
+              {cards.map(({ spot, position }) => (
                 <article
                   key={spot.table.id}
                   className={`rounded-lg border p-3 ${
@@ -273,6 +386,9 @@ export function SeatingBoard({
                   ) : (
                     <header className="mb-2 flex items-baseline justify-between gap-2">
                       <h3 className="font-semibold">
+                        <span className="ltr-nums text-muted" title={t.position}>
+                          {position}.
+                        </span>{' '}
                         <ShapeMark shape={spot.table.shape} /> {spot.table.name}
                         <button
                           type="button"
@@ -313,6 +429,50 @@ export function SeatingBoard({
                         {t.occupancy(spot.seated, spot.table.capacity)}
                       </span>
                     </header>
+                  )}
+
+                  {editing?.id === spot.table.id ? null : (
+                    <div className="mb-2 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => reorder(spot.table.id, position - 2)}
+                        disabled={busy || filtering || position === 1}
+                        aria-label={t.moveUp}
+                        title={t.moveUp}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => reorder(spot.table.id, position)}
+                        disabled={busy || filtering || position === board.length}
+                        aria-label={t.moveDown}
+                        title={t.moveDown}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
+                      >
+                        ▼
+                      </button>
+                      {/* Uncontrolled, keyed by position: a refresh after a move
+                          resets it to the table's new place. */}
+                      <input
+                        key={`${spot.table.id}-${position}`}
+                        type="number"
+                        min={1}
+                        max={board.length}
+                        defaultValue={position}
+                        disabled={busy || filtering}
+                        aria-label={t.position}
+                        title={t.position}
+                        onBlur={(event) =>
+                          commitPosition(spot.table.id, position, event.target.value)
+                        }
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') event.currentTarget.blur()
+                        }}
+                        className="ltr-nums w-14 rounded-md border border-border px-2 py-0.5 text-sm disabled:opacity-40"
+                      />
+                    </div>
                   )}
 
                   {spot.over ? (
