@@ -589,7 +589,7 @@ const he = {
 
     /** The bottom action bar. Buttons without data to point at don't render. */
     nav: {
-      rsvp: 'אישור הגעה',
+      rsvp: 'תשובה להזמנה',
       yourAnswer: 'התשובה שלכם',
       navigate: 'ניווט לאולם',
       addToCalendar: 'הוספה ליומן',
@@ -690,7 +690,7 @@ const ru: typeof he = {
     },
 
     nav: {
-      rsvp: 'Подтвердить участие',
+      rsvp: 'Ответ на приглашение',
       yourAnswer: 'Ваш ответ',
       navigate: 'Как добраться',
       addToCalendar: 'Добавить в календарь',
