@@ -29,12 +29,20 @@ import type { InviteWithPeople, SeatingTable } from '@/lib/types'
  *
  * Laid out in a grid rather than all at 0,0 — a first visit should show the
  * tables spread out and ready to arrange, not a single stack in the corner.
+ *
+ * The grid is sized to the table count, so every slot stays inside the floor
+ * however many tables there are. A fixed column count with a fixed row step
+ * pushed the fifth row past 100% and out of sight.
  */
-function defaultPosition(index: number): { x: number; y: number } {
-  const columns = 4
+function defaultPosition(index: number, count: number): { x: number; y: number } {
+  // The floor is 3:2, so aim for half again as many columns as rows.
+  const columns = Math.max(1, Math.ceil(Math.sqrt(count * 1.5)))
+  const rows = Math.max(1, Math.ceil(count / columns))
+  const margin = 10
+  const span = 100 - margin * 2
   return {
-    x: 12 + (index % columns) * 25,
-    y: 15 + Math.floor(index / columns) * 28,
+    x: margin + ((index % columns) + 0.5) * (span / columns),
+    y: margin + (Math.floor(index / columns) + 0.5) * (span / rows),
   }
 }
 
@@ -66,7 +74,7 @@ export function SeatingMap({
     if (spot.table.pos_x !== null && spot.table.pos_y !== null) {
       return { x: spot.table.pos_x, y: spot.table.pos_y }
     }
-    return defaultPosition(index)
+    return defaultPosition(index, board.length)
   }
 
   /** Pointer position as a percentage of the floor, clamped to it. */
