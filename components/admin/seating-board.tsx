@@ -530,7 +530,10 @@ export function SeatingBoard({
                   {spot.people.length === 0 ? (
                     <p className="text-sm text-muted">{t.emptyTable}</p>
                   ) : (
-                    <ul className="space-y-1">
+                    // Capped at roughly five rows: a table seating a whole
+                    // extended family must not stretch its card past its
+                    // neighbours, so it scrolls internally instead.
+                    <ul className="max-h-48 space-y-1 overflow-y-auto">
                       {spot.people.map((person) => (
                         <li key={person.id}>
                           <PersonChip
