@@ -1,7 +1,7 @@
 /**
- * The seating list as a spreadsheet — one row per person, for whoever arranges
- * the tables. The admin's own export (../route.ts) is a different document:
- * one row per invitation, in the import format.
+ * The guest list in the outside RSVP site's template (lib/site-sheet.ts) — one
+ * row per invitation, for uploading there. The admin's own export (../route.ts)
+ * is a different document: one row per invitation, in the import format.
  *
  * POST, not GET, and it takes the ids to include.
  *
@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server'
 import { badRequest, fromThrown, readJson, unauthorized } from '@/lib/api'
 import { verifyAdmin } from '@/lib/auth'
 import { listInvites } from '@/lib/data'
-import { buildSeatingWorkbook, SEATING_EXPORT_FILENAME } from '@/lib/seating-sheet'
+import { buildSiteWorkbook, SITE_EXPORT_FILENAME } from '@/lib/site-sheet'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -37,19 +37,22 @@ export async function POST(request: NextRequest) {
 
     /*
      * Read the list and narrow it here rather than trusting the ids as a
-     * query: an id that no longer exists is simply absent from the file, and
-     * the order the browser happened to send is irrelevant — the sheet sorts
-     * itself by group.
+     * query: an id that no longer exists is simply absent from the file. The
+     * browser's ORDER is kept, though — the sheet follows the list as it was
+     * sorted on screen, and does not re-sort itself.
      */
-    const wanted = new Set(ids as string[])
-    const invites = (await listInvites()).filter((invite) => wanted.has(invite.id))
+    const byId = new Map((await listInvites()).map((invite) => [invite.id, invite]))
+    const invites = (ids as string[]).flatMap((id) => {
+      const invite = byId.get(id)
+      return invite ? [invite] : []
+    })
 
-    const workbook = await buildSeatingWorkbook(invites)
+    const workbook = await buildSiteWorkbook(invites)
 
     return new NextResponse(workbook, {
       headers: {
         'Content-Type': XLSX_TYPE,
-        'Content-Disposition': `attachment; filename="${SEATING_EXPORT_FILENAME}"`,
+        'Content-Disposition': `attachment; filename="${SITE_EXPORT_FILENAME}"`,
       },
     })
   } catch (thrown) {

@@ -3,8 +3,8 @@ import 'server-only'
 /**
  * The seating ARRANGEMENT as a spreadsheet (PRD §6.17).
  *
- * Not to be confused with lib/seating-sheet.ts, which exports the guest list
- * for someone deciding who sits together. This one is the decision: which table
+ * Not to be confused with lib/site-sheet.ts, which exports the guest list in
+ * the outside RSVP site's template. This one is the seating decision: which table
  * each person ends up at, for the venue, the caterer, and whoever is putting
  * name cards on tables.
  *
