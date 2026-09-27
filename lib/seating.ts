@@ -5,10 +5,13 @@
  */
 
 import { answerForPerson } from '@/lib/headcount'
+import { relationRank } from '@/lib/invite-filters'
 import {
   TABLE_SEATS,
   type InviteWithPeople,
+  type Relation,
   type SeatingTable,
+  type Side,
   type TableShape,
 } from '@/lib/types'
 
@@ -32,6 +35,9 @@ export interface SeatablePerson {
   /** 'yes' is coming; 'undecided' has answered but cannot say yet. */
   certainty: 'yes' | 'undecided'
   tableId: string | null
+  /** The household's, so the unseated list can group and filter by them. */
+  relation: Relation | null
+  side: Side | null
 }
 
 /**
@@ -62,6 +68,8 @@ export function seatablePeople(invites: InviteWithPeople[]): SeatablePerson[] {
         isUnnamed: person.is_placeholder,
         certainty: answer,
         tableId: person.table_id ?? null,
+        relation: invite.relation,
+        side: invite.side,
       })
     }
   }
@@ -107,6 +115,43 @@ export function occupancy(
 
 export function unseated(people: SeatablePerson[]): SeatablePerson[] {
   return people.filter((person) => person.tableId === null)
+}
+
+/** The unseated list's filters. An empty string means "any". */
+export interface PeopleFilters {
+  relation: Relation | ''
+  side: Side | ''
+}
+
+export const NO_PEOPLE_FILTERS: PeopleFilters = { relation: '', side: '' }
+
+export function filterPeople(people: SeatablePerson[], filters: PeopleFilters): SeatablePerson[] {
+  return people.filter(
+    (person) =>
+      (!filters.relation || person.relation === filters.relation) &&
+      (!filters.side || person.side === filters.side)
+  )
+}
+
+/**
+ * Splits people into relation groups, in the invitee list's staged order.
+ *
+ * Stable: people keep the order they came in, which from seatablePeople() is
+ * by household — so a family stays together inside its group. Groups with
+ * nobody in them are never produced.
+ */
+export function groupByRelation(
+  people: SeatablePerson[]
+): { relation: Relation | null; people: SeatablePerson[] }[] {
+  const groups = new Map<Relation | null, SeatablePerson[]>()
+  for (const person of people) {
+    const group = groups.get(person.relation)
+    if (group) group.push(person)
+    else groups.set(person.relation, [person])
+  }
+  return [...groups]
+    .map(([relation, members]) => ({ relation, people: members }))
+    .sort((a, b) => relationRank(a.relation) - relationRank(b.relation))
 }
 
 /** Matches a person's own name or their household's, like the invitee search. */

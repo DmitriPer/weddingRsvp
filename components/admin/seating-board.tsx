@@ -20,8 +20,11 @@ import { strings } from '@/lib/strings'
 import {
   capacityTotals,
   filterBoard,
+  filterPeople,
   FULLNESS,
+  groupByRelation,
   hasTableFilter,
+  NO_PEOPLE_FILTERS,
   NO_TABLE_FILTERS,
   occupancy,
   reorderTables,
@@ -29,10 +32,20 @@ import {
   seatablePeople,
   unseated,
   type Fullness,
+  type PeopleFilters,
   type SeatablePerson,
   type TableFilters,
 } from '@/lib/seating'
-import { TABLE_SHAPES, type InviteWithPeople, type SeatingTable, type TableShape } from '@/lib/types'
+import {
+  RELATIONS,
+  SIDES,
+  TABLE_SHAPES,
+  type InviteWithPeople,
+  type Relation,
+  type SeatingTable,
+  type Side,
+  type TableShape,
+} from '@/lib/types'
 
 export function SeatingBoard({
   invites,
@@ -68,7 +81,14 @@ export function SeatingBoard({
     [board, filters]
   )
   const totals = useMemo(() => capacityTotals(tables, people), [tables, people])
-  const waiting = useMemo(() => searchPeople(unseated(people), query), [people, query])
+  /** Unseated-list filters only — the cards, map and printout ignore them. */
+  const [peopleFilters, setPeopleFilters] = useState<PeopleFilters>(NO_PEOPLE_FILTERS)
+  const unseatedPeople = useMemo(() => unseated(people), [people])
+  const waiting = useMemo(
+    () => filterPeople(searchPeople(unseatedPeople, query), peopleFilters),
+    [unseatedPeople, query, peopleFilters]
+  )
+  const groups = useMemo(() => groupByRelation(waiting), [waiting])
   /** Who is selected, by name, for the selection bar. */
   const chosen = useMemo(
     () => people.filter((person) => selected.has(person.id)),
@@ -285,20 +305,70 @@ export function SeatingBoard({
             className="mb-2 w-full rounded-md border border-border px-2 py-1.5 text-sm"
           />
 
-          {waiting.length === 0 ? (
-            <p className="text-sm text-muted">{t.noneUnseated}</p>
-          ) : (
-            <ul className="max-h-[32rem] space-y-1 overflow-y-auto">
-              {waiting.map((person) => (
-                <li key={person.id}>
-                  <PersonChip
-                    person={person}
-                    selected={selected.has(person.id)}
-                    onClick={() => toggle(person.id)}
-                  />
-                </li>
+          <div className="mb-2 grid grid-cols-2 gap-2">
+            <select
+              value={peopleFilters.relation}
+              onChange={(event) =>
+                setPeopleFilters({
+                  ...peopleFilters,
+                  relation: event.target.value as Relation | '',
+                })
+              }
+              aria-label={strings.toolbar.allRelations}
+              className="min-w-0 rounded-md border border-border px-2 py-1.5 text-sm"
+            >
+              <option value="">{strings.toolbar.allRelations}</option>
+              {RELATIONS.map((value) => (
+                <option key={value} value={value}>
+                  {strings.relation[value]}
+                </option>
               ))}
-            </ul>
+            </select>
+            <select
+              value={peopleFilters.side}
+              onChange={(event) =>
+                setPeopleFilters({ ...peopleFilters, side: event.target.value as Side | '' })
+              }
+              aria-label={strings.toolbar.allSides}
+              className="min-w-0 rounded-md border border-border px-2 py-1.5 text-sm"
+            >
+              <option value="">{strings.toolbar.allSides}</option>
+              {SIDES.map((value) => (
+                <option key={value} value={value}>
+                  {strings.side[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {waiting.length === 0 ? (
+            <p className="text-sm text-muted">
+              {unseatedPeople.length === 0 ? t.noneUnseated : t.noneMatch}
+            </p>
+          ) : (
+            // Grouped by relation, in the invitee list's order, so seating can
+            // go family first, then friends, work and invited-by-family.
+            <div className="max-h-[32rem] space-y-3 overflow-y-auto">
+              {groups.map((group) => (
+                <section key={group.relation ?? 'none'}>
+                  <h3 className="mb-1 text-xs font-semibold text-muted">
+                    {group.relation ? strings.relation[group.relation] : t.noRelation}{' '}
+                    <span className="ltr-nums">({group.people.length})</span>
+                  </h3>
+                  <ul className="space-y-1">
+                    {group.people.map((person) => (
+                      <li key={person.id}>
+                        <PersonChip
+                          person={person}
+                          selected={selected.has(person.id)}
+                          onClick={() => toggle(person.id)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
           )}
         </section>
 

@@ -195,8 +195,11 @@ export function filterNeedsPhoneCall(
   return invites.filter((invite) => needsPhoneCall(invite.status, invite.contact_attempts))
 }
 
-/** Sorts last when unset, rather than jumping ahead of 'family'. */
-function relationRank(relation: Relation | null): number {
+/**
+ * Sorts last when unset, rather than jumping ahead of 'family'. Exported so the
+ * seating board groups by the same order the invitee list sorts by.
+ */
+export function relationRank(relation: Relation | null): number {
   return relation ? RELATIONS.indexOf(relation) : RELATIONS.length
 }
 
