@@ -107,16 +107,16 @@ export function InviteTable({
   ])
 
   /**
-   * Downloads the seating sheet for the rows currently on screen.
+   * Downloads the rows currently on screen in the RSVP site's template.
    *
    * A POST, so it cannot be a plain <a download>: the ids go in the body,
    * which is what makes the file match the filters without this component
    * having to describe them in a query string.
    */
-  async function exportSeating() {
+  async function exportForSite() {
     setExporting(true)
     try {
-      const response = await fetch('/api/invites/export/seating', {
+      const response = await fetch('/api/invites/export/site', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: visible.map((invite) => invite.id) }),
@@ -128,7 +128,8 @@ export function InviteTable({
       const url = URL.createObjectURL(await response.blob())
       const link = document.createElement('a')
       link.href = url
-      link.download = 'wedding-seating.xlsx'
+      // SITE_EXPORT_FILENAME in lib/site-sheet.ts, which is server-only.
+      link.download = 'wedding-invitations-site.xlsx'
       link.click()
       URL.revokeObjectURL(url)
     } catch (thrown) {
@@ -422,11 +423,11 @@ export function InviteTable({
         {visible.length > 0 ? (
           <button
             type="button"
-            onClick={exportSeating}
+            onClick={exportForSite}
             disabled={exporting}
             className="rounded-md border border-border px-2 py-1 hover:bg-surface disabled:opacity-60"
           >
-            {exporting ? strings.toolbar.exporting : strings.toolbar.exportSeating}
+            {exporting ? strings.toolbar.exporting : strings.toolbar.exportSite}
           </button>
         ) : null}
 

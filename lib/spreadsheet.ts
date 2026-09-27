@@ -34,7 +34,7 @@ import type { InviteWithPeople } from '@/lib/types'
  * hence the slice. An ArrayBuffer is also what `new Response(body)` accepts,
  * where a `Uint8Array<ArrayBufferLike>` is not.
  */
-function toArrayBuffer(written: unknown): ArrayBuffer {
+export function toArrayBuffer(written: unknown): ArrayBuffer {
   const bytes = written as Uint8Array
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
 }

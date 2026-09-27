@@ -338,6 +338,14 @@ Also: invitee rows use fixed name/status columns on desktop, the toolbar is thre
 
 **Checking mobile from Chrome:** the window can't go below ~485px and refuses to resize when partly off-screen. Loading the page in a 390px same-origin `<iframe>` injected into the tab gives a true phone width.
 
+## 5f. Export in the RSVP site's template, 2026-09-27
+
+Spec: `docs/site-export-PRD.md`. "ייצוא לסידור הושבה" on the invitees page is replaced by **"ייצוא לאתר"** (`lib/site-sheet.ts`, `POST /api/invites/export/site`). The old per-person seating sheet (`lib/seating-sheet.ts`) is gone. The seating page's arrangement export (`lib/seating-plan-sheet.ts`) is untouched.
+
+The layout copies the outside site's `wedding_invitations_template_he-IL.xls`: sheet `הזמנות`, merged group headings over twelve headers, navy, RTL. **One row per person coming** (per-person answer): `אלי ויעל` becomes `אלי · 1` and `יעל · 1`. A household's unnamed +1s share one row, `+1 של <invitation name>`, and the phone goes on the household's first row only. צד is חתן / כלה / חתן וכלה (shared, as iPlan writes it), and phones are local `050-1234567`. The route keeps the order the ids arrive in, so the file follows the list as sorted on screen.
+
+That template is a legacy `.xls` and exceljs cannot read it. It was reverse-read from its BIFF records, and the export writes `.xlsx`.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.
