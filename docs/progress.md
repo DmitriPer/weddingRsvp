@@ -338,6 +338,14 @@ Also: invitee rows use fixed name/status columns on desktop, the toolbar is thre
 
 **Checking mobile from Chrome:** the window can't go below ~485px and refuses to resize when partly off-screen. Loading the page in a 390px same-origin `<iframe>` injected into the tab gives a true phone width.
 
+## 5e. Unseated list grouped by relation, 2026-09-27
+
+Spec: `docs/seating-unseated-grouping-PRD.md`. No migration.
+
+The seating board's unseated list is grouped family → friends → work → invited-by-family, with a count per group, plus relation and side dropdowns that combine with the name search. `SeatablePerson` now carries its household's `relation` and `side`. Grouping sorts by `relationRank()`, exported from `lib/invite-filters.ts`, so the invitee list and the seating board share one definition of that order. Grouping is stable over `seatablePeople()`'s household order, which keeps each family together inside its group.
+
+The filters touch the unseated list only, and reset on refresh.
+
 ## 5f. Export in the RSVP site's template, 2026-09-27
 
 Spec: `docs/site-export-PRD.md`. "ייצוא לסידור הושבה" on the invitees page is replaced by **"ייצוא לאתר"** (`lib/site-sheet.ts`, `POST /api/invites/export/site`). The old per-person seating sheet (`lib/seating-sheet.ts`) is gone. The seating page's arrangement export (`lib/seating-plan-sheet.ts`) is untouched.

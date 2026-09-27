@@ -248,6 +248,10 @@ export const strings = {
 
     unseated: 'ללא שולחן',
     noneUnseated: 'כולם מושבים',
+    /** Unseated people exist, but the search and filters hide all of them. */
+    noneMatch: 'אין מי שמתאים לסינון',
+    /** A group heading for a household with no relation set. */
+    noRelation: 'ללא קשר',
     searchPeople: 'חיפוש לפי שם או הזמנה',
     /** Selected but not yet placed. */
     selected: (n: number) => (n === 1 ? 'אדם אחד נבחר' : `${n} אנשים נבחרו`),
