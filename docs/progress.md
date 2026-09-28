@@ -354,6 +354,21 @@ The layout copies the outside site's `wedding_invitations_template_he-IL.xls`: s
 
 That template is a legacy `.xls` and exceljs cannot read it. It was reverse-read from its BIFF records, and the export writes `.xlsx`.
 
+## 5g. WhatsApp rounds and the reminder template, 2026-09-28
+
+Spec: `docs/whatsapp-rounds-PRD.md`.
+
+**⚠️ Needs migration `014_reminder_template.sql`, run in the Supabase SQL editor before this is merged.** It adds `reminder_message_template_he` / `_ru` (empty text) and nothing else. Until it runs, the reminder reads as an empty template, and saving it in Settings fails.
+
+A **שליחה** selector in the invitees toolbar (invitation / reminder / day-of / thank-you) sets what every row's WhatsApp button prepares. It resets to the invitation on refresh. `lib/send-kinds.ts` holds the rules:
+- which template for which kind and language
+- who each kind fits: reminder = `isAwaitingResponse`, day-of and thank-you = answered yes
+- that only the invitation and the reminder count as contact attempts
+
+Rows the chosen message doesn't fit are greyed out with the reason in the tooltip. The `/contacted` route reads `{ template }` and decides what to record. A day-of or thank-you send only moves `last_contacted_at`. No body means an invitation, as before.
+
+Still one human tap per row. Nothing here sends more than one message.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.

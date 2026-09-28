@@ -13,6 +13,8 @@ const EDITABLE_FIELDS = [
   'contact_phone',
   'invite_message_template_he',
   'invite_message_template_ru',
+  'reminder_message_template_he',
+  'reminder_message_template_ru',
   'day_of_message_template_he',
   'day_of_message_template_ru',
   'thank_you_message_template_he',

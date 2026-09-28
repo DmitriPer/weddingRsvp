@@ -176,10 +176,14 @@ export interface WeddingConfig {
   /** null = no deadline, the form is always open */
   rsvp_deadline: string | null
   contact_phone: string
-  /** Three purposes x two languages (PRD §6.7b). The wa.me button picks the
-      pair member matching that household's `language`. */
+  /** Four purposes x two languages (PRD §6.7b, docs/whatsapp-rounds-PRD.md).
+      The wa.me button picks the pair member matching that household's
+      `language`, for the kind chosen in the toolbar (lib/send-kinds.ts). */
   invite_message_template_he: string
   invite_message_template_ru: string
+  /** Migration 014. To households invited but not answered yet. */
+  reminder_message_template_he: string
+  reminder_message_template_ru: string
   day_of_message_template_he: string
   day_of_message_template_ru: string
   thank_you_message_template_he: string

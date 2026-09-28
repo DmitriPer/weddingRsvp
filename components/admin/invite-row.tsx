@@ -16,6 +16,7 @@ import { CopyLinkButton } from '@/components/admin/copy-link-button'
 import { HistoryModal } from '@/components/admin/history-modal'
 import { InviteEditForm } from '@/components/admin/invite-edit-form'
 import { WaSendButton } from '@/components/admin/wa-send-button'
+import type { SendKind } from '@/lib/send-kinds'
 import { summarizeAttendance } from '@/lib/headcount'
 import { needsPhoneCall } from '@/lib/status'
 import { strings } from '@/lib/strings'
@@ -52,9 +53,12 @@ export function InviteRow({
   config,
   selected,
   onToggleSelected,
+  sendKind,
 }: {
   invite: InviteWithPeople
   config: WeddingConfig
+  /** The toolbar's שליחה mode: which message the WhatsApp button prepares. */
+  sendKind: SendKind
   selected: boolean
   onToggleSelected: (id: string) => void
   /** The toolbar's toggle (PRD §6.21). Off is the normal state of this screen. */
@@ -135,7 +139,7 @@ export function InviteRow({
             up, fixed name and status columns put them right beside the status
             instead of across the screen from the name. */}
         <div className="flex basis-full flex-wrap justify-start gap-1 md:basis-auto md:flex-1">
-          <WaSendButton invite={invite} config={config} />
+          <WaSendButton invite={invite} config={config} kind={sendKind} />
           <CopyLinkButton token={invite.token} language={invite.language} />
           <HistoryModal inviteId={invite.id} name={invite.name} />
           <button
