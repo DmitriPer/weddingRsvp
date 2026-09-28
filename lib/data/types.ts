@@ -83,8 +83,12 @@ export interface DataStore {
   // --- status transitions --------------------------------------------------
   /** The guest's browser reported a real view. Never called server-side. */
   markOpened(id: string): Promise<Invite | null>
-  /** The admin tapped wa.me: attempts + 1, timestamp, added → pending. */
-  markContacted(id: string): Promise<Invite | null>
+  /**
+   * The admin confirmed a wa.me send. By default attempts + 1, timestamp,
+   * added → pending. With `countAttempt: false` (a day-of or thank-you
+   * message, which chases no answer) only the timestamp moves.
+   */
+  markContacted(id: string, options?: { countAttempt?: boolean }): Promise<Invite | null>
 
   // --- people --------------------------------------------------------------
   createAttendee(input: CreateAttendeeInput): Promise<Attendee>

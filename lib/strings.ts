@@ -75,10 +75,11 @@ export const strings = {
     templatesHint:
       'ההודעות נפתחות ב-WhatsApp מוכנות לשליחה — הן לעולם לא נשלחות אוטומטית. אתם לוחצים שלח.',
     inviteTemplate: 'הזמנה',
+    reminderTemplate: 'תזכורת לתשובה',
     dayOfTemplate: 'תזכורת ביום האירוע',
     thankYouTemplate: 'תודה אחרי האירוע',
 
-    /** Six templates now: three purposes in each language (PRD §6.7b). */
+    /** Eight templates: four purposes in each language (PRD §6.7b). */
     hebrewGroup: 'הודעות בעברית',
     russianGroup: 'הודעות ברוסית',
     russianGroupHint: 'נשלחות למוזמנים שמסומנים כדוברי רוסית.',
@@ -483,6 +484,14 @@ export const strings = {
       headcount: 'מספר אורחים',
       lastContacted: 'פנייה אחרונה',
     },
+    /** Which message every row's WhatsApp button prepares. Resets on refresh. */
+    sendMode: 'שליחה',
+    sendKinds: {
+      invite: 'הזמנה',
+      reminder: 'תזכורת לתשובה',
+      day_of: 'יום האירוע',
+      thank_you: 'תודה',
+    },
     /** Exports exactly the rows the filters are showing, not the whole list. */
     exportSite: 'ייצוא לאתר',
     exporting: 'מייצא…',
@@ -505,6 +514,18 @@ export const strings = {
     contactedCount: (n: number) => `נשלח ${n} פעמים`,
     neverContacted: 'טרם נשלח',
     lastContacted: (when: string) => `פנייה אחרונה: ${when}`,
+    /** Beside "WhatsApp" when the toolbar mode is not the invitation. */
+    sendKindShort: {
+      reminder: 'תזכורת',
+      day_of: 'יום האירוע',
+      thank_you: 'תודה',
+    },
+    /** Why a row's button is greyed out for the chosen message (lib/send-kinds.ts). */
+    blocked: {
+      notAwaiting: 'רק למי שהוזמן ועוד לא ענה',
+      notComing: 'רק למי שאישר הגעה',
+      emptyTemplate: 'התבנית ריקה — ממלאים בהגדרות',
+    },
   },
 
   emptyStates: {

@@ -66,7 +66,7 @@ export default async function SettingsPage() {
           </p>
         ) : null}
 
-        {/* Six independent editors, each saving on its own (PRD §6.5, §6.7b). */}
+        {/* Eight independent editors, each saving on its own (PRD §6.5, §6.7b). */}
         <div className="space-y-6">
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-muted">{strings.settings.hebrewGroup}</h3>
@@ -75,6 +75,12 @@ export default async function SettingsPage() {
               field="invite_message_template_he"
               language="he"
               initial={config.invite_message_template_he}
+            />
+            <TemplateEditor
+              label={strings.settings.reminderTemplate}
+              field="reminder_message_template_he"
+              language="he"
+              initial={config.reminder_message_template_he ?? ''}
             />
             <TemplateEditor
               label={strings.settings.dayOfTemplate}
@@ -100,6 +106,12 @@ export default async function SettingsPage() {
               field="invite_message_template_ru"
               language="ru"
               initial={config.invite_message_template_ru}
+            />
+            <TemplateEditor
+              label={strings.settings.reminderTemplate}
+              field="reminder_message_template_ru"
+              language="ru"
+              initial={config.reminder_message_template_ru ?? ''}
             />
             <TemplateEditor
               label={strings.settings.dayOfTemplate}

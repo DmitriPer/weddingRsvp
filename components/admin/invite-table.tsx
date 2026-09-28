@@ -33,6 +33,7 @@ import {
   type SortKey,
 } from '@/lib/invite-filters'
 import { strings } from '@/lib/strings'
+import { SEND_KINDS, type SendKind } from '@/lib/send-kinds'
 import {
   INVITE_STATUSES,
   LANGUAGES,
@@ -78,6 +79,9 @@ export function InviteTable({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [exporting, setExporting] = useState(false)
+  /** Which message every row's WhatsApp button prepares. Not persisted: a
+      refresh always comes back to the invitation, never to a thank-you. */
+  const [sendKind, setSendKind] = useState<SendKind>('invite')
   const router = useRouter()
 
   const visible = useMemo(() => {
@@ -329,6 +333,23 @@ export function InviteTable({
       </div>
 
       <div className="flex w-full flex-wrap items-center gap-2">
+        {/* First, and labelled: it changes what every WhatsApp button sends,
+            which the filters beside it do not. */}
+        <label className="flex items-center gap-1.5 text-sm font-medium">
+          {strings.toolbar.sendMode}:
+          <select
+            value={sendKind}
+            onChange={(event) => setSendKind(event.target.value as SendKind)}
+            className="rounded-md border border-bloom-ink px-2 py-1.5 text-sm"
+          >
+            {SEND_KINDS.map((kind) => (
+              <option key={kind} value={kind}>
+                {strings.toolbar.sendKinds[kind]}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <select
           value={sent}
           onChange={(event) => setSent(event.target.value as SentFilter | '')}
@@ -467,6 +488,7 @@ export function InviteTable({
               config={config}
               selected={selected.has(invite.id)}
               onToggleSelected={toggleSelected}
+              sendKind={sendKind}
             />
           ))}
         </ul>

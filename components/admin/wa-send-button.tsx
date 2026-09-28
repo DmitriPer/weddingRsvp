@@ -1,7 +1,10 @@
 'use client'
 
 /**
- * Opens WhatsApp with the invite message pre-filled (PRD §6.9).
+ * Opens WhatsApp with a message pre-filled (PRD §6.9) — the invitation, or the
+ * reminder, day-of or thank-you message, as chosen in the invitee toolbar
+ * (docs/whatsapp-rounds-PRD.md). A row the chosen message does not fit is
+ * greyed out with the reason, rather than hidden, so the list stays the list.
  *
  * IT DOES NOT SEND. It opens WhatsApp; a human taps send there. No queue, no
  * schedule, no batch — this protects the couple's number from being flagged
@@ -27,33 +30,38 @@ import { toast } from 'sonner'
 import { buildWhatsAppLink } from '@/lib/links'
 import { renderForInvite } from '@/lib/templates'
 import { formatShort } from '@/lib/datetime'
+import { sendBlock, templateFor, type SendKind } from '@/lib/send-kinds'
 import { strings } from '@/lib/strings'
 import type { Invite, WeddingConfig } from '@/lib/types'
 
-/** The invite template for this household's language. */
-function templateFor(config: WeddingConfig, invite: Invite): string {
-  return invite.language === 'ru'
-    ? config.invite_message_template_ru
-    : config.invite_message_template_he
-}
-
-export function WaSendButton({ invite, config }: { invite: Invite; config: WeddingConfig }) {
+export function WaSendButton({
+  invite,
+  config,
+  kind = 'invite',
+}: {
+  invite: Invite
+  config: WeddingConfig
+  kind?: SendKind
+}) {
   const router = useRouter()
   const [asking, setAsking] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  if (!invite.phone) {
+  const label = kind === 'invite' ? 'WhatsApp' : `WhatsApp · ${strings.actions.sendKindShort[kind]}`
+
+  const block = sendBlock(invite, config, kind)
+  if (block || !invite.phone) {
     return (
       <span
-        className="rounded border border-border px-2 py-1 text-xs text-muted"
-        title={strings.actions.noPhone}
+        className="rounded border border-border px-2 py-1 text-xs text-muted opacity-60"
+        title={block === 'noPhone' || !block ? strings.actions.noPhone : strings.actions.blocked[block]}
       >
-        WhatsApp
+        {label}
       </span>
     )
   }
 
-  const message = renderForInvite(templateFor(config, invite), invite)
+  const message = renderForInvite(templateFor(config, invite, kind), invite)
   const href = buildWhatsAppLink(invite.phone, message)
 
   const attemptsLabel =
@@ -66,7 +74,13 @@ export function WaSendButton({ invite, config }: { invite: Invite; config: Weddi
 
   async function confirmSent() {
     setSaving(true)
-    const response = await fetch(`/api/invites/${invite.id}/contacted`, { method: 'POST' })
+    // The server decides what this records (lib/send-kinds.ts): only an
+    // invitation or a reminder counts as an attempt.
+    const response = await fetch(`/api/invites/${invite.id}/contacted`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template: kind }),
+    })
     const body = await response.json()
     setSaving(false)
     setAsking(false)
@@ -119,7 +133,7 @@ export function WaSendButton({ invite, config }: { invite: Invite; config: Weddi
       title={`${strings.actions.sendWhatsApp}\n${attemptsLabel}${lastLabel}`}
       className="rounded border border-border px-2 py-1 text-xs text-accent hover:bg-surface"
     >
-      WhatsApp
+      {label}
       {invite.contact_attempts > 0 ? (
         <span className="ltr-nums ms-1 text-muted">{invite.contact_attempts}</span>
       ) : null}

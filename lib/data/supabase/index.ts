@@ -260,9 +260,23 @@ export const supabaseStore: DataStore = {
     ) as Invite
   },
 
-  async markContacted(id): Promise<Invite | null> {
+  async markContacted(id, { countAttempt = true } = {}): Promise<Invite | null> {
     if (!isUuid(id)) return null
     const db = createAdminClient()
+
+    if (!countAttempt) {
+      // Not a follow-up: the status and the count that drives "needs a phone
+      // call" stay exactly as they are.
+      const { data, error } = await db
+        .from('invites')
+        .update({ last_contacted_at: nowIso() })
+        .eq('id', id)
+        .select()
+        .maybeSingle()
+      if (error) throw new Error(`mark contacted: ${error.message}`)
+      return (data as Invite | null) ?? null
+    }
+
     const { data: current, error } = await db
       .from('invites')
       .select('id, status, contact_attempts')
