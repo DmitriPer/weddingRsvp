@@ -19,7 +19,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { budgetLines, type BudgetHeadcounts } from '@/lib/budget'
+import { budgetLines, type BudgetBasis } from '@/lib/budget'
 import { formatAmount, parseAmount, toAmountInput } from '@/lib/money'
 import { EmptyState } from '@/components/ui/states'
 import { strings } from '@/lib/strings'
@@ -37,10 +37,10 @@ const INPUT_TEXT = 'text-base md:text-sm'
 
 export function BudgetTable({
   items,
-  headcounts,
+  basis,
 }: {
   items: BudgetItem[]
-  headcounts: BudgetHeadcounts
+  basis: BudgetBasis
 }) {
   const router = useRouter()
   const [patches, setPatches] = useState<Record<string, UpdateBudgetItemInput>>({})
@@ -51,7 +51,7 @@ export function BudgetTable({
     return items.map((item) => (patches[item.id] ? { ...item, ...patches[item.id] } : item))
   }, [items, patches])
 
-  const lines = useMemo(() => budgetLines(patched, headcounts), [patched, headcounts])
+  const lines = useMemo(() => budgetLines(patched, basis), [patched, basis])
 
   function markSaving(id: string, saving: boolean) {
     setSavingIds((current) => {
@@ -112,10 +112,6 @@ export function BudgetTable({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted">
-        {strings.budget.basis(headcounts.invited, headcounts.attending)}
-      </p>
-
       {lines.length === 0 ? (
         <EmptyState title={strings.budget.empty} hint={strings.budget.emptyHint} />
       ) : (
@@ -228,16 +224,8 @@ export function BudgetTable({
                       />
                     </Td>
 
-                    <Derived
-                      label={strings.budget.fullPrice}
-                      planned={line.plannedFull}
-                      confirmed={line.confirmedFull}
-                    />
-                    <Derived
-                      label={strings.budget.toPay}
-                      planned={line.plannedToPay}
-                      confirmed={line.confirmedToPay}
-                    />
+                    <Derived label={strings.budget.fullPrice} value={line.full} />
+                    <Derived label={strings.budget.toPay} value={line.toPay} />
 
                     <Td wide className="text-end">
                       <button
@@ -262,20 +250,11 @@ export function BudgetTable({
   )
 }
 
-/**
- * A derived cell: the planning figure, with the confirmed one beneath when the
- * two differ. They only differ on a per-guest line, so a flat line shows one
- * number and nothing looks special-cased.
- */
-function Derived({ label, planned, confirmed }: { label: string; planned: number; confirmed: number }) {
+/** A derived cell: worked out in lib/budget.ts, shown read-only. */
+function Derived({ label, value }: { label: string; value: number }) {
   return (
     <Td label={label}>
-      <span className="ltr-nums block font-medium">{formatAmount(planned)}</span>
-      {confirmed !== planned ? (
-        <span className="ltr-nums block text-xs text-muted">
-          {strings.budget.confirmedNote(formatAmount(confirmed))}
-        </span>
-      ) : null}
+      <span className="ltr-nums block font-medium">{formatAmount(value)}</span>
     </Td>
   )
 }

@@ -188,6 +188,9 @@ export interface WeddingConfig {
   day_of_message_template_ru: string
   thank_you_message_template_he: string
   thank_you_message_template_ru: string
+  /** Migration 016. כמות התחייבות: per-guest expenses bill max(approved, this).
+      0 = no minimum. Edited on the budget page. */
+  budget_min_guests: number
   updated_at: string
 }
 
@@ -223,36 +226,24 @@ export interface BudgetItem {
 }
 
 /**
- * What a budget line actually costs, worked out rather than stored.
- *
- * Two figures for a per-guest line, because they answer different questions
- * and both are needed at once: `planned` is what you owe if everyone invited
- * comes, `confirmed` is what the RSVPs so far commit you to. A flat line has
- * the same number in both, which is why nothing has to special-case it.
+ * What a budget line actually costs, worked out rather than stored
+ * (lib/budget.ts). One figure: a per-guest expense is billed for the approved
+ * count, never below the committed minimum (docs/budget-min-guests-PRD.md).
  */
 export interface BudgetLine {
   item: BudgetItem
-  plannedFull: number
-  confirmedFull: number
-  plannedToPay: number
-  confirmedToPay: number
+  full: number
+  toPay: number
 }
 
-/** The four tiles, each on both bases (PRD §6.22). */
+/** The four tiles (PRD §6.22). */
 export interface BudgetTotals {
-  plannedExpenses: number
-  confirmedExpenses: number
-
-  plannedIncome: number
-  confirmedIncome: number
-
+  expenses: number
+  income: number
   /** income − expenses. Negative means the wedding costs more than it brings. */
-  plannedBalance: number
-  confirmedBalance: number
-
+  balance: number
   /** Unpaid expenses only — income is not something you "still owe". */
-  plannedToPay: number
-  confirmedToPay: number
+  toPay: number
 }
 
 export interface CreateBudgetItemInput {

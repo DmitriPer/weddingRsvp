@@ -19,6 +19,7 @@ const EDITABLE_FIELDS = [
   'day_of_message_template_ru',
   'thank_you_message_template_he',
   'thank_you_message_template_ru',
+  'budget_min_guests',
 ] as const
 
 export async function GET() {
@@ -52,6 +53,16 @@ export async function PATCH(request: NextRequest) {
           return badRequest(`${field} must be a valid date`)
         }
         update[field] = new Date(value).toISOString()
+        continue
+      }
+
+      // כמות התחייבות (migration 016): the one numeric field. A whole number,
+      // 0 or more — the column's check constraint says the same.
+      if (field === 'budget_min_guests') {
+        if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+          return badRequest(`${field} must be a whole number of zero or more`)
+        }
+        update[field] = value
         continue
       }
 
