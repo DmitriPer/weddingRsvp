@@ -12,54 +12,44 @@
  * own timezone — see the comment there for why that distinction is load-bearing.
  */
 
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import {
   fromDateTimeLocalValue,
   joinDateTimeLocal,
   splitDateTimeLocal,
   toDateTimeLocalValue,
 } from '@/lib/datetime'
+import { jsonInit, requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
 import type { WeddingConfig } from '@/lib/types'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 
-export function ConfigForm({ config }: { config: WeddingConfig }) {
-  const router = useRouter()
+export function ConfigForm({ config }: { config: WeddingConfig }): React.JSX.Element {
   const [coupleNames, setCoupleNames] = useState(config.couple_names)
   const [venue, setVenue] = useState(config.venue_name)
   const [venueRu, setVenueRu] = useState(config.venue_name_ru)
   const [phone, setPhone] = useState(config.contact_phone)
   const [weddingAt, setWeddingAt] = useState(toDateTimeLocalValue(config.wedding_date_time))
   const [deadline, setDeadline] = useState(toDateTimeLocalValue(config.rsvp_deadline))
-  const [saving, setSaving] = useState(false)
+  const save = useAction()
 
-  async function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent): void {
     event.preventDefault()
-    setSaving(true)
-
-    const response = await fetch('/api/config', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        couple_names: coupleNames.trim(),
-        venue_name: venue.trim(),
-        venue_name_ru: venueRu.trim(),
-        contact_phone: phone.trim(),
-        // null, never '' — an empty deadline means "always open" (PRD §6.3).
-        wedding_date_time: fromDateTimeLocalValue(weddingAt),
-        rsvp_deadline: fromDateTimeLocalValue(deadline),
-      }),
-    })
-    const body = await response.json()
-    setSaving(false)
-
-    if (!body.success) {
-      toast.error(body.error || strings.settings.saveFailed)
-      return
+    const payload = {
+      couple_names: coupleNames.trim(),
+      venue_name: venue.trim(),
+      venue_name_ru: venueRu.trim(),
+      contact_phone: phone.trim(),
+      // null, never '' — an empty deadline means "always open" (PRD §6.3).
+      wedding_date_time: fromDateTimeLocalValue(weddingAt),
+      rsvp_deadline: fromDateTimeLocalValue(deadline),
     }
-    toast.success(strings.settings.saved)
-    router.refresh()
+    // Refreshes afterwards; the button stays busy until the new values render.
+    save.run(
+      () => requestJson('/api/config', jsonInit('PATCH', payload), strings.settings.saveFailed),
+      { success: strings.settings.saved, failure: strings.settings.saveFailed }
+    )
   }
 
   return (
@@ -135,10 +125,12 @@ export function ConfigForm({ config }: { config: WeddingConfig }) {
 
       <button
         type="submit"
-        disabled={saving}
-        className="rounded-md bg-accent px-4 py-2 text-sm text-white disabled:opacity-60"
+        disabled={save.pending}
+        aria-busy={save.pending}
+        className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-sm text-white disabled:opacity-60"
       >
-        {saving ? strings.app.saving : strings.app.save}
+        {save.pending ? <Spinner /> : null}
+        {save.pending ? strings.app.saving : strings.app.save}
       </button>
     </form>
   )

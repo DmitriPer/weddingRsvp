@@ -399,6 +399,16 @@ Spec: `docs/budget-min-guests-PRD.md`.
 
 A per-guest **expense** is now billed for `max(approved, כמות התחייבות)`, where approved means adults and kids who said yes. Per-guest income uses the approved count and is never floored. The "everyone invited" planning basis is gone: one figure per line and per tile, and `BudgetLine` / `BudgetTotals` lost their planned/confirmed pairs. The minimum is one global field above the tiles, saved through `PATCH /api/config`.
 
+## 5k. Error screens, loading screens, action pending states, 2026-09-29
+
+Spec: `docs/error-loading-PRD.md`. No migration, no data or API change.
+
+**Screens.** `error.tsx` in admin and games renders inside the frame, so the tabs keep working. It has a retry button (`unstable_retry` in Next 16) and shows the digest code. The guest `app/error.tsx` and `global-error.tsx` are bilingual. `loading.tsx` exists for admin and games. There is deliberately no guest loading screen: it would flash over the artwork and change how the page that builds the WhatsApp card streams.
+
+**Actions.** `components/ui/use-action.ts` runs a request and `router.refresh()` in one React transition, so `pending` lasts until the refreshed data renders, not just until the request returns. That gap was the old bug: controls re-enabled while stale data showed. `lib/request.ts` (`requestJson`) turns network, non-JSON and `success:false` failures into one thrown error, so nothing sticks on "שומר…". `components/ui/spinner.tsx` marks the busy control.
+
+It is applied to every admin and games mutation. Form resets and closes run in `startTransition` inside the task, so they commit together with the refreshed data. The seating map keeps a dropped table's position until its save lands, so it no longer snaps back. Budget and bingo cell edits keep their optimistic patches. `invite-edit-form`, `attendee-list` and `invite-row` lost their `onSaved`/`onChanged` props, because the action refreshes.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.

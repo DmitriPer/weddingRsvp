@@ -12,11 +12,12 @@
  */
 
 import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { jsonInit, requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
 import type { InvitationImage } from '@/lib/data'
 import type { Language, WeddingConfig } from '@/lib/types'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 
 /** Drops the `?v=` cache-buster so a gallery entry's URL can be compared
     against the (also cache-busted) active URL in config. */
@@ -32,7 +33,7 @@ export function InvitationImageForm({
   config: WeddingConfig
   heImages: InvitationImage[]
   ruImages: InvitationImage[]
-}) {
+}): React.JSX.Element {
   return (
     <div className="space-y-4 rounded-lg border border-border p-4">
       <div>
@@ -72,70 +73,59 @@ function LanguageGallery({
   activeUrl: string
   images: InvitationImage[]
 }) {
-  const router = useRouter()
   const fileInput = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
+  const upload = useAction()
+  // Select and delete share one action: while either runs, every thumbnail is
+  // locked, so a second click can't race the first before the refresh lands.
+  const gallery = useAction()
   const [busyPath, setBusyPath] = useState<string | null>(null)
+  const busy = upload.pending || gallery.pending
 
   const activePath = activeUrl ? stripVersion(activeUrl) : null
 
-  async function handleChoose(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleChoose(event: React.ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0]
     if (!file) return
 
     const form = new FormData()
     form.append('language', language)
     form.append('file', file)
-
-    setUploading(true)
-    const response = await fetch('/api/config/image', { method: 'POST', body: form })
-    const body = await response.json()
-    setUploading(false)
+    // Cleared now, so choosing the same file again (after a failure) still fires onChange.
     if (fileInput.current) fileInput.current.value = ''
 
-    if (!body.success) {
-      toast.error(body.error || strings.settings.image.failed)
-      return
-    }
-    toast.success(strings.settings.image.uploaded)
-    router.refresh()
+    upload.run(
+      () =>
+        requestJson('/api/config/image', { method: 'POST', body: form }, strings.settings.image.failed),
+      { success: strings.settings.image.uploaded, failure: strings.settings.image.failed }
+    )
   }
 
-  async function handleSelect(path: string) {
+  function handleSelect(path: string): void {
     setBusyPath(path)
-    const response = await fetch('/api/config/image', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language, path }),
-    })
-    const body = await response.json()
-    setBusyPath(null)
-
-    if (!body.success) {
-      toast.error(body.error || strings.settings.image.selectFailed)
-      return
-    }
-    toast.success(strings.settings.image.selected)
-    router.refresh()
+    gallery.run(
+      () =>
+        requestJson(
+          '/api/config/image',
+          jsonInit('PATCH', { language, path }),
+          strings.settings.image.selectFailed
+        ),
+      { success: strings.settings.image.selected, failure: strings.settings.image.selectFailed }
+    )
   }
 
-  async function handleDelete(path: string) {
+  function handleDelete(path: string): void {
     if (!window.confirm(strings.settings.image.confirmDelete)) return
 
     setBusyPath(path)
-    const response = await fetch('/api/config/image', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language, path }),
-    })
-    const body = await response.json()
-    setBusyPath(null)
-
-    if (!body.success) {
-      toast.error(body.error || strings.settings.image.deleteFailed)
-      return
-    }
-    router.refresh()
+    gallery.run(
+      () =>
+        requestJson(
+          '/api/config/image',
+          jsonInit('DELETE', { language, path }),
+          strings.settings.image.deleteFailed
+        ),
+      { failure: strings.settings.image.deleteFailed }
+    )
   }
 
   return (
@@ -148,10 +138,10 @@ function LanguageGallery({
         <div className="mb-2 grid grid-cols-3 gap-2">
           {images.map((image) => {
             const isActive = activePath !== null && stripVersion(image.url) === activePath
-            const busy = busyPath === image.path
+            const isBusyTile = gallery.pending && busyPath === image.path
 
             return (
-              <div key={image.path} className="relative">
+              <div key={image.path} className="relative" aria-busy={isBusyTile}>
                 <button
                   type="button"
                   disabled={isActive || busy}
@@ -163,6 +153,14 @@ function LanguageGallery({
                   {/* eslint-disable-next-line @next/next/no-img-element -- an admin-uploaded external Storage URL, not a build-time asset next/image can optimize. */}
                   <img src={image.url} alt={label} className="h-20 w-full object-cover" />
                 </button>
+
+                {/* On the tile being selected or deleted, until the refreshed
+                    gallery moves the ring or drops the tile. */}
+                {isBusyTile ? (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-black/40 text-lg text-white">
+                    <Spinner />
+                  </span>
+                ) : null}
 
                 {isActive ? (
                   <span className="absolute start-1 top-1 rounded bg-accent px-1.5 py-0.5 text-[10px] text-white">
@@ -190,15 +188,18 @@ function LanguageGallery({
         type="file"
         accept="image/jpeg,image/png,image/webp"
         onChange={handleChoose}
-        disabled={uploading}
+        disabled={busy}
         className="hidden"
         id={`invitation-image-input-${language}`}
       />
       <label
         htmlFor={`invitation-image-input-${language}`}
-        className="inline-block cursor-pointer rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+        aria-disabled={busy}
+        aria-busy={upload.pending}
+        className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface aria-disabled:cursor-default aria-disabled:opacity-60"
       >
-        {uploading ? strings.settings.image.uploading : strings.settings.image.choose}
+        {upload.pending ? <Spinner /> : null}
+        {upload.pending ? strings.settings.image.uploading : strings.settings.image.choose}
       </label>
       {/* Last, like the settings fields: above the gallery it dropped only the
           Russian slot lower than the Hebrew one. */}

@@ -2,8 +2,11 @@
 
 /** Edits an invite's own fields. People are handled by AttendeeList. */
 
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import { toast } from 'sonner'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
+import { jsonInit, requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
 import {
   LANGUAGES,
@@ -18,48 +21,46 @@ import {
 export function InviteEditForm({
   invite,
   onDone,
-  onSaved,
 }: {
   invite: Invite
+  /** Closes the form. Also called after a save, once the refreshed row has rendered. */
   onDone: () => void
-  onSaved: () => void
-}) {
+}): React.JSX.Element {
   const [name, setName] = useState(invite.name)
   const [phone, setPhone] = useState(invite.phone ?? '')
   const [side, setSide] = useState<Side | ''>(invite.side ?? '')
   const [relation, setRelation] = useState<Relation | ''>(invite.relation ?? '')
   const [language, setLanguage] = useState<Language>(invite.language)
-  const [saving, setSaving] = useState(false)
+  const save = useAction()
 
-  async function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    setSaving(true)
+    if (save.pending) return
 
-    const response = await fetch(`/api/invites/${invite.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: name.trim(),
-        phone: phone.trim() || null,
-        side: side || null,
-        relation: relation || null,
-        language,
-      }),
-    })
-    const body = await response.json()
-    setSaving(false)
-
-    if (!body.success) {
-      toast.error(body.error || strings.row.saveFailed)
-      return
+    const payload = {
+      name: name.trim(),
+      phone: phone.trim() || null,
+      side: side || null,
+      relation: relation || null,
+      language,
     }
 
-    toast.success(strings.row.saved)
-    const duplicates: string[] = body.data.duplicatePhoneWith ?? []
-    if (duplicates.length) toast.warning(strings.inviteForm.duplicatePhone(duplicates))
-
-    onSaved()
-    onDone()
+    // The close is a transition inside the action, so it commits with the
+    // refresh: the form stays open on "שומר…" until the row shows the new
+    // values, instead of closing onto the old ones.
+    save.run(
+      async () => {
+        const data = await requestJson<{ duplicatePhoneWith?: string[] }>(
+          `/api/invites/${invite.id}`,
+          jsonInit('PATCH', payload),
+          strings.row.saveFailed
+        )
+        const duplicates = data.duplicatePhoneWith ?? []
+        if (duplicates.length) toast.warning(strings.inviteForm.duplicatePhone(duplicates))
+        startTransition(onDone)
+      },
+      { success: strings.row.saved, failure: strings.row.saveFailed }
+    )
   }
 
   return (
@@ -136,15 +137,18 @@ export function InviteEditForm({
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={saving}
-          className="rounded-md bg-accent px-3 py-1.5 text-sm text-white disabled:opacity-60"
+          disabled={save.pending}
+          aria-busy={save.pending}
+          className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm text-white disabled:opacity-60"
         >
-          {saving ? strings.app.saving : strings.app.save}
+          {save.pending ? <Spinner /> : null}
+          {save.pending ? strings.app.saving : strings.app.save}
         </button>
         <button
           type="button"
           onClick={onDone}
-          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+          disabled={save.pending}
+          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-60"
         >
           {strings.app.cancel}
         </button>

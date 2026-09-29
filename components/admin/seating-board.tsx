@@ -11,12 +11,18 @@
  * Every change is one PATCH per person against attendees.table_id, then a
  * refresh. No optimistic state: a wrong seat that looks right is worse than a
  * half-second wait, and there are forty-odd people to place, not four thousand.
+ *
+ * Each kind of change is its own action (components/ui/use-action.ts), so the
+ * control that was pressed shows the spinner, and every control that changes
+ * the board is disabled until the refreshed data is on screen.
  */
 
-import { useMemo, useState } from 'react'
+import { startTransition, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
 import { strings } from '@/lib/strings'
+import { jsonInit, requestJson } from '@/lib/request'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import {
   capacityTotals,
   filterBoard,
@@ -53,13 +59,26 @@ export function SeatingBoard({
 }: {
   invites: InviteWithPeople[]
   tables: SeatingTable[]
-}) {
+}): React.JSX.Element {
   const t = strings.seating
   const router = useRouter()
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
-  const [busy, setBusy] = useState(false)
+
+  const placing = useAction()
+  const ordering = useAction()
+  const saving = useAction()
+  const deleting = useAction()
+  /** Any change to the board in flight: every mutating control waits for it. */
+  const busy = placing.pending || ordering.pending || saving.pending || deleting.pending
+  /** Which control started the running action, so only it shows the spinner. */
+  const [placeTarget, setPlaceTarget] = useState<{ tableId: string | null; count: number }>({
+    tableId: null,
+    count: 0,
+  })
+  const [orderingControl, setOrderingControl] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   /** The table whose name and capacity are open for editing, if any. */
   const [editing, setEditing] = useState<{ id: string; name: string; capacity: number } | null>(
     null
@@ -104,64 +123,77 @@ export function SeatingBoard({
     })
   }
 
-  /** Moves everyone selected. `null` takes them off their table. */
-  async function place(tableId: string | null) {
-    if (selected.size === 0 || busy) return
-    setBusy(true)
+  /**
+   * After a failed loop some requests may already have landed. Refreshing
+   * shows who actually moved, rather than leaving the board as it was.
+   */
+  function refreshAfterFailure(): void {
+    startTransition(() => router.refresh())
+  }
 
-    try {
-      // Sequential, not parallel: forty requests at once against one row each
-      // gains nothing and makes a partial failure harder to read.
-      for (const id of selected) {
-        const response = await fetch(`/api/attendees/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_id: tableId }),
-        })
-        if (!response.ok) throw new Error(t.saveFailed)
-      }
-      setSelected(new Set())
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
-    } finally {
-      setBusy(false)
-    }
+  /** Moves everyone selected. `null` takes them off their table. */
+  function place(tableId: string | null): void {
+    if (selected.size === 0 || busy) return
+    const ids = [...selected]
+    setPlaceTarget({ tableId, count: ids.length })
+
+    placing.run(
+      async () => {
+        // Sequential, not parallel: forty requests at once against one row each
+        // gains nothing and makes a partial failure harder to read.
+        for (const id of ids) {
+          await requestJson(
+            `/api/attendees/${id}`,
+            jsonInit('PATCH', { table_id: tableId }),
+            t.saveFailed
+          )
+        }
+        // Inside the action, so the selection clears in the same commit that
+        // shows everyone in their new place. Kept on failure, to retry.
+        startTransition(() => setSelected(new Set()))
+      },
+      { failure: t.saveFailed, onError: refreshAfterFailure }
+    )
   }
 
   /**
    * Moves a table to `toIndex` in the saved order. Disabled while filtering:
    * "one place up" among the visible cards is not one place up in the order.
+   *
+   * `control` names what was pressed ("<id>:up", "<id>:down", "<id>:field"),
+   * for the spinner.
    */
-  async function reorder(id: string, toIndex: number) {
+  function reorder(id: string, toIndex: number, control: string): void {
     if (busy || filtering) return
     const changes = reorderTables(tables, id, toIndex)
     if (changes.length === 0) return
+    setOrderingControl(control)
 
-    setBusy(true)
-    try {
-      // Sequential for the same reason as place(): a partial failure stays readable.
-      for (const change of changes) {
-        const response = await fetch(`/api/tables/${change.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sort_order: change.sort_order }),
-        })
-        if (!response.ok) throw new Error(t.saveFailed)
-      }
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
-    } finally {
-      setBusy(false)
-    }
+    ordering.run(
+      async () => {
+        // Sequential for the same reason as place(): a partial failure stays readable.
+        for (const change of changes) {
+          await requestJson(
+            `/api/tables/${change.id}`,
+            jsonInit('PATCH', { sort_order: change.sort_order }),
+            t.saveFailed
+          )
+        }
+      },
+      { failure: t.saveFailed, onError: refreshAfterFailure }
+    )
   }
 
   /** Commits a typed position (1-based). Anything unparseable is ignored. */
-  function commitPosition(id: string, current: number, typed: string) {
+  function commitPosition(id: string, current: number, typed: string): void {
     const position = Number.parseInt(typed, 10)
     if (!Number.isFinite(position) || position === current) return
-    void reorder(id, position - 1)
+    reorder(id, position - 1, `${id}:field`)
+  }
+
+  /** Whether the reorder started from this control is still running. */
+  function isOrdering(control: string): boolean {
+    return ordering.pending && orderingControl === control
   }
 
   /**
@@ -170,28 +202,23 @@ export function SeatingBoard({
    * Editing lives on the card rather than in the table manager because this is
    * where the consequences are visible: shrinking a table to eight while ten
    * people sit at it turns the card red immediately, which is the point.
+   *
+   * The form stays open, disabled and spinning, until the refresh lands, and
+   * closes in that same commit — so the card never shows its old values.
    */
-  async function saveTable() {
+  function saveTable(): void {
     if (!editing || busy) return
     const name = editing.name.trim()
     if (!name) return
+    const { id, capacity } = editing
 
-    setBusy(true)
-    try {
-      const response = await fetch(`/api/tables/${editing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, capacity: editing.capacity }),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error)
-      setEditing(null)
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
-    } finally {
-      setBusy(false)
-    }
+    saving.run(
+      async () => {
+        await requestJson(`/api/tables/${id}`, jsonInit('PATCH', { name, capacity }), t.saveFailed)
+        startTransition(() => setEditing(null))
+      },
+      { failure: t.saveFailed }
+    )
   }
 
   /**
@@ -200,16 +227,23 @@ export function SeatingBoard({
    * the confirmation says, because "delete" next to a list of names reads
    * alarming otherwise.
    */
-  async function removeTable(id: string, name: string) {
-    if (!window.confirm(t.confirmDeleteTable(name))) return
+  function removeTable(id: string, name: string): void {
+    if (busy || !window.confirm(t.confirmDeleteTable(name))) return
+    setDeletingId(id)
 
-    try {
-      const response = await fetch(`/api/tables/${id}`, { method: 'DELETE' })
-      if (!response.ok) throw new Error(t.saveFailed)
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
-    }
+    deleting.run(
+      () => requestJson(`/api/tables/${id}`, jsonInit('DELETE'), t.saveFailed),
+      { failure: t.saveFailed }
+    )
+  }
+
+  /** Whether a place/unseat towards `tableId` (`null` = unseat) is running. */
+  function isPlacing(tableId: string | null): boolean {
+    return placing.pending && placeTarget.tableId === tableId
+  }
+
+  function isDeleting(id: string): boolean {
+    return deleting.pending && deletingId === id
   }
 
   return (
@@ -254,14 +288,23 @@ export function SeatingBoard({
               type="button"
               onClick={() => place(null)}
               disabled={busy}
-              className="rounded-md border border-border bg-paper px-2 py-1 disabled:opacity-60"
+              aria-busy={isPlacing(null)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-paper px-2 py-1 disabled:opacity-60"
             >
-              {t.unseatSelected}
+              {isPlacing(null) ? (
+                <>
+                  <Spinner />
+                  {t.unseating(placeTarget.count)}
+                </>
+              ) : (
+                t.unseatSelected
+              )}
             </button>
             <button
               type="button"
               onClick={() => setSelected(new Set())}
-              className="rounded-md border border-border bg-paper px-2 py-1"
+              disabled={placing.pending}
+              className="rounded-md border border-border bg-paper px-2 py-1 disabled:opacity-60"
             >
               {t.clearSelection}
             </button>
@@ -277,9 +320,10 @@ export function SeatingBoard({
                   <button
                     type="button"
                     onClick={() => toggle(person.id)}
+                    disabled={placing.pending}
                     aria-label={t.deselect(label)}
                     title={t.deselect(label)}
-                    className="inline-flex items-center gap-1 rounded-full border border-bloom-ink/40 bg-bloom-ink/10 px-2 py-0.5 text-xs text-bloom-strong hover:bg-bloom-ink/20"
+                    className="inline-flex items-center gap-1 rounded-full border border-bloom-ink/40 bg-bloom-ink/10 px-2 py-0.5 text-xs text-bloom-strong hover:bg-bloom-ink/20 disabled:opacity-60"
                   >
                     {label}
                     <span aria-hidden>✕</span>
@@ -361,6 +405,7 @@ export function SeatingBoard({
                         <PersonChip
                           person={person}
                           selected={selected.has(person.id)}
+                          disabled={placing.pending}
                           onClick={() => toggle(person.id)}
                         />
                       </li>
@@ -450,6 +495,7 @@ export function SeatingBoard({
                       <input
                         value={editing.name}
                         onChange={(event) => setEditing({ ...editing, name: event.target.value })}
+                        disabled={saving.pending}
                         aria-label={t.tableName}
                         autoFocus
                         className="w-full rounded-md border border-border px-2 py-1 text-sm"
@@ -464,6 +510,7 @@ export function SeatingBoard({
                             onChange={(event) =>
                               setEditing({ ...editing, capacity: Number(event.target.value) })
                             }
+                            disabled={saving.pending}
                             className="ltr-nums w-16 rounded-md border border-border px-2 py-1 text-sm"
                           />
                         </label>
@@ -471,14 +518,23 @@ export function SeatingBoard({
                           type="button"
                           onClick={saveTable}
                           disabled={busy}
-                          className="rounded-md border border-bloom-ink bg-bloom-ink px-2 py-1 text-xs text-paper disabled:opacity-60"
+                          aria-busy={saving.pending}
+                          className="inline-flex items-center gap-1 rounded-md border border-bloom-ink bg-bloom-ink px-2 py-1 text-xs text-paper disabled:opacity-60"
                         >
-                          {t.saveTable}
+                          {saving.pending ? (
+                            <>
+                              <Spinner />
+                              {strings.app.saving}
+                            </>
+                          ) : (
+                            t.saveTable
+                          )}
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditing(null)}
-                          className="rounded-md border border-border px-2 py-1 text-xs"
+                          disabled={saving.pending}
+                          className="rounded-md border border-border px-2 py-1 text-xs disabled:opacity-60"
                         >
                           {t.cancelEdit}
                         </button>
@@ -513,23 +569,25 @@ export function SeatingBoard({
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => reorder(spot.table.id, position - 2)}
+                            onClick={() => reorder(spot.table.id, position - 2, `${spot.table.id}:up`)}
                             disabled={busy || filtering || position === 1}
+                            aria-busy={isOrdering(`${spot.table.id}:up`)}
                             aria-label={t.moveUp}
                             title={t.moveUp}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
                           >
-                            ▲
+                            {isOrdering(`${spot.table.id}:up`) ? <Spinner /> : '▲'}
                           </button>
                           <button
                             type="button"
-                            onClick={() => reorder(spot.table.id, position)}
+                            onClick={() => reorder(spot.table.id, position, `${spot.table.id}:down`)}
                             disabled={busy || filtering || position === board.length}
+                            aria-busy={isOrdering(`${spot.table.id}:down`)}
                             aria-label={t.moveDown}
                             title={t.moveDown}
                             className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border text-xs hover:bg-surface disabled:opacity-40"
                           >
-                            ▼
+                            {isOrdering(`${spot.table.id}:down`) ? <Spinner /> : '▼'}
                           </button>
                           {/* Uncontrolled, keyed by position: a refresh after a
                               move resets it to the table's new place. */}
@@ -550,6 +608,9 @@ export function SeatingBoard({
                             }}
                             className="ltr-nums h-7 w-14 rounded-md border border-border px-2 text-sm disabled:opacity-40"
                           />
+                          {isOrdering(`${spot.table.id}:field`) ? (
+                            <Spinner className="text-muted" />
+                          ) : null}
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -562,6 +623,7 @@ export function SeatingBoard({
                                 capacity: spot.table.capacity,
                               })
                             }
+                            disabled={busy}
                             aria-label={t.editTable}
                             title={t.editTable}
                             /*
@@ -572,18 +634,20 @@ export function SeatingBoard({
                              * is also the smallest that is comfortable on a
                              * trackpad.
                              */
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-bloom-ink/30 text-base text-bloom-strong hover:bg-bloom-ink/10"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-bloom-ink/30 text-base text-bloom-strong hover:bg-bloom-ink/10 disabled:opacity-40"
                           >
                             ✎
                           </button>
                           <button
                             type="button"
                             onClick={() => removeTable(spot.table.id, spot.table.name)}
-                            aria-label={t.deleteTable}
+                            disabled={busy}
+                            aria-busy={isDeleting(spot.table.id)}
+                            aria-label={isDeleting(spot.table.id) ? strings.app.deleting : t.deleteTable}
                             title={t.deleteTable}
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-danger/40 text-base text-danger hover:bg-danger/10"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-danger/40 text-base text-danger hover:bg-danger/10 disabled:opacity-40"
                           >
-                            ✕
+                            {isDeleting(spot.table.id) ? <Spinner className="text-sm" /> : '✕'}
                           </button>
                         </div>
                       </div>
@@ -609,6 +673,7 @@ export function SeatingBoard({
                           <PersonChip
                             person={person}
                             selected={selected.has(person.id)}
+                            disabled={placing.pending}
                             onClick={() => toggle(person.id)}
                           />
                         </li>
@@ -622,9 +687,19 @@ export function SeatingBoard({
                     type="button"
                     onClick={() => place(spot.table.id)}
                     disabled={busy || selected.size === 0}
-                    className="mt-2 w-full rounded-md border border-border px-2 py-1 text-sm disabled:opacity-40 print:hidden"
+                    aria-busy={isPlacing(spot.table.id)}
+                    className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-border px-2 py-1 text-sm disabled:opacity-40 print:hidden"
                   >
-                    {selected.size > 0 ? t.selected(selected.size) : t.emptyTable}
+                    {isPlacing(spot.table.id) ? (
+                      <>
+                        <Spinner />
+                        {t.placing(placeTarget.count)}
+                      </>
+                    ) : selected.size > 0 ? (
+                      t.selected(selected.size)
+                    ) : (
+                      t.emptyTable
+                    )}
                   </button>
                 </article>
               ))}
@@ -649,10 +724,12 @@ function ShapeMark({ shape }: { shape: TableShape }) {
 function PersonChip({
   person,
   selected,
+  disabled,
   onClick,
 }: {
   person: SeatablePerson
   selected: boolean
+  disabled: boolean
   onClick: () => void
 }) {
   const label = person.isUnnamed ? strings.guests.placeholder : person.name
@@ -661,8 +738,9 @@ function PersonChip({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={selected}
-      className={`flex w-full items-baseline gap-2 rounded-md border px-2 py-1 text-start text-sm ${
+      className={`flex w-full items-baseline gap-2 rounded-md border px-2 py-1 text-start text-sm disabled:opacity-60 ${
         selected ? 'border-bloom-ink bg-bloom-ink/10' : 'border-transparent hover:bg-surface'
       }`}
     >

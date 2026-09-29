@@ -21,10 +21,12 @@
  */
 
 import { useState } from 'react'
-import { toast } from 'sonner'
+import { jsonInit, requestJson } from '@/lib/request'
 import { renderPreview, unknownVariables } from '@/lib/templates'
 import { strings } from '@/lib/strings'
 import type { Language, WeddingConfig } from '@/lib/types'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 
 type TemplateField = Extract<
   keyof WeddingConfig,
@@ -49,9 +51,9 @@ export function TemplateEditor({
   initial: string
   /** Which language this template is for — the preview's sample name follows it. */
   language: Language
-}) {
+}): React.JSX.Element {
   const [text, setText] = useState(initial)
-  const [saving, setSaving] = useState(false)
+  const saving = useAction()
   /**
    * What is known to be in the database. It cannot be `initial`: this screen
    * deliberately never calls router.refresh(), so that prop keeps its
@@ -63,24 +65,17 @@ export function TemplateEditor({
   const unknown = unknownVariables(text)
   const dirty = text !== saved
 
-  async function save() {
-    setSaving(true)
-    const response = await fetch('/api/config', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: text }),
-    })
-    const body = await response.json()
-    setSaving(false)
-
-    if (!body.success) {
-      toast.error(body.error || strings.settings.saveFailed)
-      return
-    }
-    setSaved(text)
-    toast.success(strings.settings.saved)
-    // Deliberately no router.refresh(): it would remount the other two editors
-    // and discard anything half-typed in them.
+  function save(): void {
+    const sent = text
+    saving.run(
+      async () => {
+        await requestJson('/api/config', jsonInit('PATCH', { [field]: sent }), strings.settings.saveFailed)
+        setSaved(sent)
+      },
+      // Deliberately no router.refresh(): it would remount the other two editors
+      // and discard anything half-typed in them.
+      { refresh: false, success: strings.settings.saved, failure: strings.settings.saveFailed }
+    )
   }
 
   return (
@@ -133,10 +128,12 @@ export function TemplateEditor({
         <button
           type="button"
           onClick={save}
-          disabled={saving || !dirty}
-          className="mt-3 rounded-md bg-accent px-4 py-1.5 text-sm text-white disabled:opacity-50"
+          disabled={saving.pending || !dirty}
+          aria-busy={saving.pending}
+          className="mt-3 inline-flex items-center gap-2 rounded-md bg-accent px-4 py-1.5 text-sm text-white disabled:opacity-50"
         >
-          {saving ? strings.app.saving : strings.app.save}
+          {saving.pending ? <Spinner /> : null}
+          {saving.pending ? strings.app.saving : strings.app.save}
         </button>
       </div>
     </details>

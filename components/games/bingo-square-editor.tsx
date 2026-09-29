@@ -13,10 +13,13 @@
  * Russian, then delete), because two 192px inputs side by side don't fit.
  */
 
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import { toast } from 'sonner'
+import { jsonInit, requestJson } from '@/lib/request'
 import type { BingoSquare, UpdateBingoSquareInput } from '@/lib/types'
 import { EmptyState } from '@/components/ui/states'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import { strings } from '@/lib/strings'
 
 type Side = 'text_he' | 'text_ru'
@@ -40,16 +43,17 @@ const INPUT_TEXT = 'text-base md:text-sm'
 export function BingoSquareEditor({
   squares,
   busyIds,
+  deletingId,
   onSave,
   onDelete,
-  onAdded,
 }: {
   squares: BingoSquare[]
   busyIds: Set<string>
+  /** The square whose delete is in flight; set until the refreshed list drops it. */
+  deletingId: string | null
   onSave: (id: string, patch: UpdateBingoSquareInput, previous: UpdateBingoSquareInput) => void
   onDelete: (square: BingoSquare) => void
-  onAdded: () => void
-}) {
+}): React.JSX.Element {
   return (
     <details ref={openOnPhone} className="rounded-lg border border-border px-4 print:hidden">
       <summary className="cursor-pointer py-3 text-sm font-medium">
@@ -83,10 +87,12 @@ export function BingoSquareEditor({
               </thead>
               <tbody className="block md:table-row-group">
                 {squares.map((square) => {
-                  const busy = busyIds.has(square.id)
+                  const deleting = deletingId === square.id
+                  const busy = busyIds.has(square.id) || deleting
                   return (
                     <tr
                       key={square.id}
+                      aria-busy={busy}
                       className="grid gap-2 border-b border-border px-3 py-3 last:border-b-0 md:table-row md:px-0 md:py-0"
                     >
                       {(['text_he', 'text_ru'] as const).map((side) => (
@@ -108,11 +114,12 @@ export function BingoSquareEditor({
                       <td className="block text-end md:table-cell md:w-px md:px-3 md:py-1.5">
                         <button
                           type="button"
-                          disabled={busy}
+                          disabled={busy || deletingId !== null}
                           onClick={() => onDelete(square)}
-                          className="min-h-11 rounded px-3 text-sm text-danger hover:bg-surface disabled:opacity-50 md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded px-3 text-sm text-danger hover:bg-surface disabled:opacity-50 md:min-h-0 md:px-2 md:py-1 md:text-xs"
                         >
-                          {strings.bingo.delete}
+                          {deleting ? <Spinner /> : null}
+                          {deleting ? strings.app.deleting : strings.bingo.delete}
                         </button>
                       </td>
                     </tr>
@@ -127,7 +134,6 @@ export function BingoSquareEditor({
             every new square at the top of the list. */}
         <AddSquareRow
           nextSortOrder={squares.reduce((max, square) => Math.max(max, square.sort_order), 0) + 1}
-          onAdded={onAdded}
         />
       </div>
     </details>
@@ -184,12 +190,18 @@ function SquareTextCell({
   )
 }
 
-function AddSquareRow({ nextSortOrder, onAdded }: { nextSortOrder: number; onAdded: () => void }) {
+function AddSquareRow({ nextSortOrder }: { nextSortOrder: number }) {
   const [textHe, setTextHe] = useState('')
   const [textRu, setTextRu] = useState('')
-  const [adding, setAdding] = useState(false)
+  // Pending until the refreshed list shows the new square.
+  const add = useAction()
 
-  async function handleAdd() {
+  function clearForm(): void {
+    setTextHe('')
+    setTextRu('')
+  }
+
+  function handleAdd(): void {
     const he = textHe.trim()
     const ru = textRu.trim()
     if (!he && !ru) {
@@ -197,24 +209,15 @@ function AddSquareRow({ nextSortOrder, onAdded }: { nextSortOrder: number; onAdd
       return
     }
 
-    setAdding(true)
-    try {
-      const response = await fetch('/api/bingo-squares', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text_he: he, text_ru: ru, sort_order: nextSortOrder }),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.bingo.saveFailed)
-
-      setTextHe('')
-      setTextRu('')
-      onAdded()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : strings.bingo.saveFailed)
-    } finally {
-      setAdding(false)
-    }
+    const payload = { text_he: he, text_ru: ru, sort_order: nextSortOrder }
+    add.run(
+      async () => {
+        await requestJson('/api/bingo-squares', jsonInit('POST', payload), strings.bingo.saveFailed)
+        // In the same transition as the refresh, so the fields empty as the new row appears.
+        startTransition(clearForm)
+      },
+      { failure: strings.bingo.saveFailed }
+    )
   }
 
   return (
@@ -222,7 +225,7 @@ function AddSquareRow({ nextSortOrder, onAdded }: { nextSortOrder: number; onAdd
       className="flex flex-wrap items-end gap-2 rounded-lg border border-border px-4 py-3"
       onSubmit={(event) => {
         event.preventDefault()
-        void handleAdd()
+        handleAdd()
       }}
     >
       <label className="flex w-full flex-col gap-1 text-xs text-muted sm:w-auto sm:flex-1">
@@ -249,10 +252,12 @@ function AddSquareRow({ nextSortOrder, onAdded }: { nextSortOrder: number; onAdd
       </label>
       <button
         type="submit"
-        disabled={adding}
-        className="min-h-11 w-full rounded-md bg-accent px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:w-auto md:min-h-0 md:py-1.5"
+        disabled={add.pending}
+        aria-busy={add.pending}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 sm:w-auto md:min-h-0 md:py-1.5"
       >
-        {adding ? strings.bingo.adding : `+ ${strings.bingo.addRow}`}
+        {add.pending ? <Spinner /> : null}
+        {add.pending ? strings.bingo.adding : `+ ${strings.bingo.addRow}`}
       </button>
     </form>
   )

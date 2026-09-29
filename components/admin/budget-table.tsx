@@ -16,12 +16,14 @@
  * discarded whenever a row unmounted and came back showing a stale value.
  */
 
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { startTransition, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { budgetLines, type BudgetBasis } from '@/lib/budget'
 import { formatAmount, parseAmount, toAmountInput } from '@/lib/money'
+import { jsonInit, requestJson } from '@/lib/request'
 import { EmptyState } from '@/components/ui/states'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import { strings } from '@/lib/strings'
 import {
   BUDGET_KINDS,
@@ -41,10 +43,13 @@ export function BudgetTable({
 }: {
   items: BudgetItem[]
   basis: BudgetBasis
-}) {
-  const router = useRouter()
+}): React.JSX.Element {
   const [patches, setPatches] = useState<Record<string, UpdateBudgetItemInput>>({})
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
+  // One delete at a time: the row stays disabled, with a spinner, until the
+  // refreshed list no longer contains it.
+  const remove = useAction()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const patched = useMemo(() => {
     if (Object.keys(patches).length === 0) return items
@@ -74,13 +79,7 @@ export function BudgetTable({
     markSaving(id, true)
 
     try {
-      const response = await fetch(`/api/budget/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.budget.saveFailed)
+      await requestJson(`/api/budget/${id}`, jsonInit('PATCH', patch), strings.budget.saveFailed)
     } catch (thrown) {
       // Catches a rejected fetch and a non-JSON body, not just !success: an
       // offline blip must not leave an edited number standing unsaved.
@@ -91,23 +90,17 @@ export function BudgetTable({
     }
   }
 
-  async function handleDelete(item: BudgetItem) {
+  function handleDelete(item: BudgetItem): void {
     if (!window.confirm(strings.budget.confirmDelete(item.name))) return
 
-    markSaving(item.id, true)
-    try {
-      const response = await fetch(`/api/budget/${item.id}`, { method: 'DELETE' })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.budget.deleteFailed)
-      toast.success(strings.budget.deleted)
-      // A removal changes which rows exist, so the server list is refetched
-      // rather than patched — there is no optimistic value to keep.
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : strings.budget.deleteFailed)
-    } finally {
-      markSaving(item.id, false)
-    }
+    setDeletingId(item.id)
+    // A removal changes which rows exist, so the server list is refetched
+    // rather than patched — there is no optimistic value to keep.
+    remove.run(
+      () =>
+        requestJson(`/api/budget/${item.id}`, jsonInit('DELETE'), strings.budget.deleteFailed),
+      { success: strings.budget.deleted, failure: strings.budget.deleteFailed }
+    )
   }
 
   return (
@@ -137,11 +130,13 @@ export function BudgetTable({
             <tbody className="block md:table-row-group">
               {lines.map((line) => {
                 const item = line.item
-                const saving = savingIds.has(item.id)
+                const deleting = remove.pending && deletingId === item.id
+                const saving = savingIds.has(item.id) || deleting
 
                 return (
                   <tr
                     key={item.id}
+                    aria-busy={saving}
                     className="grid grid-cols-2 gap-x-3 gap-y-2 border-b border-border px-3 py-3 last:border-0 md:table-row md:p-0"
                   >
                     <Td label={strings.budget.name} wide>
@@ -230,11 +225,12 @@ export function BudgetTable({
                     <Td wide className="text-end">
                       <button
                         type="button"
-                        onClick={() => void handleDelete(item)}
-                        disabled={saving}
-                        className="min-h-11 rounded border border-border px-3 text-sm text-danger hover:bg-surface disabled:opacity-50 md:min-h-0 md:px-2 md:py-1 md:text-xs"
+                        onClick={() => handleDelete(item)}
+                        disabled={saving || remove.pending}
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border px-3 text-sm text-danger hover:bg-surface disabled:opacity-50 md:min-h-0 md:px-2 md:py-1 md:text-xs"
                       >
-                        {strings.budget.delete}
+                        {deleting ? <Spinner /> : null}
+                        {deleting ? strings.app.deleting : strings.budget.delete}
                       </button>
                     </Td>
                   </tr>
@@ -245,7 +241,7 @@ export function BudgetTable({
         </div>
       )}
 
-      <AddBudgetRow onAdded={() => router.refresh()} />
+      <AddBudgetRow />
     </div>
   )
 }
@@ -362,15 +358,24 @@ function MoneyCell({
  * mandatory, and a placeholder row named "שורה חדשה" would be a lie that also
  * lands in the totals as ₪0 until someone finishes it.
  */
-function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
+function AddBudgetRow() {
   const [name, setName] = useState('')
   const [kind, setKind] = useState<BudgetKind>('expense')
   const [pricing, setPricing] = useState<BudgetPricing>('flat')
   const [amount, setAmount] = useState('')
   const [paid, setPaid] = useState('')
-  const [adding, setAdding] = useState(false)
+  // Pending until the refreshed list shows the new row.
+  const add = useAction()
 
-  async function handleAdd() {
+  function clearForm(): void {
+    // Kind and pricing are kept, because entering several expenses in a row is
+    // the normal case.
+    setName('')
+    setAmount('')
+    setPaid('')
+  }
+
+  function handleAdd(): void {
     const trimmed = name.trim()
     if (!trimmed) {
       toast.error(strings.budget.nameRequired)
@@ -388,33 +393,22 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
       return
     }
 
-    setAdding(true)
-    try {
-      const response = await fetch('/api/budget', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: trimmed,
-          kind,
-          pricing,
-          amount: parsedAmount,
-          paid_in_advance: parsedPaid,
-        }),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.budget.saveFailed)
-
-      // Cleared so the next line can be typed straight away; kind and pricing
-      // are kept, because entering several expenses in a row is the normal case.
-      setName('')
-      setAmount('')
-      setPaid('')
-      onAdded()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : strings.budget.saveFailed)
-    } finally {
-      setAdding(false)
+    const payload = {
+      name: trimmed,
+      kind,
+      pricing,
+      amount: parsedAmount,
+      paid_in_advance: parsedPaid,
     }
+    add.run(
+      async () => {
+        await requestJson('/api/budget', jsonInit('POST', payload), strings.budget.saveFailed)
+        // Cleared so the next line can be typed straight away — in the same
+        // transition as the refresh, so the fields empty as the new row appears.
+        startTransition(clearForm)
+      },
+      { failure: strings.budget.saveFailed }
+    )
   }
 
   return (
@@ -481,11 +475,13 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
 
       <button
         type="button"
-        onClick={() => void handleAdd()}
-        disabled={adding}
-        className="min-h-11 w-full rounded-md bg-accent px-3 text-sm text-white disabled:opacity-50 sm:w-auto md:min-h-0 md:py-1.5"
+        onClick={handleAdd}
+        disabled={add.pending}
+        aria-busy={add.pending}
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-accent px-3 text-sm text-white disabled:opacity-50 sm:w-auto md:min-h-0 md:py-1.5"
       >
-        {adding ? strings.budget.adding : `+ ${strings.budget.addRow}`}
+        {add.pending ? <Spinner /> : null}
+        {add.pending ? strings.budget.adding : `+ ${strings.budget.addRow}`}
       </button>
     </div>
   )

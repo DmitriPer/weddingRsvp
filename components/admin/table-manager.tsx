@@ -15,55 +15,47 @@
  * the people at it, or deleting one, should be done while looking at them.
  */
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { startTransition, useState } from 'react'
 import { strings } from '@/lib/strings'
+import { jsonInit, requestJson } from '@/lib/request'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import { TABLE_SEATS, TABLE_SHAPES, type SeatingTable, type TableShape } from '@/lib/types'
 
-export function TableManager({ tables }: { tables: SeatingTable[] }) {
+export function TableManager({ tables }: { tables: SeatingTable[] }): React.JSX.Element {
   const t = strings.seating
-  const router = useRouter()
+  const creating = useAction()
 
   const [name, setName] = useState('')
   const [shape, setShape] = useState<TableShape>('round')
   // Follows the shape until the admin types over it, which is what makes the
   // shape useful rather than decorative.
   const [capacity, setCapacity] = useState(TABLE_SEATS.round.default)
-  const [busy, setBusy] = useState(false)
 
   function chooseShape(next: TableShape) {
     setShape(next)
     setCapacity(TABLE_SEATS[next].default)
   }
 
-  async function add(event: React.FormEvent) {
+  function add(event: React.FormEvent): void {
     event.preventDefault()
-    if (busy) return
+    if (creating.pending) return
 
-    setBusy(true)
-    try {
-      const response = await fetch('/api/tables', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          shape,
-          capacity,
-          // Appended, so tables stay in the order they were created.
-          sort_order: tables.length,
-        }),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error)
-
-      setName('')
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
-    } finally {
-      setBusy(false)
+    const payload = {
+      name: name.trim(),
+      shape,
+      capacity,
+      // Appended, so tables stay in the order they were created.
+      sort_order: tables.length,
     }
+    creating.run(
+      async () => {
+        await requestJson('/api/tables', jsonInit('POST', payload), t.saveFailed)
+        // Inside the action, so the field empties as the new table appears.
+        startTransition(() => setName(''))
+      },
+      { failure: t.saveFailed }
+    )
   }
 
   const seats = TABLE_SEATS[shape]
@@ -116,10 +108,18 @@ export function TableManager({ tables }: { tables: SeatingTable[] }) {
 
         <button
           type="submit"
-          disabled={busy}
-          className="rounded-md border border-bloom-ink bg-bloom-ink px-3 py-1.5 text-sm text-paper disabled:opacity-60"
+          disabled={creating.pending}
+          aria-busy={creating.pending}
+          className="inline-flex items-center gap-1.5 rounded-md border border-bloom-ink bg-bloom-ink px-3 py-1.5 text-sm text-paper disabled:opacity-60"
         >
-          {t.addTable}
+          {creating.pending ? (
+            <>
+              <Spinner />
+              {strings.app.saving}
+            </>
+          ) : (
+            t.addTable
+          )}
         </button>
       </form>
 

@@ -10,16 +10,24 @@
  */
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { jsonInit, requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 
-export function BudgetMinGuestsField({ value, attending }: { value: number; attending: number }) {
-  const router = useRouter()
+export function BudgetMinGuestsField({
+  value,
+  attending,
+}: {
+  value: number
+  attending: number
+}): React.JSX.Element {
   const [draft, setDraft] = useState(String(value))
-  const [saving, setSaving] = useState(false)
+  // Pending until the refreshed totals render, not just until the PATCH returns.
+  const save = useAction()
 
-  async function commit() {
+  function commit(): void {
     const trimmed = draft.trim()
     const parsed = Number(trimmed)
     if (trimmed === '' || !Number.isInteger(parsed) || parsed < 0) {
@@ -29,42 +37,42 @@ export function BudgetMinGuestsField({ value, attending }: { value: number; atte
     }
     if (parsed === value) return
 
-    setSaving(true)
-    try {
-      const response = await fetch('/api/config', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ budget_min_guests: parsed }),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.budget.saveFailed)
-      toast.success(strings.budget.minGuestsSaved)
-      router.refresh()
-    } catch (thrown) {
-      setDraft(String(value))
-      toast.error(thrown instanceof Error ? thrown.message : strings.budget.saveFailed)
-    } finally {
-      setSaving(false)
-    }
+    save.run(
+      () =>
+        requestJson(
+          '/api/config',
+          jsonInit('PATCH', { budget_min_guests: parsed }),
+          strings.budget.saveFailed
+        ),
+      {
+        success: strings.budget.minGuestsSaved,
+        failure: strings.budget.saveFailed,
+        onError: () => setDraft(String(value)),
+      }
+    )
   }
 
   return (
     <section className="flex flex-wrap items-end gap-x-4 gap-y-2 rounded-lg border border-border px-4 py-3">
       <label className="flex flex-col gap-1 text-sm font-medium">
         {strings.budget.minGuests}
-        <input
-          value={draft}
-          disabled={saving}
-          inputMode="numeric"
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={() => void commit()}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur()
-            if (event.key === 'Escape') setDraft(String(value))
-          }}
-          // 16px on phones: iOS Safari zooms into any focused field smaller than that.
-          className="ltr-nums w-28 rounded border border-border px-2 py-2 text-base font-normal disabled:opacity-50 md:py-1 md:text-sm"
-        />
+        <span className="flex items-center gap-2">
+          <input
+            value={draft}
+            disabled={save.pending}
+            aria-busy={save.pending}
+            inputMode="numeric"
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur()
+              if (event.key === 'Escape') setDraft(String(value))
+            }}
+            // 16px on phones: iOS Safari zooms into any focused field smaller than that.
+            className="ltr-nums w-28 rounded border border-border px-2 py-2 text-base font-normal disabled:opacity-50 md:py-1 md:text-sm"
+          />
+          {save.pending ? <Spinner className="text-muted" /> : null}
+        </span>
       </label>
       <p className="pb-1.5 text-sm text-muted">{strings.budget.attendingSoFar(attending)}</p>
       <p className="w-full text-xs text-muted">{strings.budget.minGuestsHint}</p>
