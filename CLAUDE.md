@@ -17,6 +17,7 @@ This is a **greenfield rebuild**, started 2026-07-30 as an orphan branch with no
 | `docs/architecture.md` | File tree, module responsibilities, request flows. |
 | `docs/conventions.md` | How code is written here. Small functions, layering, single source of truth. |
 | `docs/setup-database.md` | Creating the Supabase project and running migrations. |
+| `docs/*-PRD.md` | Per-feature specs, same shape as the master PRD: `admin-ui-pass`, `seating-order-filters`, `seating-unseated-grouping`, `site-export`, `whatsapp-rounds`, `games-bingo`, `budget-mobile`, `budget-min-guests`, `error-loading`, `small-fixes`, `wedding-photos` (parked draft). |
 
 `docs/project-explainer.html` still describes the *old* app — historical until regenerated.
 
@@ -26,6 +27,8 @@ This is a **greenfield rebuild**, started 2026-07-30 as an orphan branch with no
 npm run dev      # dev server on http://localhost:3030
 npm run build    # production build — the way to verify TypeScript + compilation
 npm run lint     # ESLint
+npm run create-admin   # create the single admin account (ADMIN_EMAIL / ADMIN_PASSWORD inline) — scripts/create-admin.ts
+npm run og-card        # validate assets/card/card-artwork.png, write public/assets/og-card.jpg, stamp the cache-busting version — scripts/build-og-card.ts
 ```
 
 No test suite configured yet.
@@ -65,7 +68,7 @@ All tables get RLS `deny all`. Every data operation goes through the admin clien
 ### Defense in depth on `/admin`
 
 Two independent locks, redundant on purpose:
-1. `proxy.ts` gates `/admin/*` before any admin page renders.
+1. `proxy.ts` gates `/admin/*` and `/games/*` (admin-only too) before any of those pages render.
 2. Every admin API route independently re-verifies the session.
 
 API routes are separate URLs reachable by `curl` without touching a page, and middleware-bypass CVEs are real and recurring. Two locks turn a critical bug into a cosmetic one.
@@ -102,15 +105,24 @@ kids   = count(attendees where is_attending and     is_child)
 
 Lives in `lib/headcount.ts` and nowhere else.
 
+**Budget** builds on it: a per-guest expense line is billed for `max(approved, wedding_config.budget_min_guests)` people (`lib/budget.ts`). There is no "everyone invited" basis. See `docs/budget-min-guests-PRD.md`.
+
 ### Data model
 
-Five tables: `invites`, `attendees`, `tables`, `response_history`, `wedding_config`.
+Seven tables: `invites`, `attendees`, `tables`, `response_history`, `wedding_config`, plus:
+
+- `budget_items` — expense and income lines (flat or per-guest, money in agorot).
+- `bingo_squares` — bingo tasks, Hebrew and Russian text paired on one row.
 
 - **No `responses` table** — it would be strictly 1:1 with `invites`, so its columns live on `invites`.
 - **Seating is `attendees.table_id`**, not a join table — one person sits at one table, same 1:1 reasoning.
 - **`wedding_config.id` is `boolean primary key check (id)`** — only `true` is valid, so a second row is rejected by the database.
 
 Full schema and rationale in PRD §5 and §10; SQL in `supabase/migrations/`.
+
+### Conventions for new UI actions
+
+Mutations use `components/ui/use-action.ts` + `requestJson` from `lib/request.ts` + `components/ui/spinner.tsx`, so the pending state lasts until the refreshed data has rendered, not just until the request returns. See `docs/error-loading-PRD.md`.
 
 ## Hard rules
 

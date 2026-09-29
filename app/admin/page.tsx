@@ -3,9 +3,6 @@
  *
  * Stats live here as tiles rather than on their own page: they are four numbers
  * and read better beside the list.
- *
- * Still to come (Phase 5): search, sort, the history modal, copy-link, and the
- * wa.me button.
  */
 
 import { redirect } from 'next/navigation'

@@ -1,7 +1,7 @@
 # Budget — Mobile Layout
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-29
+**Status:** built 2026-09-29 (PR #24)
 **Surface:** `app/admin/budget`, `components/admin/budget-table.tsx`, `components/admin/budget-totals.tsx`
 **Follows:** `admin-ui-pass-PRD.md`, which left the budget page out of scope
 

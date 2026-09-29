@@ -1,8 +1,9 @@
 /**
  * THE message template renderer.
  *
- * Templates hold {{name}} and {{link}}. Three of them live in wedding_config —
- * invite, day-of, thank-you — each independently editable (PRD §6.5).
+ * Templates hold {{name}} and {{link}}. Four kinds live in wedding_config —
+ * invite, reminder, day-of, thank-you — each in Hebrew and Russian, each
+ * independently editable (PRD §6.5, docs/whatsapp-rounds-PRD.md).
  *
  * This file knows nothing about WhatsApp. Turning a rendered message into a
  * wa.me URL is lib/links.ts.

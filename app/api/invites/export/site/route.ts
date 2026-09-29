@@ -1,6 +1,6 @@
 /**
  * The guest list in the outside RSVP site's template (lib/site-sheet.ts) — one
- * row per invitation, for uploading there. The admin's own export (../route.ts)
+ * row per person coming (docs/site-export-PRD.md), for uploading there. The admin's own export (../route.ts)
  * is a different document: one row per invitation, in the import format.
  *
  * POST, not GET, and it takes the ids to include.

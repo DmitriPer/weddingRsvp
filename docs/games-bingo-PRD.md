@@ -1,7 +1,7 @@
 # Games Area — Wedding Bingo
 
 **Owner:** Dmitri
-**Status:** built 2026-09-29 — awaiting migration 015 and Dmitri's browser check
+**Status:** built 2026-09-29 (PR #23)
 **Source:** `~/Downloads/wedding_bingo.html` (standalone page, 2026-09-29) — ported, not linked
 
 ## 1. Mission

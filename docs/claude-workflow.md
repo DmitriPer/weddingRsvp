@@ -4,7 +4,7 @@ This file exists so that **any** Claude Code session on this repo — CLI, web, 
 
 ## Process for any new feature or change
 
-1. **PRD first, no code.** Before implementing anything non-trivial, write or update a PRD in `docs/` describing the functionality and data model changes. Model it on `docs/wedding-app-brownfield-PRD.md` (mission, scope boundaries table, functional gaps, data model, explicitly-deferred list, open questions, definition of done).
+1. **PRD first, no code.** Before implementing anything non-trivial, write or update a PRD in `docs/` describing the functionality and data model changes. Model it on the master spec `docs/wedding-rsvp-PRD.md`, or on an existing per-feature spec such as `docs/whatsapp-rounds-PRD.md`, which follow the same shape (mission, scope boundaries table, functional gaps, data model, explicitly-deferred list, open questions, definition of done).
 2. **Clarify by asking, not assuming.** While drafting or refining a PRD, ask Dmitri clarifying questions about functionality, data shape, and edge cases until there's nothing ambiguous left — don't silently guess at requirements or fill gaps with a "reasonable" assumption. Keep asking in rounds until he confirms it's clear. Use structured multiple-choice questions where possible (easier for him to answer decisively) rather than open-ended ones.
 3. **Plan Mode before writing code.** Once the PRD's open questions are resolved, use Plan Mode to turn it into a concrete step-by-step implementation plan (files touched, order of work, how it maps to the PRD) before touching any code. Get the plan reviewed/approved before implementing.
 4. **Then implement**, following the approved plan and the PRD's scope boundaries exactly — don't quietly expand scope (e.g. adding styling work, extra features, or "while I'm at it" refactors not in the PRD).
@@ -23,5 +23,6 @@ This file exists so that **any** Claude Code session on this repo — CLI, web, 
 ## Where the context lives
 
 - `CLAUDE.md` — stack, architecture, Supabase client rules, request flow, status state machine.
-- `docs/wedding-app-brownfield-PRD.md` — the current build phase's scope (functional gaps, data model changes, what's explicitly deferred).
+- `docs/wedding-rsvp-PRD.md` — the master spec: scope, data model, behaviour, and what's explicitly deferred.
+- `docs/*-PRD.md` — per-feature specs (e.g. `docs/whatsapp-rounds-PRD.md`), same shape as the master spec.
 - Ask Dmitri directly if something referenced here (e.g. the original mission PRD or the base-repo investigation writeup) isn't present in your checkout — those may live outside this repo depending on where you're working from.

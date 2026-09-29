@@ -357,8 +357,8 @@ export const supabaseStore: DataStore = {
     /*
      * The legacy boolean, written alongside `answer` so migration 010 stays
      * reversible for the two answers it can express. 'undecided' has no boolean
-     * to be, which is the whole reason `answer` exists. Migration 011 drops the
-     * column and this line goes with it.
+     * to be, which is the whole reason `answer` exists. A future migration could
+     * drop the column (011 turned out to be table shape); this line goes with it.
      */
     const legacyAttending = submission.answer === 'undecided' ? null : coming
 

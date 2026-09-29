@@ -1,7 +1,7 @@
 # Small Fixes: Seats on Decline, Bulk-Delete Count, Phone Warning
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-29
+**Status:** built 2026-09-29 (branch feat/small-fixes)
 **From:** the PRD-vs-code audit of 2026-09-29
 
 ## 1. A decline gives up the seat

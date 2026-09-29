@@ -1,7 +1,7 @@
 # Invitees — Export in the RSVP Site's Template Format
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-27, not yet built
+**Status:** built 2026-09-27 (PR #21)
 **Replaces:** the invitees page's "ייצוא לסידור הושבה" export (`lib/seating-sheet.ts`)
 
 ## 1. Mission

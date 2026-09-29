@@ -1,7 +1,7 @@
 # Seating Board — Table Order and Filters
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-24, not yet built
+**Status:** built 2026-09-24 (PR #17)
 **Extends:** `wedding-rsvp-PRD.md` §6.17 Seating
 
 ## 1. Mission
