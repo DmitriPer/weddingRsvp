@@ -8,6 +8,7 @@ import { answerForPerson } from '@/lib/headcount'
 import { relationRank } from '@/lib/invite-filters'
 import {
   TABLE_SEATS,
+  type Answer,
   type InviteWithPeople,
   type Relation,
   type SeatingTable,
@@ -38,6 +39,22 @@ export interface SeatablePerson {
   /** The household's, so the unseated list can group and filter by them. */
   relation: Relation | null
   side: Side | null
+}
+
+/**
+ * Whether an answer takes a person's seat away (docs/small-fixes-PRD.md §1).
+ *
+ * Only a no. Before this, a decline hid the person from the board but left
+ * `table_id` set, so a later change back to yes put them silently back at a
+ * table that had since been planned without them.
+ *
+ * 'undecided' KEEPS the seat: undecided people are seated on purpose (see
+ * seatablePeople below), and a maybe is not a reason to undo that planning.
+ * The answer here is the PERSON's (answerForPerson): someone left unticked in
+ * a household that said yes is a no for this purpose.
+ */
+export function losesSeat(personAnswer: Answer | null): boolean {
+  return personAnswer === 'no'
 }
 
 /**

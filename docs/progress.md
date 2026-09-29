@@ -409,6 +409,14 @@ Spec: `docs/error-loading-PRD.md`. No migration, no data or API change.
 
 It is applied to every admin and games mutation. Form resets and closes run in `startTransition` inside the task, so they commit together with the refreshed data. The seating map keeps a dropped table's position until its save lands, so it no longer snaps back. Budget and bingo cell edits keep their optimistic patches. `invite-edit-form`, `attendee-list` and `invite-row` lost their `onSaved`/`onChanged` props, because the action refreshes.
 
+## 5l. Small fixes, 2026-09-29
+
+Spec: `docs/small-fixes-PRD.md`. No migration.
+
+- **A decline gives up the seat.** `losesSeat` (`lib/seating.ts`) is applied in `submitRsvp`. A household no clears everyone's `table_id`, and a person unticked in a yes household clears theirs. Undecided keeps seats. A one-off preview of older declines found nobody still seated, so no cleanup was needed.
+- **Bulk-delete confirm** counts every person row, +1s included (`countPeopleRows`).
+- **Phone warning** under the field in the add and edit forms when `normalisePhone` doesn't recognise the number. It still saves.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.

@@ -13,8 +13,10 @@ import { countAttending } from '@/lib/headcount'
 import { statusAfterContact, statusAfterOpen, statusAfterSubmit } from '@/lib/status'
 import { planPlaceholders, placeholderIds } from '@/lib/placeholders'
 import { nowIso } from '@/lib/datetime'
+import { losesSeat } from '@/lib/seating'
 import { isUuid } from '@/lib/validation'
 import type {
+  Answer,
   Attendee,
   BingoSquare,
   BudgetItem,
@@ -349,7 +351,7 @@ export const supabaseStore: DataStore = {
       await applyPlaceholderPlan(invite, submission.extraAdults, submission.extraKids)
     } else {
       // 'no' and 'undecided' both leave nobody attending: see parseRsvpSubmission.
-      await clearEverything(invite)
+      await clearEverything(invite, submission.answer)
     }
 
     /*
@@ -667,7 +669,12 @@ async function applyTicks(invite: InviteWithPeople, tickedIds: string[]): Promis
     if (error) throw new Error(`tick people: ${error.message}`)
   }
   if (shouldNot.length) {
-    const { error } = await db.from('attendees').update({ is_attending: false }).in('id', shouldNot)
+    // Unticked in a household that said yes is this person's no, so they also
+    // give up their table (lib/seating.ts losesSeat).
+    const { error } = await db
+      .from('attendees')
+      .update({ is_attending: false, ...seatClearing('no') })
+      .in('id', shouldNot)
     if (error) throw new Error(`untick people: ${error.message}`)
   }
 }
@@ -698,8 +705,19 @@ async function applyPlaceholderPlan(
   }
 }
 
-/** Declining zeroes everything: placeholders deleted, named people unticked. */
-async function clearEverything(invite: InviteWithPeople): Promise<void> {
+/**
+ * The `table_id` part of an attendance update: cleared when the answer takes
+ * the seat away, absent otherwise so an undecided person keeps theirs.
+ */
+function seatClearing(personAnswer: Answer): { table_id?: null } {
+  return losesSeat(personAnswer) ? { table_id: null } : {}
+}
+
+/**
+ * Declining zeroes everything: placeholders deleted, named people unticked.
+ * A no also clears everyone's table; 'undecided' keeps the seats.
+ */
+async function clearEverything(invite: InviteWithPeople, answer: Answer): Promise<void> {
   const db = createAdminClient()
 
   const doomed = placeholderIds(invite.attendees)
@@ -710,7 +728,7 @@ async function clearEverything(invite: InviteWithPeople): Promise<void> {
 
   const { error } = await db
     .from('attendees')
-    .update({ is_attending: false })
+    .update({ is_attending: false, ...seatClearing(answer) })
     .eq('invite_id', invite.id)
   if (error) throw new Error(`clear attendance: ${error.message}`)
 }

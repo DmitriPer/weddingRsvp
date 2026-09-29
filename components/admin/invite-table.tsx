@@ -13,7 +13,7 @@ import { InviteRow } from '@/components/admin/invite-row'
 import { EmptyState } from '@/components/ui/states'
 import { Spinner } from '@/components/ui/spinner'
 import { useAction } from '@/components/ui/use-action'
-import { countInvited } from '@/lib/headcount'
+import { countPeopleRows } from '@/lib/headcount'
 import {
   ANSWER_FILTERS,
   DEFAULT_SORT_DIRECTION,
@@ -182,7 +182,7 @@ export function InviteTable({
 
     // PEOPLE, not rows. "delete 40" understates what a cascade destroys, and a
     // bulk delete is exactly where a vague confirmation gets clicked through.
-    const people = chosen.reduce((sum, invite) => sum + countInvited(invite.attendees), 0)
+    const people = chosen.reduce((sum, invite) => sum + countPeopleRows(invite.attendees), 0)
     if (!window.confirm(strings.bulk.confirm(chosen.length, people))) return
 
     // Pending lasts until the refreshed list no longer has these rows; the

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Spinner } from '@/components/ui/spinner'
 import { useAction } from '@/components/ui/use-action'
 import { jsonInit, requestJson } from '@/lib/request'
+import { normalisePhone } from '@/lib/phone'
 import { strings } from '@/lib/strings'
 import {
   LANGUAGES,
@@ -91,6 +92,13 @@ export function InviteEditForm({
           placeholder="0549546899"
           className="ltr-nums mt-1 w-full rounded-md border border-border px-3 py-1.5"
         />
+        {normalisePhone(phone).unrecognised ? (
+          // Same check the importer flags (lib/phone.ts): saved as typed, but
+          // a wa.me link built from it would likely reach nobody.
+          <p role="status" className="mt-1 text-xs text-warning">
+            {strings.inviteForm.phoneUnrecognised}
+          </p>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-3 gap-3">
