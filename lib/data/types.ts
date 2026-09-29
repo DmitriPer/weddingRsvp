@@ -1,8 +1,9 @@
 /**
- * The contract both backing stores satisfy (PRD §8).
+ * The data layer's contract (PRD §8). One implementation today, the Supabase
+ * store; the mock store it was written for was dropped on 2026-07-30.
  *
- * Callers use these functions and never see a Supabase client. Because both
- * implementations are typed against this interface, a missing method is a
+ * Callers use these functions and never see a Supabase client. Because the
+ * implementation is typed against this interface, a missing method is a
  * compile error rather than a runtime surprise.
  *
  * This layer persists. It holds no business rules — those live in lib/.

@@ -1,7 +1,7 @@
 # Budget — Committed Minimum Guests (כמות התחייבות)
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-29
+**Status:** built 2026-09-29 (PR #25); migration 016 run
 **Changes:** the budget arithmetic in `lib/budget.ts` (PRD §6.22)
 
 ## 1. Mission

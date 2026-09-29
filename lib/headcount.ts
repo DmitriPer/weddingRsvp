@@ -108,6 +108,16 @@ export function countInvited(attendees: Attendee[]): number {
 }
 
 /**
+ * Every person row on an invitation, guest-added "+1"s included — what a
+ * delete actually removes (docs/small-fixes-PRD.md §2). Not a headcount of
+ * anyone coming; it exists so the bulk-delete confirmation can't understate a
+ * cascade by leaving the +1s out, as countInvited() does by design.
+ */
+export function countPeopleRows(attendees: Attendee[]): number {
+  return attendees.length
+}
+
+/**
  * People who answered no. Placeholders are excluded: an unnamed "+1" only
  * exists while it is coming, and declining deletes them outright.
  *

@@ -1,6 +1,6 @@
 # Progress & Handoff
 
-**Last updated:** 2026-09-09 · branch `main` · pushed to `DmitriPer/weddingRsvp`
+**Last updated:** 2026-09-29 · branch `main` · pushed to `DmitriPer/weddingRsvp` · **live, real guest data**
 
 The purpose of this file is that a different machine, or a different session, can pick this up with no gaps. **Update it whenever a phase lands** — if it drifts from reality it is worse than not existing.
 
@@ -108,23 +108,23 @@ Verified against the real database, not just compiled:
 | §6.4 | Public landing page | ✅ | the no-token branch of `app/page.tsx` — artwork only, no card |
 | §6.5 | Config-driven details | ✅ | `app/admin/settings`, `components/admin/config-form.tsx`, `template-editor.tsx` |
 | §6.6 | Admin guest management | ✅ | `components/admin/invite-*.tsx`, `attendee-list.tsx` |
-| §6.7 | Import / export | ❌ | `exceljs` installed, unused |
+| §6.7 | Import / export | ✅ | `app/api/invites/{template,import,export}`, `export/site`, `api/tables/export`, `import-panel.tsx`, `lib/spreadsheet.ts` |
 | §6.8 | Copy invite link | ✅ | `copy-link-button.tsx` |
 | §6.9 | Per-row `wa.me` | ✅ | `wa-send-button.tsx` |
 | §6.10 | Contact tracking | ✅ | confirms before counting — see §5 below |
 | §6.11 | Stats | ✅ | tiles on `app/admin/page.tsx` |
 | §6.12 | History | ✅ | `history-modal.tsx` |
-| §6.13 | Day-of reminder prep | ❌ | — |
-| §6.14 | Thank-you prep | ❌ | — |
-| §6.15 | OG image + client-side `opened` | ✅ **built, unverifiable locally** | `generateMetadata` in `app/page.tsx`, card at `public/assets/og-card.jpg`. `opened` wired from `mark-opened.tsx`. WhatsApp itself can only confirm it once the site is on a public domain |
-| §6.16 | Asset upload | ❌ | bucket exists (migration 003) |
-| §6.17 | Seating | ⚠️ **API only** | `/api/tables` CRUD done; `app/admin/seating` is a placeholder |
+| §6.13 | Day-of reminder prep | ✅ | a send kind in the שליחה selector — `lib/send-kinds.ts` (docs/whatsapp-rounds-PRD.md) |
+| §6.14 | Thank-you prep | ✅ | same mechanism, `lib/send-kinds.ts` |
+| §6.15 | OG image + client-side `opened` | ✅ live | `generateMetadata` in `app/page.tsx`, card at `public/assets/og-card.jpg`. `opened` wired from `mark-opened.tsx`. WhatsApp itself can only confirm it once the site is on a public domain |
+| §6.16 | Invitation image gallery | ✅ | `api/config/image`, `invitation-image-form.tsx` (migration 007) |
+| §6.17 | Seating | ✅ | `seating-board.tsx`, `seating-map.tsx`, `table-manager.tsx`, `seating-printout.tsx`, `lib/seating.ts` |
 | §6.7b | Bilingual guest side (he/ru) | ✅ | `lib/strings.ts` `guestText()`, `guest-shell.tsx` |
 | §6.18 | Admin auth | ✅ | `lib/auth.ts`, `proxy.ts`, `app/admin/login` |
-| §6.19 | Empty / loading / error states | ⚠️ partial | `components/ui/states.tsx` exists, used in some places |
-| §6.21 | First-invitation coordination + language / no-phone filters | ✅ | `components/admin/first-invite-controls.tsx`, `lib/senders.ts`, `lib/invite-filters.ts` |
+| §6.19 | Empty / loading / error states | ✅ | `components/ui/states.tsx`; route `error.tsx`/`loading.tsx`; action pending states (docs/error-loading-PRD.md) |
+| §6.21 | Language / no-phone filters | ✅ | `lib/invite-filters.ts`. The first-invitation controls were **removed** (commit 4e916fb); the `first_invite_*` columns remain unused |
 
-**Backend is complete; the guest side, settings and the WhatsApp preview are built.** What remains is import/export and seating.
+**Every master-spec requirement is built.** Later features have their own specs in `docs/*-PRD.md`. The only parked one is `docs/wedding-photos-PRD.md`.
 
 ---
 
@@ -151,16 +151,20 @@ Kept here because the reasoning still applies to anything built on top of it:
 
 Data comes from `getInviteByToken()` and `getConfig()` in `lib/data`.
 
-### Then, in rough priority
+### Status, 2026-09-29
 
-1. **Deploy to a public domain.** This has become the gate rather than a finishing step: the WhatsApp preview card cannot be verified at all without it, because WhatsApp fetches the URL from its own servers. It also retires the two LAN-only settings in §6. Set `NEXT_PUBLIC_SITE_URL` to the real domain at the same time.
-2. **Look at the WhatsApp card the moment the domain is live** (§6.15, built 2026-07-31). Send yourself one invite. If the picture is missing, the causes in order of likelihood are: `NEXT_PUBLIC_SITE_URL` still wrong, the URL not reachable from outside, or the file over ~600 KB — `npm run og-card` refuses that last one, so it should be impossible.
-3. **Swap in the final artwork** when the designer delivers — see the spec in §5. Two steps, not one: the constant in `components/guest/invitation-backdrop.tsx`, then `npm run og-card <new-file>` to rebuild the preview card and commit it. Forgetting the second leaves the chat preview showing the *old* invitation, which nothing in a build will tell you.
-4. **Import** (§6.7) — hand-typing 150 households is the next real pain. `exceljs` is already installed.
-5. **Seating** (§6.17) — API is done, needs the board UI. `attendees.table_id` is the assignment.
-6. **Day-of and thank-you lists** (§6.13, §6.14) — same shape as the invitee list, filtered.
-7. **Desktop pass on the guest page**, then mobile on admin — in that order, per the viewport rule.
-8. **Export** (§6.7) — caterer headcount, arrival list.
+**The site is live on its public domain and holds the real guest list.** Dmitri reports that config is complete, phones are updated and the database works. The old priority list (deploy, check the WhatsApp card, import, seating, day-of and thank-you, export) is done.
+
+Next, in order:
+1. **Wedding photos:** the parked spec `docs/wedding-photos-PRD.md`. Confirm its §8 questions, then Plan Mode.
+2. Whatever comes up from live use: bug fixes and improvements, each with its own short spec.
+
+### Decisions — don't re-raise (2026-09-29)
+
+- **Admin check stays as is.** `verifyAdmin()` accepts any authenticated Supabase user. Dmitri considered restricting it to one account and declined.
+- **No-token landing page stays artwork-only.** It does not render names, date or venue from config.
+- **One WhatsApp preview card for both languages.** No Russian card, after artwork adjustments.
+- **No cap on +1 counts.**
 
 ---
 
@@ -176,9 +180,9 @@ Each of these cost real time or was found by testing. They are all live decision
 
 **A leading `+` is never touched.** That is the escape hatch for a foreign guest, and it means the Israel assumption can stay hardcoded without trapping anyone. Anything unrecognisable is stored AS TYPED and flagged rather than guessed at — a wrong number that looks right is worse than one that looks wrong.
 
-**The preview card PAINTS the date and venue onto the artwork** (2026-08-02), so they are language-dependent and `npm run og-card` now builds two files — `og-card.jpg` and `og-card-ru.jpg`. Rebuild BOTH and commit both whenever the date, the venue or the artwork changes; they are static files, so nothing at runtime regenerates them and nothing in a build will notice they are stale.
+**The preview card is finished artwork**, `assets/card/card-artwork.png`, drawn in a design tool. `npm run og-card` only checks it, writes the single `public/assets/og-card.jpg`, and stamps the cache-busting version in `lib/og-card-version.ts`. **One card serves both languages;** only the OG title and description switch on `?lang`. Re-run it and commit whenever the artwork changes. It is a static file, so nothing at build or run time notices that it's stale.
 
-The Latin couple name is identical in both by design — the invitation is lettered "NICOLE & DIMA".
+*(From 2026-08-02 the script painted the date and venue itself and built a separate `og-card-ru.jpg`. That pipeline was replaced by the drawn card, and the Russian card was dropped on 2026-09-29.)*
 
 **The venue name has two jobs, split by job rather than by language** (2026-08-02). `venue_name` is what Waze searches and is never translated; `venue_name_ru` is display only, for the preview line and the guest page. Waze finds the Hebrew address and may find nothing for a Cyrillic transliteration, so a guest tapping "Как добраться" into a dead end is the failure this avoids. Blank `venue_name_ru` falls back to Hebrew — the OPPOSITE of the message templates, which must not fall back, because a Hebrew address is still usable to a Russian speaker while a whole Hebrew invitation is not. See `lib/venue.ts`.
 
@@ -409,33 +413,35 @@ Spec: `docs/error-loading-PRD.md`. No migration, no data or API change.
 
 It is applied to every admin and games mutation. Form resets and closes run in `startTransition` inside the task, so they commit together with the refreshed data. The seating map keeps a dropped table's position until its save lands, so it no longer snaps back. Budget and bingo cell edits keep their optimistic patches. `invite-edit-form`, `attendee-list` and `invite-row` lost their `onSaved`/`onChanged` props, because the action refreshes.
 
+## 5l. Small fixes, 2026-09-29
+
+Spec: `docs/small-fixes-PRD.md`. No migration.
+
+- **A decline gives up the seat.** `losesSeat` (`lib/seating.ts`) is applied in `submitRsvp`. A household no clears everyone's `table_id`, and a person unticked in a yes household clears theirs. Undecided keeps seats. A one-off preview of older declines found nobody still seated, so no cleanup was needed.
+- **Bulk-delete confirm** counts every person row, +1s included (`countPeopleRows`).
+- **Phone warning** under the field in the add and edit forms when `normalisePhone` doesn't recognise the number. It still saves.
+
 ## 6. Known issues
 
-- **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.
-- **`couple_names` is still `"דמיטרי ו..."` and `contact_phone` is empty.** The couple's name appears in the `.ics` SUMMARY, and the phone is what the past-deadline screen tells guests to call. `venue_name` is filled and correct.
-- **A white gap sits between the artwork and the action bar on the demo.** The backdrop uses `contain` so the floral arch is never sliced; the leftover height is the aspect mismatch (0.708 art vs 0.462 phone) shown honestly. It disappears with the 1290×2796 asset — at which point switch the backdrop to `bg-cover bg-center`, as commented in `invitation-backdrop.tsx`.
-- **The RSVP sheet has not been verified visually**, only structurally and functionally. No headless browser here can click, so tap through it once on a real phone before invitations go out.
-- **`docs/project-explainer.html` describes the old brownfield app.** Historical; regenerate once the app is complete.
-- **Free-tier Supabase projects pause after ~a week of inactivity** — a paused project means guests clicking their link see errors. Must be addressed before real invitations go out. See `setup-database.md` §1.
-- **`NEXT_PUBLIC_SITE_URL` is also inside the WhatsApp card now.** `og:image` must be an *absolute* URL — a crawler has no page context to resolve a relative one against — so the card's address is built from the same variable as the invite links. While it reads `http://192.168.68.114:3030`, the tags point the whole world at a machine on Dmitri's Wi-Fi. One variable, three things that break together.
-- **⚠️ `NEXT_PUBLIC_SITE_URL` is currently `http://192.168.68.114:3030`** — a LAN address, set 2026-07-30 so copy-link works when testing on a phone over Wi-Fi. It is **dead outside the house**. Every invite link built from it — the admin copy-link button and the WhatsApp message — carries this address. Set it to the real domain before a single invitation goes out; left wrong, you find out from a guest.
+As of 2026-09-29, with the site live:
+
+- **Supabase free tier pauses after ~a week of inactivity.** Live traffic keeps it awake now. Watch quiet stretches, especially after the wedding, when guests may still upload photos (`docs/wedding-photos-PRD.md`). See `setup-database.md` §1.
+- **White gap between the artwork and the action bar.** It is the aspect mismatch of the old demo art (0.708 vs 0.462 on a phone). With the final artwork in place, check it once on a phone. If it's gone, switch the backdrop to `bg-cover bg-center` as commented in `invitation-backdrop.tsx`.
+- **`docs/project-explainer.html` describes the old brownfield app.** It is historical; regenerate it or delete it.
+- **Unused leftovers:** the `first_invite_*` columns (migration 008) and the legacy `invites.attending` boolean, still written beside `answer`. Harmless. Dropping them needs a migration.
+
+**Resolved, kept for the record:**
+- the `wedding_date_time` placeholder (set 2026-07-31);
+- `couple_names` and `contact_phone` (confirmed by Dmitri 2026-09-29);
+- `NEXT_PUBLIC_SITE_URL` as a LAN address (now the live domain).
 
 ---
 
 ## 7. Commit history
 
-```
-c882674  Rename branches: the rebuild is now main, the old app is on old
-c9b2737  Add docs/progress.md as the handoff document
-4668f1a  Confirm a WhatsApp was sent before counting it
-e12678a  Complete the invitee table: search, sort, WhatsApp, copy link, history
-12f80ca  Add edit and delete on invite rows; fix the attendance label
-3e72152  Add guest form on the invitees screen
-8260f5b  Remove mock-store references from the docs
-ce128a4  Add admin login, shell, and Hebrew RTL layout
-e80036f  Add backend: lib modules, data layer, and API routes
-fa4888e  Start greenfield rebuild: scaffold + specs
-```
+See `git log --oneline` and the merged PRs on GitHub (`DmitriPer/weddingRsvp`). The hand-kept list that used to be here stopped at the first ten commits and was dropped rather than maintained.
+
+---
 
 ## 8. Working agreement
 

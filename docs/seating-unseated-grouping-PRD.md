@@ -1,7 +1,7 @@
 # Seating — Unseated List Grouped by Relation, with Filters
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-27, not yet built
+**Status:** built 2026-09-27 (PR #20)
 **Extends:** `wedding-rsvp-PRD.md` §6.17 Seating
 
 ## 1. Mission

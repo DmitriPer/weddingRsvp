@@ -1,7 +1,7 @@
 # Error Screens, Loading Screens and Action Pending States
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-29
+**Status:** built 2026-09-29 (PR #26)
 **Surface:** admin, games, and the guest page's error screen
 
 ## 1. Mission

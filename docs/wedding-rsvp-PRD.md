@@ -5,6 +5,17 @@
 **Date:** 2026-07-30
 **Companion docs:** `claude-workflow.md` (process + hard rules) · `conventions.md` (code structure rules) · `carry-over.md` (what was learned from the abandoned base repo)
 
+**v11 (2026-09-29), catch-up note:** later work has its own specs in `docs/*-PRD.md`, and this file is not rewritten for each one. What changed against the text below:
+- A third RSVP answer, **undecided** (migration 010). Undecided people are seatable.
+- The **§6.21 first-invitation controls were removed** (commit 4e916fb). The language and no-phone filters remain.
+- New admin tabs:
+  - **budget** (cited in code as "PRD §6.22"; see `docs/budget-mobile-PRD.md` and `docs/budget-min-guests-PRD.md`)
+  - **games** (`docs/games-bingo-PRD.md`)
+- Day-of and thank-you prep (§6.13–6.14) is built as send kinds (`docs/whatsapp-rounds-PRD.md`).
+- A decline clears the person's table (`docs/small-fixes-PRD.md`).
+- §6.19 is completed by `docs/error-loading-PRD.md`.
+- One WhatsApp preview card serves both languages.
+
 **v10 (2026-09-09):** first-invitation coordination on each row — a `נשלחה` checkbox, a `שולח` dropdown derived from `couple_names`, and a toolbar toggle that hides both (§6.21). With it, two more invitee-table filters: by language, and households with no phone number (§6.6, §6.21).
 
 **v9 (2026-09-06):** the invitation backdrop upload becomes a gallery per language — uploads accumulate rather than overwrite, any past upload can be reactivated, and a non-active one can be deleted (§6.16).
@@ -367,7 +378,7 @@ Uploads accept JPEG/PNG/WebP up to 2MB and are not resized server-side — this 
 
 **A gallery, not a single slot.** Every upload gets a unique Storage path (`invitation/{language}/{timestamp}-{random}.{ext}`) and is never overwritten by a later one — Hebrew and Russian each keep their own history, never shared between languages. Settings shows every past upload as a thumbnail: uploading a new image makes it active immediately, but an admin can also click any older thumbnail to reactivate it without re-uploading, or delete one permanently. **Deleting the currently-active image is refused** — checked server-side in the API route, not merely hidden in the UI — so a guest can never end up pointed at a Storage object that no longer exists. A cache-busting query string on the active URL means a browser or CDN never keeps serving a stale image after either an upload or a re-selection.
 
-**Out of scope here:** the WhatsApp preview thumbnail (`og-card.jpg` / `og-card-ru.jpg`, §6.15) stays the separate build-script system it already is — it paints text onto the image server-side through a different pipeline (Pango, for Hebrew bidi) and isn't part of this upload flow.
+**Out of scope here:** the WhatsApp preview thumbnail (`og-card.jpg`, §6.15) stays the separate build-script system it already is: finished artwork published by `npm run og-card`, not part of this upload flow. One card serves both languages.
 
 ### 6.17 Seating
 - Manage tables: name, capacity, ordering.
@@ -389,6 +400,8 @@ Cross-cutting, not a feature. Every list and every form has all three. First run
 - A "needs re-confirmation" flag for people added after a guest responded. Handled by creating a separate invite or phoning them.
 
 ### 6.21 First-invitation coordination
+
+> **Removed** (commit 4e916fb). The per-row `נשלחה` / `שולח` controls and `lib/senders.ts` no longer exist, and the `first_invite_*` columns are unused. The language and no-phone filters described below remain.
 
 Added 2026-09-09, for the first round of invitations going out by hand. Two controls on each invitee row, plus the toggle that reveals them:
 

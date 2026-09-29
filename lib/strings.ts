@@ -69,7 +69,6 @@ export const strings = {
       settings: 'הגדרות',
       games: 'משחקים',
     },
-    comingSoon: 'בבנייה',
     history: 'היסטוריה',
     historyTitle: 'היסטוריית תשובות',
     noHistory: 'אין עדיין תשובות',
@@ -227,6 +226,8 @@ export const strings = {
     nameHint: 'איך לפנות אליהם בהודעה — למשל "אבא" או "משפחת כהן"',
     phone: 'טלפון',
     phoneHint: 'אפשר לכתוב כרגיל: 0549546899. הקידומת +972 תתווסף אוטומטית.',
+    /** Under the field while the number isn't a recognised shape. A warning, never a block. */
+    phoneUnrecognised: 'המספר לא נראה תקין — ה-WhatsApp עלול לא להגיע. אפשר לשמור בכל זאת.',
     side: 'צד',
     relation: 'קשר',
     notSet: 'לא נבחר',
@@ -405,7 +406,7 @@ export const strings = {
    */
   budget: {
     title: 'הוצאות והכנסות',
-    hint: 'שורה לכל הוצאה או הכנסה. מחיר לפי אורח מוכפל במספר האנשים אוטומטית.',
+    hint: 'שורה לכל הוצאה או הכנסה. מחיר לפי אורח מוכפל במספר המאשרים, ולא פחות מכמות ההתחייבות.',
 
     /** Column headers. */
     name: 'שם',

@@ -50,17 +50,32 @@ The publishable key is designed to be public and is safe to share — it can onl
 
 ## 3. Run the migrations
 
-Left sidebar → **SQL Editor** → **New query**. Run these **in order**, one at a time, pasting the file's whole contents and clicking **Run**:
+Left sidebar → **SQL Editor** → **New query**. Run these **in order**, one at a time, pasting the file's whole contents and clicking **Run**. All files are in `supabase/migrations/`:
 
-| # | File | Creates |
+| # | File | What it does |
 |---|---|---|
-| 1 | `supabase/migrations/001_initial_schema.sql` | all 5 tables, indexes, RLS deny-all |
-| 2 | `supabase/migrations/002_seed_config.sql` | the single `wedding_config` row |
-| 3 | `supabase/migrations/003_storage.sql` | the `assets` storage bucket + policies |
+| 1 | `001_initial_schema.sql` | the 5 core tables (`invites`, `attendees`, `tables`, `response_history`, `wedding_config`), indexes, RLS deny-all |
+| 2 | `002_seed_config.sql` | the single `wedding_config` row, with placeholder values |
+| 3 | `003_storage.sql` | the public `assets` storage bucket + authenticated-write policies |
+| 4 | `004_seed_test_data.sql` | **Test data — skip it** unless this is an empty scratch project. See [Test data](#test-data). |
+| 5 | `005_language_and_templates.sql` | `invites.language` (`he`/`ru`); the three message templates renamed to `_he` and given `_ru` twins. **Not re-runnable — run it once.** |
+| 6 | `006_venue_ru.sql` | `wedding_config.venue_name_ru` — Russian venue name for display (Waze keeps using `venue_name`) |
+| 7 | `007_invitation_images.sql` | `wedding_config.invitation_image_he` / `_ru` — admin-uploadable invitation backdrop per language |
+| 8 | `008_first_invitation.sql` | `invites.first_invite_sent` / `first_invite_sender` — who sends the first invitation, and whether it went out |
+| 9 | `009_budget_items.sql` | the `budget_items` table — expense/income lines, flat or per-guest, money in agorot; RLS deny-all |
+| 10 | `010_answer_undecided.sql` | `invites.answer` and `response_history.answer` (`yes`/`no`/`undecided`), backfilled from `attending`; `response_history.attending` becomes nullable |
+| 11 | `011_table_shape.sql` | `tables.shape` (`round`/`ellipse`/`rectangle`) |
+| 12 | `012_table_position.sql` | `tables.pos_x` / `pos_y` — floor-plan position in percent (null = not placed) |
+| 13 | `013_table_rotation.sql` | `tables.rotation` — degrees, 0–359 |
+| 14 | `014_reminder_template.sql` | `wedding_config.reminder_message_template_he` / `_ru` — the "please answer" reminder |
+| 15 | `015_bingo_squares.sql` | the `bingo_squares` table (Hebrew and Russian text paired per row), RLS deny-all, seeded with 28 squares only while the table is empty |
+| 16 | `016_budget_min_guests.sql` | `wedding_config.budget_min_guests` (default 120) — the committed minimum that per-guest expenses are billed at |
 
-All three are **safe to run more than once** — they use `if not exists` and `on conflict do nothing`, so a half-finished run can simply be re-run.
+**Re-running:** everything except `005` is written to be safe to run again (`if not exists`, `on conflict do nothing`, guarded updates), so a half-finished run can simply be re-run. **`005` is not** — its column renames have no `if exists` form and error on a second run.
 
-**Verify:** left sidebar → **Table Editor**. You should see `invites`, `attendees`, `tables`, `response_history`, `wedding_config`. Open `wedding_config` — it should have exactly one row.
+**Don't trust the editor's "Success".** An earlier version of `005` reported success in the SQL editor while doing nothing. `008`, `009`, `010`, `015` and `016` end with commented-out verification queries (against `information_schema`, `pg_class`, or row counts) — run them after the migration and read the result. For `010`, `mismatched` must be 0.
+
+**Verify:** left sidebar → **Table Editor**. You should see 7 tables: `invites`, `attendees`, `tables`, `response_history`, `wedding_config`, `budget_items`, `bingo_squares`. Open `wedding_config` — it should have exactly one row. `bingo_squares` should have 28.
 
 If step 3 errors on permissions, the bucket can be made by hand instead: **Storage** → **New bucket** → name it `assets`, tick **Public bucket**.
 
@@ -115,9 +130,9 @@ npm run dev     # http://localhost:3030
 
 ## Test data
 
-**Only ever on a fresh, empty project.** Dmitri's live project holds the real guest list (~107 invitations since 2026-09-09) and this seed was never run against it. Running it there would insert invented households into a list being messaged by hand, so the `__test__` marker below is a cleanup aid for a scratch environment, not permission to seed the live one.
+**⚠️ Never run `004_seed_test_data.sql` on the live project. Only ever on a fresh, empty project.** Dmitri's live project holds the real guest list (~107 invitations since 2026-09-09) and this seed was never run against it. Running it there would insert invented households into a list being messaged by hand, so the `__test__` marker below is a cleanup aid for a scratch environment, not permission to seed the live one.
 
-`supabase/migrations/004_seed_test_data.sql` inserts ~12 invented guests covering every state — approved, partly declined, unnamed "+1"s, declined, unanswered, 5+ contact attempts, multi-row history, some seated. Run it the same way as the others when building a second environment to look at.
+`supabase/migrations/004_seed_test_data.sql` inserts ~12 invented guests covering every state — approved, partly declined, unnamed "+1"s, declined, unanswered, 5+ contact attempts, multi-row history, some seated. It also overwrites the `wedding_config` row with test values. Run it the same way as the others, in its slot after `003`, only when building a second environment to look at.
 
 Every row it creates is marked `__test__`. Clear them all before your real guest list goes in:
 

@@ -1,7 +1,7 @@
 # WhatsApp — Choose Which Template to Send, and a "Please Answer" Reminder
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-28, not yet built
+**Status:** built 2026-09-28 (PR #22); migration 014 run
 **Extends:** `wedding-rsvp-PRD.md` §6.7b (templates), §6.9 (wa.me), §6.10 (contact tracking), §6.13–6.14 (day-of and thank-you, until now prep only)
 
 ## 1. Mission

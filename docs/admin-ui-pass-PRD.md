@@ -1,7 +1,7 @@
 # Admin UI Pass — Mobile, RTL, Layout
 
 **Owner:** Dmitri
-**Status:** agreed 2026-09-24, not yet built
+**Status:** built 2026-09-24 (PR #18)
 **Surface:** admin only (`app/admin/`, `components/admin/`). The guest page is untouched.
 
 ## 1. Mission

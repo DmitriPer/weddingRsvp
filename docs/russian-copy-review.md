@@ -6,6 +6,11 @@ Every word a Russian-speaking guest reads. The Russian column is **my draft**; c
 
 Status: **✅ complete — reviewed and approved by Dmitri, 2026-08-02.**
 
+> **Changes since the review (noted 2026-09-29):**
+> - `rsvp.nav.rsvp` now reads **`Ответ на приглашение`** (commit 6461f6e, 2026-09-24), replacing the `Подтвердить участие` recorded below.
+> - Added with the "undecided" answer and **not yet reviewed**: `rsvp.undecided` = `Ещё не знаем`, and `confirmation.titleUndecided` = `Спасибо! Будем рады узнать, когда решите`.
+> - Error screens (docs/error-loading-PRD.md), **not yet reviewed**: `Что-то пошло не так` · `Попробуйте ещё раз через минуту.` · `Попробовать снова` · `Загрузка…`
+
 One correction came out of the review: `rsvp.nav.rsvp` was `Подтвердить`, which leaves the question open — confirm *what*? It is now **`Подтвердить участие`**, which also makes it consistent with `siteName` (`Подтверждение участия`); the draft disagreed with itself on the same concept.
 
 Two choices were examined and deliberately kept:
