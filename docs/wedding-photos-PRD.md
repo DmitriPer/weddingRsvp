@@ -1,103 +1,119 @@
-# Wedding Photos — QR Upload and Private Gallery
+# Wedding Photos — QR Upload into Google Drive
 
 **Owner:** Dmitri
-**Status:** draft 2026-09-29, parked. Not planned or built. Confirm the two open questions in §8, then Plan Mode.
+**Status:** agreed 2026-09-29, built on `feat/wedding-photos`. Needs migration 017, the Google setup in §7, and a real-phone test before the wedding (2026-10-08).
 
 ## 1. Mission
 
-Guests take photos at the wedding and the couple never sees most of them. A **QR code** on the tables opens an upload page on the guest's phone. The guest picks photos and they upload. **Afterwards the couple sees everything in a private gallery in admin and can download it all.**
+Guests take photos at the wedding and the couple never sees most of them. A **QR code** on the tables opens an upload page on the guest's phone. The guest picks photos, and they land **in a private folder in Dmitri's Google Drive**. Only Dmitri can see it.
 
 ## 2. Scope
 
 | In scope | Out of scope |
 |---|---|
-| Printable QR code in admin | Videos (too large for the free plan) |
-| Guest upload page: optional name, multi-select, progress | Guests viewing the gallery |
-| Photos shrunk on the phone before upload | Original full-quality files |
-| Admin gallery: grid, delete one, download all as ZIP | Moderation, likes, comments, albums |
-| Upload open/close switch; regenerable QR key | Automatic open/close by date (see §8) |
+| Printable QR code in admin | Videos |
+| Guest upload page: optional name, multi-select, progress, retry | Guests viewing any photos |
+| Photos shrunk on the phone; EXIF and GPS removed | Original full-quality files |
+| A one-time "חיבור ל-Google Drive" in admin | Google Photos |
+| Upload open/close switch; a QR key that can be regenerated | Automatic open/close by date |
+| An admin counter and an "open the folder in Drive" link | An in-app gallery or ZIP (Drive does both) |
 
 ## 3. Guest flow
 
-1. The guest scans the QR code and opens `/photos?k=<key>`.
-2. The page shows:
-   - a Hebrew/Russian toggle (Hebrew by default);
-   - an optional name field;
-   - a "choose photos" button (multi-select, camera roll or camera);
-   - a progress bar for each photo.
-3. Each photo is resized **on the phone** to ~2500px on the long side, JPEG ~85% (~0.5–1 MB), before it is sent. That keeps it sharp enough to print up to ~A4, makes it fast on venue Wi-Fi, and fits ~1,000–2,000 photos in the free 1 GB.
-4. The page ends with a thank-you, and an "upload more" button.
+1. The guest scans the QR code and opens `/photos?k=<key>`. The page is **Hebrew with a Русский toggle**.
+2. They enter an optional name, then tap **"בחירת תמונות"** (multi-select, camera roll or camera). At most 50 photos per selection; they can pick again.
+3. Each photo is resized **on the phone**: 3200px on the long side, JPEG 0.88, ~1.5–2 MB. Quality steps down automatically if a photo would pass 4 MB.
+   - Drawing to a canvas **removes EXIF, including GPS location.**
+   - iOS hands a web page JPEG, not HEIC.
+4. Each photo is one POST to our server, which puts it into Drive. 3 upload at a time, each with a progress bar, a ✓, or "retry".
+5. The page ends with a thank-you, and "להעלות עוד".
 
-What the guest page does in each case:
-- The key is wrong: an "invalid link" message.
-- Uploads are closed: an "uploads are closed" message.
-- Neither case reveals anything about the gallery.
+**What the guest sees in each case:**
+- The key is wrong: "the link isn't valid".
+- Uploads are closed: "uploads are closed".
+- Both screens are bilingual, and **a wrong key never reveals whether uploads are open**.
+- Drive isn't connected, or the connection dropped: "not ready yet — try in a few minutes".
 
-**Accepted:** JPEG, PNG, WebP and HEIC. HEIC (iPhone) is converted to JPEG on the phone.
+## 4. Admin: the "תמונות" tab
 
-## 4. Admin
+- **Google Drive card:**
+  - not connected → **"חיבור ל-Google Drive"**;
+  - connected → the account email, **"פתיחת התיקייה ב-Drive"** and "ניתוק";
+  - broken (token revoked or expired) → **"התחברות מחדש"**.
+  - The connection is **checked live on every visit** by reading the folder, so a broken one shows here before a guest meets it.
+- **QR code**, with a print button. The printout is a big QR plus "צלמו ושתפו אותנו · Поделитесь с нами фото".
+- **Upload switch.** It is closed by default, and **it can't be opened while Drive isn't connected** (refused server-side too). Disconnecting closes it.
+- **"מפתח חדש"** regenerates the key, which retires every printed QR code. It asks for confirmation first.
+- **Counter:** how many photos have reached Drive, and their total MB.
 
-New **"תמונות"** tab:
+## 5. How it works
 
-- **The QR code** and a print button. The QR holds the full upload URL including the key.
-- **Upload switch:** open or closed. Closed by default.
-- **"New key":** regenerates `photo_upload_key`, which invalidates printed QR codes. It asks for confirmation first.
-- **Gallery:**
-  - a grid of photos, newest first, each with the name if one was given and the time;
-  - delete one photo, with a confirmation;
-  - a count and total size, against the 1 GB plan.
-- **Download all as a ZIP.** The ZIP is built in the browser from the signed URLs, not on the server. A serverless function can't hold hundreds of MB.
-
-## 5. Security and upload path
-
-- **A secret key in the QR** (`wedding_config.photo_upload_key`, a random UUID). Without it nobody can upload. It can be regenerated.
-- **`photo_upload_open`** must be true, or uploads are refused.
-- **Uploads go directly from the phone to Storage.** Serverless request bodies are capped (~4.5 MB on Vercel), so photos can't pass through an API route. Instead:
-  1. `POST /api/photos/upload-url` checks the key, the open switch, the file type and the declared size (≤ 5 MB);
-  2. it records the row and returns a **one-time signed upload URL** for a unique path;
-  3. the phone PUTs the file straight to Storage.
-- **Private bucket `wedding-photos`**, separate from the public `assets` bucket. The admin gallery shows photos through short-lived **signed URLs**.
-- **Limits:** a cap on photos per request, and on photos per key per minute (basic abuse guard).
-- **The admin gallery routes** (`/api/photos`, `/api/photos/[id]`) call `verifyAdmin()` like every admin route. The upload page is public by design; its only gate is the key.
+- **OAuth as Dmitri, scope `drive.file`,** plus `openid email` to show which account is connected.
+  - `drive.file` lets the app see **only files and folders it created**, never the rest of the Drive.
+  - It is Google's *non-sensitive* Drive scope, so the app can be **published to production without verification**. In "testing" mode the connection would expire every 7 days.
+- **Connect:** `/api/google/connect` → Google consent → `/api/google/callback`.
+  - A random `state` in an httpOnly cookie must match, so nobody can trick the admin into connecting someone else's Drive.
+  - A folder **"תמונות מהחתונה"** is created, or reused on reconnect.
+  - The **refresh token** is stored in the one-row `google_drive` table: RLS deny-all, secret key only, never sent to a browser.
+- **Upload:** `POST /api/photos/upload` (public, multipart `k` + `name` + `file`) does this in order:
+  1. checks the key (400) and the switch (410);
+  2. checks the file is JPEG, ≤ 4 MB (400);
+  3. applies the global rate limit (429);
+  4. checks Drive is connected (503);
+  5. uploads a Drive multipart to the folder, then records a `wedding_photos` row.
+- **Why the photo goes through our server** instead of straight from the phone to Drive: the Google token must stay on the server, and a resized photo fits a serverless body (~4.5 MB) easily.
+- **File names:** `2026-10-08 21-14-03 · דנה · a1b2.jpg`, in Israel time. The uploader's name is also in the Drive file description.
+- **The rate limit is global,** 600 photos a minute. Every guest shares one key, so a per-key limit would throttle the whole room; this one only stops a script.
 
 ## 6. Data model
 
 Migration `017_wedding_photos.sql`:
+- `wedding_photos`: `id`, `drive_file_id` (unique), `uploader_name`, `size_bytes`, `created_at`. It is for the counter and the rate limit; the photo itself is in Drive.
+- `google_drive`: a single row (`id boolean pk check (id)`) with `refresh_token`, `folder_id`, `account_email` and `connected_at`.
+- `wedding_config` gets `photo_upload_key` (a random uuid) and `photo_upload_open` (default false).
+- RLS is on for both new tables, with no policies. No guest table is touched. **Dmitri runs it** in the Supabase SQL editor.
 
-```sql
-create table if not exists wedding_photos (
-  id            uuid primary key default gen_random_uuid(),
-  storage_path  text not null unique,
-  uploader_name text not null default '',
-  size_bytes    int  not null check (size_bytes > 0),
-  created_at    timestamptz not null default now()
-);
-alter table wedding_photos enable row level security;  -- deny-all
+## 7. Google Cloud: one-time setup (Dmitri)
 
-alter table wedding_config add column if not exists photo_upload_key  uuid    not null default gen_random_uuid();
-alter table wedding_config add column if not exists photo_upload_open boolean not null default false;
-```
+At **console.cloud.google.com**, signed in with the Google account whose Drive should get the photos:
 
-- Plus a private Storage bucket `wedding-photos`, with no public read.
-- No guest table is touched.
-- Dmitri runs the migration in the Supabase SQL editor.
+1. **Create a project**, e.g. "wedding-photos".
+2. **APIs & Services → Library → Google Drive API → Enable.**
+3. **Google Auth Platform:**
+   - **Branding:** an app name and your email.
+   - **Audience:** External, then **Publish app**, so the status reads "In production".
+   - **Data access:** add the scopes `.../auth/drive.file`, `openid` and `email`.
+4. **Clients → Create client → Web application.** Under **Authorized redirect URIs**, add both:
+   - `https://<live domain>/api/google/callback`
+   - `http://localhost:3030/api/google/callback`
+5. Put the Client ID and secret in `.env.local` **and** in Vercel's environment variables, then redeploy. **Never with a `NEXT_PUBLIC_` prefix.**
+   ```
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   ```
+6. In admin → "תמונות", click **"חיבור ל-Google Drive"** and approve. The folder "תמונות מהחתונה" appears in Drive.
 
-## 7. Constraints
+## 8. Decisions (2026-09-29)
 
-- **Needs the site on a public domain.** A QR code pointing at `localhost` is useless. It depends on the pre-launch deploy and `NEXT_PUBLIC_SITE_URL`.
-- **Supabase free plan:** 1 GB storage and monthly egress limits. Downloading everything as a ZIP counts against egress, so download once. If it fills up, Supabase Pro ($25/mo, 100 GB) for a month or two covers it.
-- The free-tier project pausing after inactivity (progress.md §6) must be solved before the wedding, or the upload page will be down.
+1. **Language:** Hebrew with a Русский toggle. One QR code for everyone.
+2. **Open/close:** a manual switch in admin only.
+3. **Destination: Google Drive only.** Dmitri chose this over a private Supabase bucket, and over a bucket plus copying to Drive.
+   - An earlier version of this spec used a private Supabase bucket, with a gallery, thumbnails and a ZIP download. It was built, then replaced before it was committed or migrated.
+   - **The trade-off Dmitri accepted:** if the Google connection breaks on the night, uploads fail with "not ready" until he reconnects. The admin tab's live check is the early warning.
+4. **Google Photos was declined.** Its API needs sensitive scopes, and after March 2025 its access model is narrower.
+5. **The guest page is a plain page,** not the invitation backdrop: an upload form over the artwork's text would be hard to read.
 
-## 8. Open questions (recommendations noted)
+## 9. Constraints
 
-1. **Language on the guest page:** Hebrew with a רוסית/עברית toggle, *recommended*; or two QR codes, one per language.
-2. **When uploads are open:** a manual switch in admin only, *recommended*; or automatic from the wedding day until N days after.
+- **Space:** the Google account's quota, 15 GB free, shared with Gmail. At ~2 MB a photo, that's roughly 5,000+ photos.
+- **Supabase free-tier pausing** (progress.md §6) must not happen around the wedding, because the upload route reads config from the database.
+- The password on the Google account can change freely: the connection survives it, since the scope isn't Gmail. Removing the app at myaccount.google.com/permissions breaks it, and admin then shows "reconnect".
 
-## 9. Definition of done
+## 10. Definition of done
 
-- Scanning the printed QR code on a phone uploads photos, and they appear in the admin gallery.
-- A wrong key and a closed switch are both refused, **server-side**.
-- The gallery and its API routes are unreachable without the admin login.
-- Delete works, and the ZIP download contains every photo.
+- Connecting Drive creates the folder, and admin shows the email.
+- Scanning the printed QR on an **iPhone and an Android**, against the live site, puts photos into the folder with the name.
+- A downloaded photo has **no GPS**.
+- A wrong key and a closed switch are refused **server-side**. Opening with no Drive is refused.
+- Every admin route rejects a logged-out request with 401.
 - `npm run build` and `npm run lint` pass.
-- Tested end to end on a real phone against the deployed site.

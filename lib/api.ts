@@ -23,6 +23,11 @@ export function notFound(error = 'Not found'): NextResponse<ApiResponse<never>> 
 }
 
 /** The RSVP deadline has passed (PRD §6.3). Enforced here, not just in the UI. */
+/** 429: the caller should wait and retry (the photo upload rate limit). */
+export function tooMany(error = 'Too many requests'): NextResponse<ApiResponse<never>> {
+  return NextResponse.json({ success: false, error }, { status: 429 })
+}
+
 export function gone(error: string): NextResponse<ApiResponse<never>> {
   return NextResponse.json({ success: false, error }, { status: 410 })
 }

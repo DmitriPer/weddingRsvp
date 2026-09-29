@@ -215,3 +215,23 @@ export function fromDateTimeLocalValue(value: string): string | null {
   // admin gets a real instant an hour off, not a silent null.
   return second.toISOString()
 }
+
+/**
+ * "2026-10-08 21-14-03" in the wedding's timezone — a guest photo's file name
+ * in Drive (docs/wedding-photos-PRD.md), so the folder sorts by time taken to
+ * upload. Dashes, not colons: colons are illegal in file names on Windows.
+ */
+export function formatFileStamp(value: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: WEDDING_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(value)
+  const get = (type: Intl.DateTimeFormatPartTypes): string => parts.find((part) => part.type === type)?.value ?? '00'
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}-${get('minute')}-${get('second')}`
+}

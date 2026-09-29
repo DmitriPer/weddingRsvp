@@ -68,6 +68,7 @@ export const strings = {
       budget: 'תקציב',
       settings: 'הגדרות',
       games: 'משחקים',
+      photos: 'תמונות',
     },
     history: 'היסטוריה',
     historyTitle: 'היסטוריית תשובות',
@@ -462,6 +463,44 @@ export const strings = {
     minGuestsSaved: 'כמות ההתחייבות נשמרה',
   },
 
+  /** Admin side of guest photo uploads (docs/wedding-photos-PRD.md §4). */
+  photos: {
+    title: 'תמונות מהאורחים',
+    hint: 'אורחים סורקים את הקוד ומעלים תמונות. רק אתם רואים אותן.',
+    /** Shown instead of the tab until the migration has run. */
+    notMigrated: 'צריך להריץ קודם את המיגרציה 017_wedding_photos.sql ב-Supabase.',
+    qrTitle: 'קוד QR לשולחנות',
+    printQr: '🖨️ הדפסת הקוד',
+    qrCaption: 'צלמו ושתפו אותנו',
+    qrCaptionRu: 'Поделитесь с нами фото',
+    openLabel: 'העלאה פתוחה לאורחים',
+    isOpen: 'פתוח — אורחים יכולים להעלות',
+    isClosed: 'סגור — אורחים יראו "ההעלאה סגורה"',
+    open: 'לפתוח',
+    close: 'לסגור',
+    newKey: 'מפתח חדש',
+    confirmNewKey: 'כל קודי ה-QR שכבר הודפסו יפסיקו לעבוד. ליצור מפתח חדש?',
+    newKeyDone: 'נוצר מפתח חדש — הדפיסו את הקוד מחדש',
+    stats: (count: number, used: string) => `${count} תמונות הגיעו ל-Drive · ${used}`,
+
+    driveTitle: 'Google Drive',
+    driveHint: 'התמונות נשמרות בתיקייה פרטית ב-Drive שלכם. רק אתם רואים אותה.',
+    driveNotConfigured: 'חסרים GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET בהגדרות השרת. ההוראות ב-docs/wedding-photos-PRD.md.',
+    driveDisconnected: 'עוד לא מחובר',
+    driveConnected: (email: string) => (email ? `מחובר: ${email}` : 'מחובר'),
+    driveBroken: (email: string) => `החיבור ל-Drive נותק${email ? ` (${email})` : ''} — התחברו מחדש`,
+    connect: 'חיבור ל-Google Drive',
+    reconnect: 'התחברות מחדש',
+    openFolder: 'פתיחת התיקייה ב-Drive',
+    disconnect: 'ניתוק',
+    confirmDisconnect: 'לנתק את Drive? התמונות שכבר עלו נשארות בתיקייה, וההעלאה לאורחים תיסגר.',
+    disconnected: 'Drive נותק וההעלאה נסגרה',
+    connectFirst: 'חברו קודם את Google Drive',
+    connectedToast: 'Google Drive מחובר',
+    deniedToast: 'החיבור בוטל',
+    failedToast: 'החיבור ל-Drive נכשל — נסו שוב',
+  },
+
   /** The /games area (docs/games-bingo-PRD.md §3.1). */
   games: {
     title: 'משחקים',
@@ -733,6 +772,33 @@ const he = {
    * printed above the message text, not page copy — WhatsApp always prints them,
    * so the choice is what they say, never whether they appear.
    */
+  /** The QR photo upload page (docs/wedding-photos-PRD.md §3). */
+  photos: {
+    title: 'שתפו איתנו תמונות מהחתונה',
+    intro: 'התמונות מגיעות רק אלינו — אף אחד אחר לא רואה אותן.',
+    nameLabel: 'השם שלכם (לא חובה)',
+    namePlaceholder: 'למשל: דנה ויוסי',
+    choose: 'בחירת תמונות',
+    chooseMore: 'להעלות עוד',
+    preparing: 'מכין…',
+    uploading: 'מעלה…',
+    done: 'הועלה',
+    failed: 'נכשל',
+    retry: 'לנסות שוב',
+    notImage: 'לא הצלחנו לקרוא את הקובץ כתמונה',
+    progress: (done: number, total: number) => `${done} מתוך ${total} הועלו`,
+    allDone: (count: number) => (count === 1 ? 'תודה! התמונה הגיעה אלינו 💚' : `תודה! ${count} תמונות הגיעו אלינו 💚`),
+    tooMany: (max: number) => `אפשר עד ${max} תמונות בכל פעם — בחרו שוב לשאר.`,
+    invalidTitle: 'הקישור לא תקין',
+    invalidBody: 'סרקו שוב את הקוד מהשולחן.',
+    closedTitle: 'ההעלאה סגורה כרגע',
+    closedBody: 'נפתח אותה בחתונה — נסו שוב אז.',
+    /** Drive isn't connected (or the connection dropped) — the couple's side. */
+    notReady: 'ההעלאה עוד לא מוכנה — נסו שוב בעוד כמה דקות.',
+    busy: 'הרבה תמונות עולות עכשיו — נסו שוב בעוד דקה.',
+    switchLanguage: 'Русский',
+  },
+
   og: {
     imageAlt: 'ההזמנה לחתונה',
     /** Shown when wedding_config still has no couple names. */
@@ -827,6 +893,32 @@ const ru: typeof he = {
       addToCalendar: 'Добавить в календарь',
       closeSheet: 'Закрыть',
     },
+  },
+
+  photos: {
+    title: 'Поделитесь с нами фото со свадьбы',
+    intro: 'Фото видим только мы — больше никто.',
+    nameLabel: 'Ваше имя (необязательно)',
+    namePlaceholder: 'Например: Аня и Сергей',
+    choose: 'Выбрать фото',
+    chooseMore: 'Загрузить ещё',
+    preparing: 'Подготовка…',
+    uploading: 'Загрузка…',
+    done: 'Загружено',
+    failed: 'Ошибка',
+    retry: 'Повторить',
+    notImage: 'Не удалось открыть файл как фото',
+    progress: (done: number, total: number) => `Загружено ${done} из ${total}`,
+    // «фото» doesn't decline, so no ruPlural is needed here.
+    allDone: (count: number) => `Спасибо! Мы получили ${count} фото 💚`,
+    tooMany: (max: number) => `Можно до ${max} фото за раз — остальные выберите ещё раз.`,
+    invalidTitle: 'Ссылка недействительна',
+    invalidBody: 'Отсканируйте код со стола ещё раз.',
+    closedTitle: 'Загрузка сейчас закрыта',
+    closedBody: 'Мы откроем её на свадьбе — попробуйте тогда.',
+    notReady: 'Загрузка ещё не готова — попробуйте через несколько минут.',
+    busy: 'Сейчас загружается много фото — попробуйте через минуту.',
+    switchLanguage: 'עברית',
   },
 
   og: {
