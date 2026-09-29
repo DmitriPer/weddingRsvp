@@ -10,7 +10,10 @@
 
 import type {
   Attendee,
+  BingoSquare,
   BudgetItem,
+  CreateBingoSquareInput,
+  UpdateBingoSquareInput,
   CreateBudgetItemInput,
   UpdateBudgetItemInput,
   Language,
@@ -111,6 +114,13 @@ export interface DataStore {
   createBudgetItem(input: CreateBudgetItemInput): Promise<BudgetItem>
   updateBudgetItem(id: string, input: UpdateBudgetItemInput): Promise<BudgetItem | null>
   deleteBudgetItem(id: string): Promise<boolean>
+
+  // --- bingo ---------------------------------------------------------------
+  /** Wedding-bingo squares, paired he/ru (docs/games-bingo-PRD.md). */
+  listBingoSquares(): Promise<BingoSquare[]>
+  createBingoSquare(input: CreateBingoSquareInput): Promise<BingoSquare>
+  updateBingoSquare(id: string, input: UpdateBingoSquareInput): Promise<BingoSquare | null>
+  deleteBingoSquare(id: string): Promise<boolean>
 
   // --- config --------------------------------------------------------------
   getConfig(): Promise<WeddingConfig>

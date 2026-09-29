@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { strings } from '@/lib/strings'
 
 /**
- * Four tabs, not six.
+ * Four admin tabs, not six — plus the games link.
  *
  * Statistics folded into the top of the invitees screen — they are four numbers
  * and read better beside the list than on their own page. Answers folded into a
@@ -17,6 +17,8 @@ const TABS = [
   { href: '/admin/seating', label: strings.admin.tabs.seating },
   { href: '/admin/budget', label: strings.admin.tabs.budget },
   { href: '/admin/settings', label: strings.admin.tabs.settings },
+  // Leaves the /admin shell for its own (docs/games-bingo-PRD.md §3.1).
+  { href: '/games', label: strings.admin.tabs.games },
 ] as const
 
 function isActive(pathname: string, href: string): boolean {

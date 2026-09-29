@@ -16,6 +16,7 @@ import {
   type BudgetKind,
   type BudgetPricing,
   type CreateAttendeeInput,
+  type CreateBingoSquareInput,
   type CreateBudgetItemInput,
   type CreateInviteInput,
   type CreateTableInput,
@@ -26,6 +27,7 @@ import {
   type Side,
   type TableShape,
   type UpdateAttendeeInput,
+  type UpdateBingoSquareInput,
   type UpdateBudgetItemInput,
   type UpdateInviteInput,
   type UpdateTableInput,
@@ -471,4 +473,68 @@ export function parseRsvpSubmission(body: unknown): Parsed<RsvpSubmission> {
 export function parseStatusFilter(value: string | null): InviteStatus | null {
   if (!value) return null
   return INVITE_STATUSES.includes(value as InviteStatus) ? (value as InviteStatus) : null
+}
+
+/**
+ * A bingo square's text. Blank is allowed — it leaves the square off cards in
+ * that language — but a ceiling keeps it fitting a 78px cell, and keeps a
+ * curl-reachable text column from becoming somewhere to store a novel.
+ */
+const BINGO_TEXT_MAX_LENGTH = 120
+
+function bingoText(value: unknown, field: string): Parsed<string> {
+  if (value === undefined || value === null) return pass('')
+  if (typeof value !== 'string') return fail(`${field} must be text`)
+  const text = value.trim()
+  if (text.length > BINGO_TEXT_MAX_LENGTH) {
+    return fail(`${field} must be at most ${BINGO_TEXT_MAX_LENGTH} characters`)
+  }
+  return pass(text)
+}
+
+/** A new square needs at least one language — a square with neither is on no card. */
+export function parseCreateBingoSquare(body: unknown): Parsed<CreateBingoSquareInput> {
+  if (!isRecord(body)) return fail('Invalid request body')
+
+  const textHe = bingoText(body.text_he, 'Hebrew text')
+  if (!textHe.ok) return textHe
+  const textRu = bingoText(body.text_ru, 'Russian text')
+  if (!textRu.ok) return textRu
+  if (!textHe.value && !textRu.value) return fail('A square needs text in at least one language')
+  const sortOrder = nonNegativeInt(body.sort_order, 'Sort order')
+  if (!sortOrder.ok) return sortOrder
+
+  return pass({ text_he: textHe.value, text_ru: textRu.value, sort_order: sortOrder.value })
+}
+
+/**
+ * An edit, usually one cell. Emptying one side is allowed; the "not both
+ * empty" rule is only checkable here when both sides arrive together — the
+ * editor never sends a blank for a side whose other half is already blank.
+ */
+export function parseUpdateBingoSquare(body: unknown): Parsed<UpdateBingoSquareInput> {
+  if (!isRecord(body)) return fail('Invalid request body')
+  const update: UpdateBingoSquareInput = {}
+
+  if ('text_he' in body) {
+    const textHe = bingoText(body.text_he, 'Hebrew text')
+    if (!textHe.ok) return textHe
+    update.text_he = textHe.value
+  }
+  if ('text_ru' in body) {
+    const textRu = bingoText(body.text_ru, 'Russian text')
+    if (!textRu.ok) return textRu
+    update.text_ru = textRu.value
+  }
+  if ('sort_order' in body) {
+    const sortOrder = nonNegativeInt(body.sort_order, 'Sort order')
+    if (!sortOrder.ok) return sortOrder
+    update.sort_order = sortOrder.value
+  }
+
+  if (update.text_he === '' && update.text_ru === '') {
+    return fail('A square needs text in at least one language')
+  }
+  if (Object.keys(update).length === 0) return fail('Nothing to update')
+  return pass(update)
 }

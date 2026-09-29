@@ -1,0 +1,271 @@
+/*
+ * The bingo card, ported as-is from the original standalone page
+ * (docs/games-bingo-PRD.md §3.6, §5). A CSS module rather than Tailwind: the
+ * geometry is print geometry — cm page sizes, 78px cells tuned so 24 Hebrew
+ * tasks fit — and translating it utility by utility would risk the one thing
+ * that must not change, which is how the card comes off the printer.
+ *
+ * Fonts come from next/font variables set by app/games/layout.tsx, not a
+ * Google Fonts <link>.
+ */
+
+.sheet {
+  --green: #3b7126;
+  --green-soft: #4c7a39;
+  --border: #cbdcbe;
+  --paper: #f4f2ec;
+  --pink: #e0567b;
+  --gold: #f0b429;
+  --blue: #5b93d6;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  padding: 26px 12px 60px;
+  background: #e7e4da;
+  border-radius: 8px;
+}
+
+/* ---------- Page / card ---------- */
+.page {
+  background: var(--paper);
+  width: 14.8cm;
+  min-height: 21cm;
+  padding: 0.9cm;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+}
+
+.card {
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(59, 113, 38, 0.14);
+  padding: 22px 26px 18px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  font-family: var(--font-hebrew), sans-serif;
+  color: var(--green);
+}
+
+.ru {
+  font-family: var(--font-cyrillic), sans-serif;
+  direction: ltr;
+}
+
+.head {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.names {
+  font-family: var(--font-script), cursive;
+  font-size: 40px;
+  line-height: 1.05;
+  color: var(--green);
+  /* Latin names inside an RTL card: keep "Nicole & Dima" in reading order. */
+  direction: ltr;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px 0 6px;
+}
+
+.dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dots span:nth-child(1) {
+  background: var(--pink);
+}
+
+.dots span:nth-child(2) {
+  background: var(--gold);
+}
+
+.dots span:nth-child(3) {
+  background: var(--blue);
+}
+
+.label {
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--green);
+  font-weight: 500;
+}
+
+.meta {
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--green-soft);
+  margin-top: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 78px);
+  grid-template-rows: repeat(5, 78px);
+  gap: 6px;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.cell {
+  width: 78px;
+  height: 78px;
+  overflow: hidden;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11.3px;
+  font-weight: 300;
+  line-height: 1.28;
+  padding: 6px 5px;
+  color: var(--green);
+}
+
+.ru .cell {
+  font-size: 9.3px;
+  line-height: 1.15;
+}
+
+.free {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.freeLabel {
+  font-family: var(--font-hebrew), sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.freeRule {
+  width: 24px;
+  height: 1px;
+  background: #9bbe8a;
+}
+
+.photo {
+  display: flex;
+  justify-content: center;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 8px;
+  font-size: 12.5px;
+  font-weight: 300;
+  color: var(--green);
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.pink {
+  background: var(--pink);
+}
+
+.blue {
+  background: var(--blue);
+}
+
+/*
+ * Phones and narrow windows (docs/games-bingo-PRD.md §3.7). A card is 14.8cm
+ * (~559px) wide, so on a phone it is shrunk to fit rather than scrolled
+ * sideways. `zoom`, not `transform: scale`: zoom shrinks the layout box too,
+ * so there is no empty gap where the full-size card would have been.
+ *
+ * SCREEN ONLY. Print must stay at true A5 size whatever device prints it.
+ *
+ * Each step is sized for its narrowest width. The shell's px-4 leaves the
+ * viewport minus 32px for the sheet, whose side padding is dropped below 640px:
+ *   481–639px: 449px free ≥ 559 × 0.8
+ *   361–480px: 329px free ≥ 559 × 0.57
+ *   ≤360px   : 288px free (320px phone) ≥ 559 × 0.5
+ *   768–900px: the game list sits beside the cards from `md`, so the room
+ *              drops back to ~496px there.
+ */
+@media screen and (max-width: 639px) {
+  .sheet {
+    padding: 12px 0 40px;
+    gap: 16px;
+  }
+
+  .page {
+    zoom: 0.8;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .page {
+    zoom: 0.57;
+  }
+}
+
+@media screen and (max-width: 360px) {
+  .page {
+    zoom: 0.5;
+  }
+}
+
+@media screen and (min-width: 768px) and (max-width: 900px) {
+  .page {
+    zoom: 0.8;
+  }
+}
+
+/*
+ * A NAMED page, so only bingo sheets print on A5. A plain `@page { size: A5 }`
+ * would be global and would also shrink the seating printout.
+ */
+@page bingo {
+  size: A5;
+  margin: 0.7cm;
+}
+
+@media print {
+  .sheet {
+    padding: 0;
+    gap: 0;
+    background: #fff;
+    border-radius: 0;
+  }
+
+  .page {
+    page: bingo;
+    box-shadow: none;
+    width: auto;
+    min-height: auto;
+    break-after: page;
+  }
+
+  .page:last-child {
+    break-after: auto;
+  }
+}

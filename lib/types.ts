@@ -266,6 +266,28 @@ export interface CreateBudgetItemInput {
 
 export type UpdateBudgetItemInput = Partial<CreateBudgetItemInput>
 
+/**
+ * One wedding-bingo square (docs/games-bingo-PRD.md §4).
+ *
+ * Paired: both languages of the same task on one row. An empty side means the
+ * square is left off cards in that language.
+ */
+export interface BingoSquare {
+  id: string
+  text_he: string
+  text_ru: string
+  sort_order: number
+  created_at: string
+}
+
+export interface CreateBingoSquareInput {
+  text_he: string
+  text_ru: string
+  sort_order?: number
+}
+
+export type UpdateBingoSquareInput = Partial<CreateBingoSquareInput>
+
 export interface InviteWithPeople extends Invite {
   attendees: Attendee[]
 }

@@ -43,6 +43,7 @@ export const strings = {
       seating: 'סידור שולחנות',
       budget: 'תקציב',
       settings: 'הגדרות',
+      games: 'משחקים',
     },
     comingSoon: 'בבנייה',
     history: 'היסטוריה',
@@ -442,6 +443,75 @@ export const strings = {
     /** Per-guest lines multiply by the invited count until answers arrive. */
     basis: (invited: number, attending: number) =>
       `מחיר לפי אורח מוכפל ב-${invited} מוזמנים (${attending} אישרו עד כה).`,
+  },
+
+  /** The /games area (docs/games-bingo-PRD.md §3.1). */
+  games: {
+    title: 'משחקים',
+    navLabel: 'רשימת המשחקים',
+    backToAdmin: '→ חזרה לניהול',
+    nav: {
+      bingo: 'בינגו החתונה',
+    },
+  },
+
+  /** Wedding bingo (docs/games-bingo-PRD.md §3.3–3.6). */
+  bingo: {
+    title: 'בינגו החתונה',
+    hint: 'בוחרים כמות ושפה, מערבבים ומדפיסים. כרטיס אחד בכל עמוד A5.',
+
+    count: 'מספר כרטיסים',
+    language: 'שפה',
+    languages: {
+      he: 'עברית',
+      ru: 'רוסית',
+      both: 'שתיהן (זוג תואם לכל כרטיס)',
+    },
+    shuffle: '🔀 חלוקה חדשה',
+    print: '🖨️ הדפסה',
+    /** Under the controls, so the page count on the print dialog is no surprise. */
+    printCount: (cards: number) => `${cards} כרטיסים להדפסה`,
+
+    /** Fewer usable squares than a card holds: squares repeat on each card. */
+    tooFew: (usable: number) =>
+      `יש רק ${usable} משבצות בשפה הזו, וכרטיס צריך 24 — משבצות יחזרו על עצמן.`,
+    noCards: 'אין משבצות בשפה הזו, אז אין כרטיסים להציג.',
+    noCardsHint: 'הוסיפו משבצות ברשימה למעלה.',
+
+    editorTitle: '✏️ עריכת רשימת המשבצות',
+    /** Phone only: the stacked list is long, and the edit's result is below it. */
+    jumpToCards: '↓ לכרטיסים',
+    editorHint: 'משבצת = שורה, בעברית וברוסית. משבצת בלי טקסט ברוסית לא תופיע בכרטיסים ברוסית. שינויי טקסט מופיעים מיד; הוספה או מחיקה מערבבת מחדש.',
+    textHe: 'עברית',
+    textRu: 'רוסית',
+    placeholderHe: 'למשל: לרקוד עם הכלה',
+    placeholderRu: 'Например: потанцевать с невестой',
+    addRow: 'הוספת משבצת',
+    adding: 'מוסיף…',
+    textRequired: 'צריך טקסט לפחות בשפה אחת',
+    delete: 'מחיקה',
+    confirmDelete: (text: string) => `למחוק את המשבצת "${text}"?`,
+    deleted: 'המשבצת נמחקה',
+    saveFailed: 'השמירה נכשלה',
+    deleteFailed: 'המחיקה נכשלה',
+    empty: 'אין עדיין משבצות',
+    emptyHint: 'הוסיפו משבצת ראשונה למטה.',
+
+    /** Printed on the card itself, per language — verbatim from the original page. */
+    card: {
+      names: 'Nicole & Dima',
+      free: 'Free',
+      he: {
+        label: 'בינגו החתונה',
+        meta: 'בצעו משימה, סמנו X, חמישה ברצף מנצחים',
+        footer: 'ניצחתם? תצעקו בינגו בקול רם',
+      },
+      ru: {
+        label: 'Свадебное бинго',
+        meta: 'Выполни задание, отметь X, пять подряд — победа',
+        footer: 'Победили? Кричите «Бинго!» громко',
+      },
+    },
   },
 
   toolbar: {

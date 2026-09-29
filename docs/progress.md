@@ -369,6 +369,22 @@ Rows the chosen message doesn't fit are greyed out with the reason in the toolti
 
 Still one human tap per row. Nothing here sends more than one message.
 
+## 5h. Games — wedding bingo, 2026-09-29
+
+Spec: `docs/games-bingo-PRD.md`.
+
+**⚠️ Needs migration `015_bingo_squares.sql`, run in the Supabase SQL editor.** It creates `bingo_squares` (RLS deny-all) and seeds the 28 squares only while the table is empty. No guest table is touched. Until it runs, `/games/bingo` errors.
+
+A new admin-only area, `/games`, with its own shell and a vertical game list; reached from a **משחקים** tab in the admin bar. `proxy.ts` now gates `/games/*` as well as `/admin/*`.
+
+**Bingo** is a port of Dmitri's standalone `wedding_bingo.html`. Squares are one row each with Hebrew and Russian text, edited in place like the budget table; a blank side leaves the square off that language's cards. Cards print one per A5 page via a *named* `@page bingo`, so the seating printout's page size is untouched.
+
+`lib/bingo.ts` deals from a **seed** the server picks: the server render and hydration must produce the same cards, and `Math.random` would not. Language only filters a deal, so switching it never reshuffles, and "both" gives each Hebrew card a Russian twin with the same squares in the same spots. Text edits keep the deal; adding or deleting a square changes it.
+
+**Mobile** (PRD §3.7): the game list becomes a strip, cards shrink on screen only (CSS `zoom` steps; print stays A5), the editor opens by default on phones and stacks each square, with a jump link to the cards, 44px taps and 16px inputs.
+
+Optimised against the original: the couple photo left the HTML (84 KB base64, 736×981 shown at 130px) for `public/assets/games/bingo-couple.jpg` (260px, 13.7 KB); Parisienne and Manrope load via `next/font`, scoped to `/games`, instead of a render-blocking Google Fonts link; cards are React, so editor text is escaped instead of injected as HTML.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.

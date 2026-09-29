@@ -1,5 +1,5 @@
 /**
- * Lock #1 on /admin (PRD §7.4).
+ * Lock #1 on /admin and /games (PRD §7.4).
  *
  * Next 16: this file is `proxy.ts` and must export `proxy`, not `middleware`.
  *
@@ -48,6 +48,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Everything under /admin except the login page itself, which must stay
-  // reachable without a session or nobody could ever sign in.
-  matcher: ['/admin((?!/login).*)'],
+  // reachable without a session or nobody could ever sign in. /games is
+  // admin-only too (docs/games-bingo-PRD.md §3.2); `:path*` also matches /games.
+  matcher: ['/admin((?!/login).*)', '/games/:path*'],
 }

@@ -53,6 +53,11 @@ export const createBudgetItem = store.createBudgetItem.bind(store)
 export const updateBudgetItem = store.updateBudgetItem.bind(store)
 export const deleteBudgetItem = store.deleteBudgetItem.bind(store)
 
+export const listBingoSquares = store.listBingoSquares.bind(store)
+export const createBingoSquare = store.createBingoSquare.bind(store)
+export const updateBingoSquare = store.updateBingoSquare.bind(store)
+export const deleteBingoSquare = store.deleteBingoSquare.bind(store)
+
 export const getConfig = store.getConfig.bind(store)
 export const updateConfig = store.updateConfig.bind(store)
 export const uploadInvitationImage = store.uploadInvitationImage.bind(store)
