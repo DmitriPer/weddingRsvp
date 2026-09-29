@@ -385,6 +385,12 @@ A new admin-only area, `/games`, with its own shell and a vertical game list; re
 
 Optimised against the original: the couple photo left the HTML (84 KB base64, 736×981 shown at 130px) for `public/assets/games/bingo-couple.jpg` (260px, 13.7 KB); Parisienne and Manrope load via `next/font`, scoped to `/games`, instead of a render-blocking Google Fonts link; cards are React, so editor text is escaped instead of injected as HTML.
 
+## 5i. Budget on a phone, 2026-09-29
+
+Spec: `docs/budget-mobile-PRD.md`. No migration, no data or API change.
+
+Below `md` each budget line is a card instead of a table row: name, then kind · pricing, amount · paid, full price · to pay, then delete. Each field is labelled because the header is hidden. The desktop table is unchanged. Inputs are 16px on phones so iOS doesn't zoom on focus, buttons are 44px tall, and the totals' main figure drops one size below `sm`.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.
