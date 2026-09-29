@@ -7,6 +7,10 @@
  * Nothing here does arithmetic. Every full price and remaining balance comes
  * from lib/budget.ts, so this file only decides what to show and what to send.
  *
+ * Below `md` every line stacks into a card (docs/budget-mobile-PRD.md): the
+ * same cells, laid out as a two-column grid, each with its own label because
+ * the table header is hidden. From `md` up it is the unchanged table.
+ *
  * The optimistic values live HERE, in one map, not in the cells — the lesson
  * from components/admin/first-invite-controls.tsx, where per-row state was
  * discarded whenever a row unmounted and came back showing a stale value.
@@ -27,6 +31,9 @@ import {
   type BudgetPricing,
   type UpdateBudgetItemInput,
 } from '@/lib/types'
+
+/** 16px on phones: iOS Safari zooms the page into any focused field smaller than that. */
+const INPUT_TEXT = 'text-base md:text-sm'
 
 export function BudgetTable({
   items,
@@ -112,10 +119,11 @@ export function BudgetTable({
       {lines.length === 0 ? (
         <EmptyState title={strings.budget.empty} hint={strings.budget.emptyHint} />
       ) : (
-        /* Wide content scrolls inside its own box; the page never scrolls sideways. */
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <table className="w-full min-w-3xl border-collapse text-sm">
-            <thead>
+        /* Desktop: wide content scrolls inside its own box. Phone: no table
+           width at all — the rows are cards, so nothing scrolls sideways. */
+        <div className="rounded-lg border border-border md:overflow-x-auto">
+          <table className="block w-full border-collapse text-sm md:table md:min-w-3xl">
+            <thead className="hidden md:table-header-group">
               <tr className="border-b border-border bg-surface">
                 <Th>{strings.budget.name}</Th>
                 <Th>{strings.budget.kind}</Th>
@@ -130,14 +138,17 @@ export function BudgetTable({
               </tr>
             </thead>
 
-            <tbody>
+            <tbody className="block md:table-row-group">
               {lines.map((line) => {
                 const item = line.item
                 const saving = savingIds.has(item.id)
 
                 return (
-                  <tr key={item.id} className="border-b border-border last:border-0">
-                    <Td>
+                  <tr
+                    key={item.id}
+                    className="grid grid-cols-2 gap-x-3 gap-y-2 border-b border-border px-3 py-3 last:border-0 md:table-row md:p-0"
+                  >
+                    <Td label={strings.budget.name} wide>
                       <TextCell
                         key={item.name}
                         value={item.name}
@@ -146,7 +157,7 @@ export function BudgetTable({
                       />
                     </Td>
 
-                    <Td>
+                    <Td label={strings.budget.kind}>
                       <select
                         value={item.kind}
                         disabled={saving}
@@ -158,7 +169,7 @@ export function BudgetTable({
                             { kind: item.kind }
                           )
                         }
-                        className="w-full rounded border border-border px-2 py-1"
+                        className={`w-full rounded border border-border px-2 py-2 md:py-1 ${INPUT_TEXT}`}
                       >
                         {BUDGET_KINDS.map((kind) => (
                           <option key={kind} value={kind}>
@@ -168,7 +179,7 @@ export function BudgetTable({
                       </select>
                     </Td>
 
-                    <Td>
+                    <Td label={strings.budget.pricing}>
                       <select
                         value={item.pricing}
                         disabled={saving}
@@ -180,7 +191,7 @@ export function BudgetTable({
                             { pricing: item.pricing }
                           )
                         }
-                        className="w-full rounded border border-border px-2 py-1"
+                        className={`w-full rounded border border-border px-2 py-2 md:py-1 ${INPUT_TEXT}`}
                       >
                         {BUDGET_PRICINGS.map((pricing) => (
                           <option key={pricing} value={pricing}>
@@ -190,7 +201,7 @@ export function BudgetTable({
                       </select>
                     </Td>
 
-                    <Td>
+                    <Td label={strings.budget.amount}>
                       <MoneyCell
                         key={item.amount}
                         value={item.amount}
@@ -205,7 +216,7 @@ export function BudgetTable({
                       ) : null}
                     </Td>
 
-                    <Td>
+                    <Td label={strings.budget.paidInAdvance}>
                       <MoneyCell
                         key={item.paid_in_advance}
                         value={item.paid_in_advance}
@@ -217,15 +228,23 @@ export function BudgetTable({
                       />
                     </Td>
 
-                    <Derived planned={line.plannedFull} confirmed={line.confirmedFull} />
-                    <Derived planned={line.plannedToPay} confirmed={line.confirmedToPay} />
+                    <Derived
+                      label={strings.budget.fullPrice}
+                      planned={line.plannedFull}
+                      confirmed={line.confirmedFull}
+                    />
+                    <Derived
+                      label={strings.budget.toPay}
+                      planned={line.plannedToPay}
+                      confirmed={line.confirmedToPay}
+                    />
 
-                    <Td>
+                    <Td wide className="text-end">
                       <button
                         type="button"
                         onClick={() => void handleDelete(item)}
                         disabled={saving}
-                        className="rounded border border-border px-2 py-1 text-xs text-danger hover:bg-surface disabled:opacity-50"
+                        className="min-h-11 rounded border border-border px-3 text-sm text-danger hover:bg-surface disabled:opacity-50 md:min-h-0 md:px-2 md:py-1 md:text-xs"
                       >
                         {strings.budget.delete}
                       </button>
@@ -248,9 +267,9 @@ export function BudgetTable({
  * two differ. They only differ on a per-guest line, so a flat line shows one
  * number and nothing looks special-cased.
  */
-function Derived({ planned, confirmed }: { planned: number; confirmed: number }) {
+function Derived({ label, planned, confirmed }: { label: string; planned: number; confirmed: number }) {
   return (
-    <Td>
+    <Td label={label}>
       <span className="ltr-nums block font-medium">{formatAmount(planned)}</span>
       {confirmed !== planned ? (
         <span className="ltr-nums block text-xs text-muted">
@@ -307,7 +326,7 @@ function TextCell({
         if (event.key === 'Enter') event.currentTarget.blur()
         if (event.key === 'Escape') setDraft(value)
       }}
-      className="w-full min-w-32 rounded border border-border px-2 py-1 disabled:opacity-50"
+      className={`w-full rounded border border-border px-2 py-2 disabled:opacity-50 md:min-w-32 md:py-1 ${INPUT_TEXT}`}
     />
   )
 }
@@ -352,7 +371,7 @@ function MoneyCell({
         if (event.key === 'Enter') event.currentTarget.blur()
         if (event.key === 'Escape') setDraft(toAmountInput(value))
       }}
-      className="ltr-nums w-24 rounded border border-border px-2 py-1 disabled:opacity-50"
+      className={`ltr-nums w-full rounded border border-border px-2 py-2 disabled:opacity-50 md:w-24 md:py-1 ${INPUT_TEXT}`}
     />
   )
 }
@@ -427,7 +446,7 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={strings.budget.namePlaceholder}
-          className="min-w-40 rounded border border-border px-2 py-1 text-sm text-foreground"
+          className={`min-w-40 rounded border border-border px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
         />
       </label>
 
@@ -436,7 +455,7 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
         <select
           value={kind}
           onChange={(event) => setKind(event.target.value as BudgetKind)}
-          className="rounded border border-border px-2 py-1 text-sm text-foreground"
+          className={`rounded border border-border px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
         >
           {BUDGET_KINDS.map((value) => (
             <option key={value} value={value}>
@@ -451,7 +470,7 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
         <select
           value={pricing}
           onChange={(event) => setPricing(event.target.value as BudgetPricing)}
-          className="rounded border border-border px-2 py-1 text-sm text-foreground"
+          className={`rounded border border-border px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
         >
           {BUDGET_PRICINGS.map((value) => (
             <option key={value} value={value}>
@@ -467,7 +486,7 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           inputMode="decimal"
-          className="ltr-nums w-24 rounded border border-border px-2 py-1 text-sm text-foreground"
+          className={`ltr-nums w-24 rounded border border-border px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
         />
       </label>
 
@@ -477,7 +496,7 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
           value={paid}
           onChange={(event) => setPaid(event.target.value)}
           inputMode="decimal"
-          className="ltr-nums w-24 rounded border border-border px-2 py-1 text-sm text-foreground"
+          className={`ltr-nums w-24 rounded border border-border px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
         />
       </label>
 
@@ -485,7 +504,7 @@ function AddBudgetRow({ onAdded }: { onAdded: () => void }) {
         type="button"
         onClick={() => void handleAdd()}
         disabled={adding}
-        className="rounded-md bg-accent px-3 py-1.5 text-sm text-white disabled:opacity-50"
+        className="min-h-11 w-full rounded-md bg-accent px-3 text-sm text-white disabled:opacity-50 sm:w-auto md:min-h-0 md:py-1.5"
       >
         {adding ? strings.budget.adding : `+ ${strings.budget.addRow}`}
       </button>
@@ -497,6 +516,28 @@ function Th({ children }: { children: React.ReactNode }) {
   return <th className="px-3 py-2 text-start font-medium text-muted">{children}</th>
 }
 
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2 align-top">{children}</td>
+/**
+ * A cell. On a phone it is a block in the card's two-column grid, with its
+ * label above it — the table header is hidden there. `wide` spans both
+ * columns. From `md` up it is an ordinary table cell and the label is hidden.
+ */
+function Td({
+  children,
+  label,
+  wide = false,
+  className = '',
+}: {
+  children: React.ReactNode
+  label?: string
+  wide?: boolean
+  className?: string
+}) {
+  return (
+    <td
+      className={`block min-w-0 md:table-cell md:px-3 md:py-2 md:align-top ${wide ? 'col-span-2' : ''} ${className}`}
+    >
+      {label ? <span className="mb-1 block text-xs text-muted md:hidden">{label}</span> : null}
+      {children}
+    </td>
+  )
 }

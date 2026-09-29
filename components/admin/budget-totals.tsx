@@ -75,7 +75,8 @@ function Tile({
   return (
     <div className="rounded-lg border border-border px-4 py-3">
       <p className="text-sm text-muted">{label}</p>
-      <p className={`ltr-nums text-2xl font-semibold ${tone ?? ''}`}>{format(lead)}</p>
+      {/* One size down on phones, so a 7-digit sum fits a two-per-row tile. */}
+      <p className={`ltr-nums text-xl font-semibold sm:text-2xl ${tone ?? ''}`}>{format(lead)}</p>
       {sub !== lead ? (
         <p className="ltr-nums text-xs text-muted">
           {strings.budget.plannedTile(format(sub))}
