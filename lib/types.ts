@@ -93,6 +93,8 @@ export interface Attendee {
   invite_id: string
   name: string
   is_child: boolean
+  /** Migration 018: a child aged 0–3 — free, still takes a chair. Implies is_child. */
+  is_infant: boolean
   is_attending: boolean
   /** A guest-added "+1". The admin can rename it, which clears this flag. */
   is_placeholder: boolean
@@ -226,6 +228,12 @@ export interface BudgetItem {
   amount: number
   /** AGOROT already handed over. Never derived — a human types this. */
   paid_in_advance: number
+  /**
+   * Migration 018. AGOROT per child aged 3–7, on per_person lines only.
+   * null = a child pays the adult price (how every line priced before 018).
+   * Infants (0–3) are always free.
+   */
+  child_amount: number | null
   sort_order: number
   created_at: string
 }
@@ -257,6 +265,7 @@ export interface CreateBudgetItemInput {
   pricing: BudgetPricing
   amount: number
   paid_in_advance?: number
+  child_amount?: number | null
   sort_order?: number
 }
 
@@ -321,7 +330,10 @@ export interface InviteWithHistory extends InviteWithPeople {
 
 export interface Headcount {
   adults: number
+  /** Every child, infants included — what the guest form and exports mean by "kids". */
   kids: number
+  /** The 0–3 subset of `kids` (migration 018). Free on the budget. */
+  infants: number
   total: number
 }
 
@@ -370,6 +382,8 @@ export interface Stats {
   /** The breakdown of who is coming. */
   totalAdults: number
   totalKids: number
+  /** The 0–3 subset of totalKids — free on the budget (migration 018). */
+  totalInfants: number
   /** Guest-added "+1"s among them — people who were never on the list. */
   totalExtras: number
 
@@ -423,11 +437,13 @@ export interface CreateAttendeeInput {
   invite_id: string
   name: string
   is_child?: boolean
+  is_infant?: boolean
 }
 
 export interface UpdateAttendeeInput {
   name?: string
   is_child?: boolean
+  is_infant?: boolean
   table_id?: string | null
   /** Renaming a placeholder clears the flag — that is the admin naming a "+1". */
   is_placeholder?: boolean

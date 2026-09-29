@@ -23,6 +23,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useAction } from '@/components/ui/use-action'
 import { answerForPerson } from '@/lib/headcount'
 import { jsonInit, requestJson } from '@/lib/request'
+import { AGE_GROUPS, ageGroupOf, type AgeGroup } from '@/lib/age-group'
 import { strings } from '@/lib/strings'
 import type { Answer, Attendee } from '@/lib/types'
 
@@ -34,7 +35,34 @@ const MARKS: Record<'yes' | 'no' | 'undecided' | 'none', { glyph: string; tone: 
   none: { glyph: '○', tone: 'text-muted' },
 }
 
-function patchAttendee(id: string, patch: { name?: string; is_child?: boolean }): Promise<unknown> {
+/** מבוגר / ילד 3–7 / תינוק 0–3 — the one control that sets a person's age group. */
+function AgeGroupSelect({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: AgeGroup
+  onChange: (next: AgeGroup) => void
+  disabled?: boolean
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value as AgeGroup)}
+      disabled={disabled}
+      aria-label={strings.inviteForm.ageGroupLabel}
+      className="rounded border border-border px-1 py-1 text-xs"
+    >
+      {AGE_GROUPS.map((option) => (
+        <option key={option} value={option}>
+          {strings.inviteForm.ageGroups[option]}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+function patchAttendee(id: string, patch: { name?: string; age_group?: AgeGroup }): Promise<unknown> {
   return requestJson(`/api/attendees/${id}`, jsonInit('PATCH', patch), strings.row.saveFailed)
 }
 
@@ -75,10 +103,10 @@ function AttendeeRow({
   editable: boolean
 }) {
   const action = useAction()
-  // The chosen adult/child value, shown while the change is saving; the prop
-  // still holds the old one until the refresh lands.
-  const [draftIsChild, setDraftIsChild] = useState<boolean | null>(null)
-  const isChild = draftIsChild ?? person.is_child
+  // The chosen age group, shown while the change is saving; the prop still
+  // holds the old one until the refresh lands.
+  const [draftGroup, setDraftGroup] = useState<AgeGroup | null>(null)
+  const group = draftGroup ?? ageGroupOf(person)
   const busy = action.pending
 
   const personAnswer = answerForPerson(answer, person) ?? 'none'
@@ -95,16 +123,16 @@ function AttendeeRow({
     })
   }
 
-  function changeIsChild(next: boolean) {
+  function changeGroup(next: AgeGroup) {
     if (busy) return
-    setDraftIsChild(next)
+    setDraftGroup(next)
     action.run(
       async () => {
-        await patchAttendee(person.id, { is_child: next })
+        await patchAttendee(person.id, { age_group: next })
         // Dropped with the refresh, when the prop already holds the new value.
-        startTransition(() => setDraftIsChild(null))
+        startTransition(() => setDraftGroup(null))
       },
-      { failure: strings.row.saveFailed, onError: () => setDraftIsChild(null) }
+      { failure: strings.row.saveFailed, onError: () => setDraftGroup(null) }
     )
   }
 
@@ -133,16 +161,7 @@ function AttendeeRow({
               person.is_placeholder ? 'border-warning' : 'border-transparent hover:border-border'
             }`}
           />
-          <select
-            value={isChild ? 'child' : 'adult'}
-            onChange={(event) => changeIsChild(event.target.value === 'child')}
-            disabled={busy}
-            aria-label={strings.inviteForm.adult}
-            className="rounded border border-border px-1 py-1 text-xs"
-          >
-            <option value="adult">{strings.inviteForm.adult}</option>
-            <option value="child">{strings.inviteForm.child}</option>
-          </select>
+          <AgeGroupSelect value={group} onChange={changeGroup} disabled={busy} />
           <button
             type="button"
             onClick={remove}
@@ -156,7 +175,7 @@ function AttendeeRow({
       ) : (
         <span className="min-w-0 flex-1 truncate text-muted">
           {person.name}
-          {person.is_child ? ` (${strings.inviteForm.child})` : ''}
+          {person.is_child ? ` (${strings.inviteForm.ageGroups[ageGroupOf(person)]})` : ''}
           {person.is_placeholder ? ` · ${strings.guests.placeholder}` : ''}
         </span>
       )}
@@ -167,7 +186,7 @@ function AttendeeRow({
 function AddAttendee({ inviteId }: { inviteId: string }) {
   const action = useAction()
   const [newName, setNewName] = useState('')
-  const [newIsChild, setNewIsChild] = useState(false)
+  const [newGroup, setNewGroup] = useState<AgeGroup>('adult')
 
   function add() {
     // Guards the Enter key too — it used to call add() again mid-request and
@@ -179,14 +198,14 @@ function AddAttendee({ inviteId }: { inviteId: string }) {
       async () => {
         await requestJson(
           '/api/attendees',
-          jsonInit('POST', { invite_id: inviteId, name, is_child: newIsChild }),
+          jsonInit('POST', { invite_id: inviteId, name, age_group: newGroup }),
           strings.row.saveFailed
         )
         // Cleared with the refresh, so the name leaves the field as the new
         // person appears in the list.
         startTransition(() => {
           setNewName('')
-          setNewIsChild(false)
+          setNewGroup('adult')
         })
       },
       { failure: strings.row.saveFailed }
@@ -208,15 +227,7 @@ function AddAttendee({ inviteId }: { inviteId: string }) {
         placeholder={strings.row.addPerson}
         className="min-w-0 flex-1 rounded-md border border-border px-2 py-1 text-sm"
       />
-      <select
-        value={newIsChild ? 'child' : 'adult'}
-        onChange={(event) => setNewIsChild(event.target.value === 'child')}
-        disabled={action.pending}
-        className="rounded border border-border px-1 py-1 text-xs"
-      >
-        <option value="adult">{strings.inviteForm.adult}</option>
-        <option value="child">{strings.inviteForm.child}</option>
-      </select>
+      <AgeGroupSelect value={newGroup} onChange={setNewGroup} disabled={action.pending} />
       <button
         type="button"
         onClick={add}

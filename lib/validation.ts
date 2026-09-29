@@ -33,6 +33,7 @@ import {
   type UpdateTableInput,
 } from '@/lib/types'
 import { toStoredPhone } from '@/lib/phone'
+import { flagsFor, isAgeGroup } from '@/lib/age-group'
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string }
 
@@ -220,6 +221,12 @@ function agorotField(value: unknown, field: string): Parsed<number> {
   return pass(value)
 }
 
+/** A child price: blank/null means "same as the adult price" (migration 018). */
+function optionalAgorot(value: unknown, field: string): Parsed<number | null> {
+  if (value === undefined || value === null || value === '') return pass(null)
+  return agorotField(value, field)
+}
+
 function requiredEnum<T extends string>(
   value: unknown,
   allowed: readonly T[],
@@ -253,6 +260,8 @@ export function parseCreateBudgetItem(body: unknown): Parsed<CreateBudgetItemInp
   if (!paid.ok) return paid
   const sortOrder = nonNegativeInt(body.sort_order, 'Sort order')
   if (!sortOrder.ok) return sortOrder
+  const childAmount = optionalAgorot(body.child_amount, 'Child price')
+  if (!childAmount.ok) return childAmount
 
   return pass({
     name: name.value,
@@ -260,6 +269,7 @@ export function parseCreateBudgetItem(body: unknown): Parsed<CreateBudgetItemInp
     pricing: pricing.value,
     amount: amount.value,
     paid_in_advance: paid.value,
+    child_amount: childAmount.value,
     sort_order: sortOrder.value,
   })
 }
@@ -307,6 +317,11 @@ export function parseUpdateBudgetItem(body: unknown): Parsed<UpdateBudgetItemInp
     if (!sortOrder.ok) return sortOrder
     update.sort_order = sortOrder.value
   }
+  if ('child_amount' in body) {
+    const childAmount = optionalAgorot(body.child_amount, 'Child price')
+    if (!childAmount.ok) return childAmount
+    update.child_amount = childAmount.value
+  }
 
   if (Object.keys(update).length === 0) return fail('Nothing to update')
   return pass(update)
@@ -320,11 +335,13 @@ export function parseCreateAttendee(body: unknown): Parsed<CreateAttendeeInput> 
   const name = requiredText(body.name, 'Name')
   if (!name.ok) return name
 
-  return pass({
-    invite_id: inviteId.value,
-    name: name.value,
-    is_child: body.is_child === true,
-  })
+  // `age_group` (adult / child / infant) wins when sent; the plain is_child
+  // flag is still accepted from the older callers (import, add-invite form).
+  const flags = isAgeGroup(body.age_group)
+    ? flagsFor(body.age_group)
+    : { is_child: body.is_child === true, is_infant: false }
+
+  return pass({ invite_id: inviteId.value, name: name.value, ...flags })
 }
 
 export function parseUpdateAttendee(body: unknown): Parsed<UpdateAttendeeInput> {
@@ -338,7 +355,14 @@ export function parseUpdateAttendee(body: unknown): Parsed<UpdateAttendeeInput> 
     // Naming a "+1" is exactly what stops it being a placeholder (PRD §5.3).
     update.is_placeholder = false
   }
-  if ('is_child' in body) update.is_child = body.is_child === true
+  if ('age_group' in body) {
+    if (!isAgeGroup(body.age_group)) return fail('age_group must be adult, child or infant')
+    Object.assign(update, flagsFor(body.age_group))
+  } else if ('is_child' in body) {
+    update.is_child = body.is_child === true
+    // An adult can't stay an infant (the database refuses it too, migration 018).
+    if (!update.is_child) update.is_infant = false
+  }
   if ('table_id' in body) {
     const tableId = optionalText(body.table_id, 'Table id')
     if (!tableId.ok) return tableId

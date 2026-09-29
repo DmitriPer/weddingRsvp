@@ -91,7 +91,8 @@ export default async function InviteesPage() {
           <div className="mt-3 flex flex-wrap items-start justify-between gap-4 text-sm">
             <div className="flex gap-6">
               <Figure label={strings.stats.adults} value={stats.totalAdults} />
-              <Figure label={strings.stats.kids} value={stats.totalKids} />
+              <Figure label={strings.stats.children} value={stats.totalKids - stats.totalInfants} />
+              <Figure label={strings.stats.infants} value={stats.totalInfants} />
             </div>
 
             {/* Apart, with a border: already counted inside מגיעים, not an addition. */}

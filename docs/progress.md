@@ -448,6 +448,16 @@ The connect flow is `/api/google/connect` → `/api/google/callback`, with a sta
 
 **On the night:** open the switch. Close it afterwards.
 
+## 5n. Children by age: infants free, a child price per line, 2026-09-29
+
+Spec: `docs/child-age-pricing-PRD.md`.
+
+**⚠️ Needs migration `018_child_age_pricing.sql`.** It adds `attendees.is_infant` (an infant is still `is_child`) and `budget_items.child_amount` (null = the adult price).
+
+Per-guest expenses now cost the price × max(adults, minimum), plus the child price × children 3–7, with infants free. **Only adults count toward the minimum.** Per-guest income counts everyone attending.
+
+The admin sets each person's age group (מבוגר / ילד 3–7 / תינוק 0–3); the guest form is unchanged. `Headcount` gained `infants`, the 0–3 subset of `kids`, and the dashboard and the minimum field show the three groups.
+
 ## 6. Known issues
 
 As of 2026-09-29, with the site live:
