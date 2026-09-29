@@ -205,6 +205,20 @@ export function BudgetTable({
                           {strings.budget.perPersonUnit}
                         </span>
                       ) : null}
+                      {/* Child price: per-guest EXPENSES only — income has none (lib/budget.ts). */}
+                      {item.pricing === 'per_person' && item.kind === 'expense' ? (
+                        <div className="mt-1">
+                          <ChildPriceCell
+                            key={item.child_amount ?? 'none'}
+                            value={item.child_amount}
+                            disabled={saving}
+                            onSave={(child_amount) =>
+                              save(item.id, { child_amount }, { child_amount: item.child_amount })
+                            }
+                          />
+                          <span className="block text-xs text-muted">{strings.budget.childPriceUnit}</span>
+                        </div>
+                      ) : null}
                     </Td>
 
                     <Td label={strings.budget.paidInAdvance}>
@@ -352,6 +366,55 @@ function MoneyCell({
 }
 
 /**
+ * The child price (3–7) on a per-guest expense line (docs/child-age-pricing-PRD.md).
+ *
+ * Unlike MoneyCell, BLANK is meaningful and is not zero: an empty child price
+ * means "a child pays the adult price" — how every line priced before this
+ * existed. A child who eats free is 0, typed explicitly.
+ */
+function ChildPriceCell({
+  value,
+  disabled,
+  onSave,
+}: {
+  /** Agorot, or null for "same as adult". */
+  value: number | null
+  disabled: boolean
+  onSave: (next: number | null) => void
+}) {
+  const initial = value === null ? '' : toAmountInput(value)
+  const [draft, setDraft] = useState(initial)
+
+  function commit() {
+    const parsed = draft.trim() === '' ? null : parseAmount(draft)
+    if (draft.trim() !== '' && parsed === null) {
+      setDraft(initial)
+      toast.error(strings.budget.invalidAmount)
+      return
+    }
+    if (parsed === value) return
+    onSave(parsed)
+  }
+
+  return (
+    <input
+      value={draft}
+      disabled={disabled}
+      inputMode="decimal"
+      aria-label={strings.budget.childPrice}
+      placeholder={strings.budget.childPriceSameAsAdult}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+        if (event.key === 'Escape') setDraft(initial)
+      }}
+      className={`ltr-nums w-full rounded border border-border px-2 py-2 disabled:opacity-50 md:w-24 md:py-1 ${INPUT_TEXT}`}
+    />
+  )
+}
+
+/**
  * The add row.
  *
  * A form rather than a blank row spawned in the database: name and price are
@@ -364,6 +427,7 @@ function AddBudgetRow() {
   const [pricing, setPricing] = useState<BudgetPricing>('flat')
   const [amount, setAmount] = useState('')
   const [paid, setPaid] = useState('')
+  const [childPrice, setChildPrice] = useState('')
   // Pending until the refreshed list shows the new row.
   const add = useAction()
 
@@ -373,6 +437,7 @@ function AddBudgetRow() {
     setName('')
     setAmount('')
     setPaid('')
+    setChildPrice('')
   }
 
   function handleAdd(): void {
@@ -393,12 +458,21 @@ function AddBudgetRow() {
       return
     }
 
+    // Blank child price = same as adult; only sent where it means something.
+    const hasChildPrice = pricing === 'per_person' && kind === 'expense' && childPrice.trim() !== ''
+    const parsedChild = hasChildPrice ? parseAmount(childPrice) : null
+    if (hasChildPrice && parsedChild === null) {
+      toast.error(strings.budget.invalidAmount)
+      return
+    }
+
     const payload = {
       name: trimmed,
       kind,
       pricing,
       amount: parsedAmount,
       paid_in_advance: parsedPaid,
+      child_amount: parsedChild,
     }
     add.run(
       async () => {
@@ -462,6 +536,19 @@ function AddBudgetRow() {
           className={`ltr-nums w-24 rounded border border-border px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
         />
       </label>
+
+      {pricing === 'per_person' && kind === 'expense' ? (
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          {strings.budget.childPrice}
+          <input
+            value={childPrice}
+            onChange={(event) => setChildPrice(event.target.value)}
+            inputMode="decimal"
+            placeholder={strings.budget.childPriceSameAsAdult}
+            className={`ltr-nums w-24 rounded border border-border px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
+          />
+        </label>
+      ) : null}
 
       <label className="flex flex-col gap-1 text-xs text-muted">
         {strings.budget.paidInAdvance}

@@ -22,38 +22,52 @@ import type { BudgetItem, BudgetLine, BudgetTotals } from '@/lib/types'
 export const DEFAULT_MIN_GUESTS = 120
 
 /**
- * What a per-guest line is multiplied by.
+ * Who a per-guest line is priced for — the three age groups of the people who
+ * said yes (docs/child-age-pricing-PRD.md), from lib/stats.ts via
+ * lib/headcount.ts; this module never counts anyone itself.
  *
- * `attending` is everyone who said yes, adults and kids, from lib/stats.ts via
- * lib/headcount.ts — this module never counts anyone itself. `minGuests` is
- * כמות התחייבות, the number the venue bills no matter the turnout.
+ *   adults    7+    the line's price; the ONLY group the minimum applies to
+ *   children  3–7   the line's child price (or its adult price when unset)
+ *   infants   0–3   free
  *
- * There is deliberately no "everyone invited" figure any more: the contract
- * minimum replaces it as the planning floor.
+ * `minGuests` is כמות התחייבות: the venue bills at least this many ADULT
+ * plates whatever the turnout. There is deliberately no "everyone invited"
+ * figure: the contract minimum is the planning floor.
  */
 export interface BudgetBasis {
-  attending: number
+  adults: number
+  children: number
+  infants: number
   minGuests: number
 }
 
+/** Everyone coming, all ages — what a per-guest INCOME line counts. */
+export function attendingTotal(basis: BudgetBasis): number {
+  return basis.adults + basis.children + basis.infants
+}
+
 /**
- * The people a per-guest line is billed for.
+ * A per-guest line's full price.
  *
- * An EXPENSE is billed for the approved count but never below the minimum:
- * 100 approved with a 120 minimum pays for 120; 125 approved pays for 125.
+ * EXPENSE: adult plates are billed for the approved adults but never below the
+ * minimum (100 approved, minimum 120 → 120 plates; 125 → 125); children 3–7 at
+ * the child price, which defaults to the adult price when the line has none;
+ * infants free. 100 adults + 10 children + 5 infants at ₪470 / ₪200 with a 120
+ * minimum = 120×470 + 10×200 = ₪58,400.
  *
- * INCOME is never floored: a per-guest income line (a gift estimate, say)
- * counts the people actually coming. Flooring it would book 20 phantom
- * guests' gifts against the real bill.
+ * INCOME is never floored and has no child price: a per-guest income line (a
+ * gift estimate, say) counts the people actually coming.
  */
-function billedGuests(item: BudgetItem, basis: BudgetBasis): number {
-  if (item.kind === 'income') return basis.attending
-  return Math.max(basis.attending, basis.minGuests)
+function perPersonPrice(item: BudgetItem, basis: BudgetBasis): number {
+  if (item.kind === 'income') return item.amount * attendingTotal(basis)
+  const adultPlates = Math.max(basis.adults, basis.minGuests)
+  const childPrice = item.child_amount ?? item.amount
+  return item.amount * adultPlates + childPrice * basis.children
 }
 
 /** A flat line ignores the headcount entirely — that is the whole distinction. */
 function fullPrice(item: BudgetItem, basis: BudgetBasis): number {
-  return item.pricing === 'per_person' ? item.amount * billedGuests(item, basis) : item.amount
+  return item.pricing === 'per_person' ? perPersonPrice(item, basis) : item.amount
 }
 
 /**

@@ -317,6 +317,7 @@ export const supabaseStore: DataStore = {
           invite_id: input.invite_id,
           name: input.name,
           is_child: input.is_child ?? false,
+          is_infant: input.is_infant ?? false,
         })
         .select()
         .single(),
@@ -493,6 +494,7 @@ export const supabaseStore: DataStore = {
           pricing: input.pricing,
           amount: input.amount,
           paid_in_advance: input.paid_in_advance ?? 0,
+          child_amount: input.child_amount ?? null,
           sort_order: input.sort_order ?? 0,
         })
         .select()

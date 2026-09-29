@@ -27,9 +27,13 @@ export default async function BudgetPage() {
 
   const [items, invites, config] = await Promise.all([listBudgetItems(), listInvites(), getConfig()])
 
+  const stats = computeStats(invites)
   const basis: BudgetBasis = {
-    // People, not invitations: a caterer charges per plate. Adults and kids.
-    attending: computeStats(invites).totalAttending,
+    // People, not invitations: a caterer charges per plate. Split by age group
+    // (docs/child-age-pricing-PRD.md): totalKids includes infants.
+    adults: stats.totalAdults,
+    children: stats.totalKids - stats.totalInfants,
+    infants: stats.totalInfants,
     // Undefined only before migration 016 runs; the column's own default is the same 120.
     minGuests: config.budget_min_guests ?? DEFAULT_MIN_GUESTS,
   }
@@ -44,7 +48,7 @@ export default async function BudgetPage() {
         <p className="text-sm text-muted">{strings.budget.hint}</p>
       </div>
 
-      <BudgetMinGuestsField value={basis.minGuests} attending={basis.attending} />
+      <BudgetMinGuestsField value={basis.minGuests} basis={basis} />
 
       <BudgetTotalsBar totals={totals} />
 

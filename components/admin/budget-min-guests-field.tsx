@@ -12,16 +12,18 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { jsonInit, requestJson } from '@/lib/request'
+import type { BudgetBasis } from '@/lib/budget'
 import { strings } from '@/lib/strings'
 import { Spinner } from '@/components/ui/spinner'
 import { useAction } from '@/components/ui/use-action'
 
 export function BudgetMinGuestsField({
   value,
-  attending,
+  basis,
 }: {
   value: number
-  attending: number
+  /** Who has said yes so far, by age group — the minimum applies to adults only. */
+  basis: BudgetBasis
 }): React.JSX.Element {
   const [draft, setDraft] = useState(String(value))
   // Pending until the refreshed totals render, not just until the PATCH returns.
@@ -74,7 +76,9 @@ export function BudgetMinGuestsField({
           {save.pending ? <Spinner className="text-muted" /> : null}
         </span>
       </label>
-      <p className="pb-1.5 text-sm text-muted">{strings.budget.attendingSoFar(attending)}</p>
+      <p className="pb-1.5 text-sm text-muted">
+        {strings.budget.attendingSoFar(basis.adults, basis.children, basis.infants)}
+      </p>
       <p className="w-full text-xs text-muted">{strings.budget.minGuestsHint}</p>
     </section>
   )

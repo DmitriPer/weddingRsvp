@@ -83,6 +83,8 @@ export function computeStats(invites: InviteWithPeople[]): Stats {
 
     totalAdults: headcount.adults,
     totalKids: headcount.kids,
+    /** The 0–3 subset of totalKids (migration 018). */
+    totalInfants: headcount.infants,
     totalExtras,
 
     totalUnanswered: totalAwaitingInvites,

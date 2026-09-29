@@ -237,6 +237,13 @@ export const strings = {
     personName: 'שם',
     adult: 'מבוגר',
     child: 'ילד',
+    /** The three age groups in the per-person selector (docs/child-age-pricing-PRD.md). */
+    ageGroups: {
+      adult: 'מבוגר',
+      child: 'ילד 3–7',
+      infant: 'תינוק 0–3',
+    },
+    ageGroupLabel: 'קבוצת גיל',
     addPerson: 'הוספת אדם',
     removePerson: 'הסרה',
     nameRequired: 'חובה להזין שם להזמנה',
@@ -344,6 +351,9 @@ export const strings = {
     detailsTitle: 'פירוט המגיעים',
     adults: 'מבוגרים',
     kids: 'ילדים',
+    /** The two child groups, apart (docs/child-age-pricing-PRD.md). */
+    children: 'ילדים (3–7)',
+    infants: 'תינוקות (0–3)',
     /** Guest-added "+1"s — already inside מגיעים, shown apart. */
     extras: 'לא מהרשימה',
     extrasHint: 'אורחים שהמוזמנים הוסיפו בעצמם',
@@ -428,6 +438,10 @@ export const strings = {
     },
     /** On the amount cell of a per-guest row, so the unit is never in doubt. */
     perPersonUnit: 'לאדם',
+    /** Per-guest expenses only (docs/child-age-pricing-PRD.md). Infants are always free. */
+    childPrice: 'מחיר ילד (3–7)',
+    childPriceUnit: 'לילד 3–7 · תינוקות חינם',
+    childPriceSameAsAdult: 'כמו מבוגר',
 
     tiles: {
       expenses: 'סה״כ הוצאות',
@@ -457,8 +471,10 @@ export const strings = {
 
     /** כמות התחייבות (docs/budget-min-guests-PRD.md). */
     minGuests: 'כמות התחייבות',
-    minGuestsHint: 'מחיר לפי אורח מחושב לפי מספר המאשרים, ולא פחות מהכמות הזו. 0 = בלי מינימום.',
-    attendingSoFar: (count: number) => `מאשרים עד כה: ${count}`,
+    minGuestsHint: 'מנות מבוגר מחושבות לפי המבוגרים שאישרו, ולא פחות מהכמות הזו. ילדים 3–7 לפי מחיר ילד, תינוקות 0–3 חינם. 0 = בלי מינימום.',
+    /** Beside the minimum field. The minimum counts adults only (docs/child-age-pricing-PRD.md). */
+    attendingSoFar: (adults: number, children: number, infants: number) =>
+      `מאשרים עד כה: ${adults} מבוגרים · ${children} ילדים (3–7) · ${infants} תינוקות (0–3)`,
     invalidMinGuests: 'כמות לא תקינה — מספר שלם, 0 ומעלה',
     minGuestsSaved: 'כמות ההתחייבות נשמרה',
   },

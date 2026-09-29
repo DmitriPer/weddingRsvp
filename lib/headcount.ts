@@ -17,14 +17,20 @@ import type { Answer, Attendee, Headcount } from '@/lib/types'
 export function countAttending(attendees: Attendee[]): Headcount {
   let adults = 0
   let kids = 0
+  let infants = 0
 
   for (const person of attendees) {
     if (!person.is_attending) continue
-    if (person.is_child) kids++
-    else adults++
+    if (!person.is_child) adults++
+    else {
+      kids++
+      // An infant is still a child (kids); `infants` is the 0–3 subset the
+      // budget prices at zero (docs/child-age-pricing-PRD.md).
+      if (person.is_infant) infants++
+    }
   }
 
-  return { adults, kids, total: adults + kids }
+  return { adults, kids, infants, total: adults + kids }
 }
 
 /**
@@ -40,7 +46,7 @@ export function countAttending(attendees: Attendee[]): Headcount {
  * outlive them.
  */
 export function countAttendingAnswered(answer: Answer | null, attendees: Attendee[]): Headcount {
-  return answer === 'yes' ? countAttending(attendees) : { adults: 0, kids: 0, total: 0 }
+  return answer === 'yes' ? countAttending(attendees) : { adults: 0, kids: 0, infants: 0, total: 0 }
 }
 
 /**
@@ -163,9 +169,10 @@ export function sumHeadcounts(counts: Headcount[]): Headcount {
     (total, one) => ({
       adults: total.adults + one.adults,
       kids: total.kids + one.kids,
+      infants: total.infants + one.infants,
       total: total.total + one.total,
     }),
-    { adults: 0, kids: 0, total: 0 }
+    { adults: 0, kids: 0, infants: 0, total: 0 }
   )
 }
 
