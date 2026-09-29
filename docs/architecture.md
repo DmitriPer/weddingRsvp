@@ -28,6 +28,11 @@ app/
     (no responses/ or stats/ tabs: stats are tiles on the invitees
      page, history is a modal from a guest's row)
 
+  games/                            admin-only, own shell (docs/games-bingo-PRD.md)
+    layout.tsx                      vertical game list + card fonts (next/font)
+    page.tsx                        redirects to /games/bingo
+    bingo/page.tsx                  squares + printable A5 cards
+
   api/
     rsvp/route.ts                   POST   guest submission
     invites/route.ts                GET    list · POST create
@@ -42,6 +47,8 @@ app/
     tables/[id]/route.ts            PATCH · DELETE
     config/route.ts                 GET · PATCH
     stats/route.ts                  GET
+    bingo-squares/route.ts          GET · POST
+    bingo-squares/[id]/route.ts     PATCH · DELETE
     assets/route.ts                 POST   upload to Storage
 
 components/
@@ -68,6 +75,14 @@ components/
     export-button.tsx
     history-modal.tsx
     stats-panel.tsx
+
+  games/
+    games-nav.tsx                   the vertical game list
+    bingo-game.tsx                  state owner: squares + optimistic edits
+    bingo-square-editor.tsx         he/ru square list, per-cell save
+    bingo-board.tsx                 count · language · shuffle · print
+    bingo-card.tsx                  one printed card
+    bingo-card.module.css           the card's print geometry, ported as-is
     config-form.tsx
     template-editor.tsx             three templates + live preview
     asset-uploader.tsx
@@ -105,7 +120,7 @@ lib/
     mock/{store,seed,index}.ts
     supabase/index.ts
 
-proxy.ts                            gates /admin/* — lock #1
+proxy.ts                            gates /admin/* and /games/* — lock #1
 scripts/create-admin.ts             one-off; the only way an account exists
 supabase/migrations/*.sql
 ```

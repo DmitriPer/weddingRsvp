@@ -16,8 +16,11 @@ import { nowIso } from '@/lib/datetime'
 import { isUuid } from '@/lib/validation'
 import type {
   Attendee,
+  BingoSquare,
   BudgetItem,
   CreateAttendeeInput,
+  CreateBingoSquareInput,
+  UpdateBingoSquareInput,
   CreateBudgetItemInput,
   UpdateBudgetItemInput,
   CreateInviteInput,
@@ -513,6 +516,60 @@ export const supabaseStore: DataStore = {
     // Nothing references a budget item, so this cascades to nothing.
     const { data, error } = await db.from('budget_items').delete().eq('id', id).select('id')
     if (error) throw new Error(`delete budget item: ${error.message}`)
+    return (data?.length ?? 0) > 0
+  },
+
+  /*
+   * Bingo squares (docs/games-bingo-PRD.md §4). Same ordering rule as budget
+   * items: sort_order, then created_at so same-order rows never reshuffle.
+   */
+  async listBingoSquares(): Promise<BingoSquare[]> {
+    const db = createAdminClient()
+    return unwrap(
+      await db
+        .from('bingo_squares')
+        .select('*')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+      'list bingo squares'
+    ) as BingoSquare[]
+  },
+
+  async createBingoSquare(input: CreateBingoSquareInput): Promise<BingoSquare> {
+    const db = createAdminClient()
+    return unwrap(
+      await db
+        .from('bingo_squares')
+        .insert({
+          text_he: input.text_he,
+          text_ru: input.text_ru,
+          sort_order: input.sort_order ?? 0,
+        })
+        .select()
+        .single(),
+      'create bingo square'
+    ) as BingoSquare
+  },
+
+  async updateBingoSquare(id, input: UpdateBingoSquareInput): Promise<BingoSquare | null> {
+    if (!isUuid(id)) return null
+    const db = createAdminClient()
+    const { data, error } = await db
+      .from('bingo_squares')
+      .update(input)
+      .eq('id', id)
+      .select()
+      .maybeSingle()
+    if (error) throw new Error(`update bingo square: ${error.message}`)
+    return (data as BingoSquare) ?? null
+  },
+
+  async deleteBingoSquare(id): Promise<boolean> {
+    if (!isUuid(id)) return false
+    const db = createAdminClient()
+    // Nothing references a square, so this cascades to nothing.
+    const { data, error } = await db.from('bingo_squares').delete().eq('id', id).select('id')
+    if (error) throw new Error(`delete bingo square: ${error.message}`)
     return (data?.length ?? 0) > 0
   },
 
