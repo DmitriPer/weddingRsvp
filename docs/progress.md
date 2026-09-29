@@ -391,6 +391,14 @@ Spec: `docs/budget-mobile-PRD.md`. No migration, no data or API change.
 
 Below `md` each budget line is a card instead of a table row: name, then kind · pricing, amount · paid, full price · to pay, then delete. Each field is labelled because the header is hidden. The desktop table is unchanged. Inputs are 16px on phones so iOS doesn't zoom on focus, buttons are 44px tall, and the totals' main figure drops one size below `sm`.
 
+## 5j. Budget — committed minimum guests, 2026-09-29
+
+Spec: `docs/budget-min-guests-PRD.md`.
+
+**⚠️ Needs migration `016_budget_min_guests.sql`, run in the Supabase SQL editor.** It adds `wedding_config.budget_min_guests` (int, default 120, ≥ 0). Until it runs, the page calculates with 120 and saving the field fails.
+
+A per-guest **expense** is now billed for `max(approved, כמות התחייבות)`, where approved means adults and kids who said yes. Per-guest income uses the approved count and is never floored. The "everyone invited" planning basis is gone: one figure per line and per tile, and `BudgetLine` / `BudgetTotals` lost their planned/confirmed pairs. The minimum is one global field above the tiles, saved through `PATCH /api/config`.
+
 ## 6. Known issues
 
 - **⚠️ `wedding_config.wedding_date_time` is a PLACEHOLDER: `2026-10-08T16:00:00Z` = 19:00 Israel time.** Set on 2026-07-30 only so the הוספה ליומן button would render — the real ceremony time was not known, and the invitation artwork still shows `00:00`. **Every guest who taps הוספה ליומן gets this time in their calendar.** Fix it before a single invitation goes out.

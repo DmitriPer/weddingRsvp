@@ -400,26 +400,12 @@ export const strings = {
     /** On the amount cell of a per-guest row, so the unit is never in doubt. */
     perPersonUnit: 'לאדם',
 
-    /** The small figure under a per-guest line: what the RSVPs so far commit to. */
-    confirmedNote: (formatted: string) => `${formatted} מאושר`,
-    /** Nobody has answered yet, so the confirmed column is honestly nothing. */
-    noneConfirmed: 'אין עדיין אישורים',
-
     tiles: {
       expenses: 'סה״כ הוצאות',
       income: 'סה״כ הכנסות',
       balance: 'מאזן',
       toPay: 'נותר לשלם',
     },
-    /**
-     * Under every tile: the same total if everyone invited comes.
-     *
-     * The tiles lead with the CONFIRMED figure, so this names the other basis.
-     * Phrased as a condition rather than "לפי מוזמנים", for the reason above:
-     * naming the count reads as a filter, where what the reader needs is which
-     * number they can rely on.
-     */
-    plannedTile: (formatted: string) => `${formatted} אם כולם יגיעו`,
     /** Spelled out, because "מאזן" alone doesn't say which way is good. */
     balanceHint: 'הכנסות פחות הוצאות',
 
@@ -440,9 +426,12 @@ export const strings = {
     empty: 'אין עדיין שורות בתקציב',
     emptyHint: 'הוסיפו הוצאה או הכנסה ראשונה למטה.',
 
-    /** Per-guest lines multiply by the invited count until answers arrive. */
-    basis: (invited: number, attending: number) =>
-      `מחיר לפי אורח מוכפל ב-${invited} מוזמנים (${attending} אישרו עד כה).`,
+    /** כמות התחייבות (docs/budget-min-guests-PRD.md). */
+    minGuests: 'כמות התחייבות',
+    minGuestsHint: 'מחיר לפי אורח מחושב לפי מספר המאשרים, ולא פחות מהכמות הזו. 0 = בלי מינימום.',
+    attendingSoFar: (count: number) => `מאשרים עד כה: ${count}`,
+    invalidMinGuests: 'כמות לא תקינה — מספר שלם, 0 ומעלה',
+    minGuestsSaved: 'כמות ההתחייבות נשמרה',
   },
 
   /** The /games area (docs/games-bingo-PRD.md §3.1). */

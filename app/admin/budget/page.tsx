@@ -1,19 +1,21 @@
 /**
- * Budget tab — expenses and income (PRD §6.22).
+ * Budget tab — expenses and income (PRD §6.22, docs/budget-min-guests-PRD.md).
  *
- * Reads the lines and the guest list, works out the totals, and renders. The
- * guest list is needed because a per-guest line's price is multiplied by the
- * headcount, and this page must never count anyone itself: the numbers come
- * from computeStats -> lib/headcount.ts, the single definition of "attending".
+ * Reads the lines, the guest list and the committed minimum, works out the
+ * totals, and renders. The guest list is needed because a per-guest line's
+ * price is multiplied by the headcount, and this page must never count anyone
+ * itself: the number comes from computeStats -> lib/headcount.ts, the single
+ * definition of "attending".
  */
 
 import { redirect } from 'next/navigation'
 import { verifyAdmin } from '@/lib/auth'
-import { listBudgetItems, listInvites } from '@/lib/data'
-import { computeBudgetTotals, type BudgetHeadcounts } from '@/lib/budget'
+import { getConfig, listBudgetItems, listInvites } from '@/lib/data'
+import { DEFAULT_MIN_GUESTS, computeBudgetTotals, type BudgetBasis } from '@/lib/budget'
 import { computeStats } from '@/lib/stats'
 import { BudgetTable } from '@/components/admin/budget-table'
 import { BudgetTotalsBar } from '@/components/admin/budget-totals'
+import { BudgetMinGuestsField } from '@/components/admin/budget-min-guests-field'
 import { strings } from '@/lib/strings'
 
 export const dynamic = 'force-dynamic'
@@ -23,16 +25,16 @@ export default async function BudgetPage() {
   // the page safe even if the matcher is ever misconfigured.
   if (!(await verifyAdmin())) redirect('/admin/login')
 
-  const [items, invites] = await Promise.all([listBudgetItems(), listInvites()])
+  const [items, invites, config] = await Promise.all([listBudgetItems(), listInvites(), getConfig()])
 
-  const stats = computeStats(invites)
-  const headcounts: BudgetHeadcounts = {
-    // People, not invitations: a caterer charges per plate.
-    invited: stats.totalInvitedPeople,
-    attending: stats.totalAttending,
+  const basis: BudgetBasis = {
+    // People, not invitations: a caterer charges per plate. Adults and kids.
+    attending: computeStats(invites).totalAttending,
+    // Undefined only before migration 016 runs; the column's own default is the same 120.
+    minGuests: config.budget_min_guests ?? DEFAULT_MIN_GUESTS,
   }
 
-  const totals = computeBudgetTotals(items, headcounts)
+  const totals = computeBudgetTotals(items, basis)
 
   return (
     // Kept at its previous width; only the invitee and seating pages widened.
@@ -42,10 +44,12 @@ export default async function BudgetPage() {
         <p className="text-sm text-muted">{strings.budget.hint}</p>
       </div>
 
+      <BudgetMinGuestsField value={basis.minGuests} attending={basis.attending} />
+
       <BudgetTotalsBar totals={totals} />
 
       {/* The empty state lives inside the table, so the add row is always there. */}
-      <BudgetTable items={items} headcounts={headcounts} />
+      <BudgetTable items={items} basis={basis} />
     </div>
   )
 }

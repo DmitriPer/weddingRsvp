@@ -1,6 +1,6 @@
 /**
- * The budget's arithmetic (PRD §6.22). Pure — items and headcounts in,
- * numbers out.
+ * The budget's arithmetic (PRD §6.22, docs/budget-min-guests-PRD.md). Pure —
+ * items and a headcount basis in, numbers out.
  *
  * This is the ONLY place a full price or a remaining balance is worked out,
  * for the same reason lib/headcount.ts is the only place people are counted:
@@ -18,22 +18,42 @@
 
 import type { BudgetItem, BudgetLine, BudgetTotals } from '@/lib/types'
 
+/** Used until migration 016 has run and the config row carries its own value. */
+export const DEFAULT_MIN_GUESTS = 120
+
 /**
- * The two headcounts a per-guest line can be multiplied by.
+ * What a per-guest line is multiplied by.
  *
- * `invited` is everyone on the list — the planning figure, usable before a
- * single answer arrives. `attending` is the confirmed headcount, which is 0
- * until people start responding. Both come from lib/stats.ts, which gets them
- * from lib/headcount.ts; this module never counts anyone itself.
+ * `attending` is everyone who said yes, adults and kids, from lib/stats.ts via
+ * lib/headcount.ts — this module never counts anyone itself. `minGuests` is
+ * כמות התחייבות, the number the venue bills no matter the turnout.
+ *
+ * There is deliberately no "everyone invited" figure any more: the contract
+ * minimum replaces it as the planning floor.
  */
-export interface BudgetHeadcounts {
-  invited: number
+export interface BudgetBasis {
   attending: number
+  minGuests: number
+}
+
+/**
+ * The people a per-guest line is billed for.
+ *
+ * An EXPENSE is billed for the approved count but never below the minimum:
+ * 100 approved with a 120 minimum pays for 120; 125 approved pays for 125.
+ *
+ * INCOME is never floored: a per-guest income line (a gift estimate, say)
+ * counts the people actually coming. Flooring it would book 20 phantom
+ * guests' gifts against the real bill.
+ */
+function billedGuests(item: BudgetItem, basis: BudgetBasis): number {
+  if (item.kind === 'income') return basis.attending
+  return Math.max(basis.attending, basis.minGuests)
 }
 
 /** A flat line ignores the headcount entirely — that is the whole distinction. */
-function fullPrice(item: BudgetItem, headcount: number): number {
-  return item.pricing === 'per_person' ? item.amount * headcount : item.amount
+function fullPrice(item: BudgetItem, basis: BudgetBasis): number {
+  return item.pricing === 'per_person' ? item.amount * billedGuests(item, basis) : item.amount
 }
 
 /**
@@ -48,22 +68,13 @@ function toPay(full: number, paidInAdvance: number): number {
   return Math.max(0, full - paidInAdvance)
 }
 
-/** One line, resolved on both bases. */
-export function budgetLine(item: BudgetItem, headcounts: BudgetHeadcounts): BudgetLine {
-  const plannedFull = fullPrice(item, headcounts.invited)
-  const confirmedFull = fullPrice(item, headcounts.attending)
-
-  return {
-    item,
-    plannedFull,
-    confirmedFull,
-    plannedToPay: toPay(plannedFull, item.paid_in_advance),
-    confirmedToPay: toPay(confirmedFull, item.paid_in_advance),
-  }
+export function budgetLine(item: BudgetItem, basis: BudgetBasis): BudgetLine {
+  const full = fullPrice(item, basis)
+  return { item, full, toPay: toPay(full, item.paid_in_advance) }
 }
 
-export function budgetLines(items: BudgetItem[], headcounts: BudgetHeadcounts): BudgetLine[] {
-  return items.map((item) => budgetLine(item, headcounts))
+export function budgetLines(items: BudgetItem[], basis: BudgetBasis): BudgetLine[] {
+  return items.map((item) => budgetLine(item, basis))
 }
 
 /**
@@ -73,46 +84,19 @@ export function budgetLines(items: BudgetItem[], headcounts: BudgetHeadcounts): 
  * money you are owed, not money you owe, and adding the two together would
  * produce a number that means nothing.
  */
-export function computeBudgetTotals(
-  items: BudgetItem[],
-  headcounts: BudgetHeadcounts
-): BudgetTotals {
-  let plannedExpenses = 0
-  let confirmedExpenses = 0
-  let plannedIncome = 0
-  let confirmedIncome = 0
-  let plannedToPay = 0
-  let confirmedToPay = 0
+export function computeBudgetTotals(items: BudgetItem[], basis: BudgetBasis): BudgetTotals {
+  let expenses = 0
+  let income = 0
+  let owed = 0
 
-  for (const line of budgetLines(items, headcounts)) {
+  for (const line of budgetLines(items, basis)) {
     if (line.item.kind === 'expense') {
-      plannedExpenses += line.plannedFull
-      confirmedExpenses += line.confirmedFull
-      plannedToPay += line.plannedToPay
-      confirmedToPay += line.confirmedToPay
+      expenses += line.full
+      owed += line.toPay
     } else {
-      plannedIncome += line.plannedFull
-      confirmedIncome += line.confirmedFull
+      income += line.full
     }
   }
 
-  return {
-    plannedExpenses,
-    confirmedExpenses,
-    plannedIncome,
-    confirmedIncome,
-    plannedBalance: plannedIncome - plannedExpenses,
-    confirmedBalance: confirmedIncome - confirmedExpenses,
-    plannedToPay,
-    confirmedToPay,
-  }
-}
-
-/**
- * Whether a line's two bases differ — i.e. whether showing the second figure
- * tells the reader anything. False for every flat line, and also for a
- * per-guest line once the confirmed headcount reaches the invited one.
- */
-export function hasDistinctBases(line: BudgetLine): boolean {
-  return line.plannedFull !== line.confirmedFull
+  return { expenses, income, balance: income - expenses, toPay: owed }
 }
