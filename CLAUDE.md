@@ -17,7 +17,7 @@ This is a **greenfield rebuild**, started 2026-07-30 as an orphan branch with no
 | `docs/architecture.md` | File tree, module responsibilities, request flows. |
 | `docs/conventions.md` | How code is written here. Small functions, layering, single source of truth. |
 | `docs/setup-database.md` | Creating the Supabase project and running migrations. |
-| `docs/*-PRD.md` | Per-feature specs, same shape as the master PRD: `admin-ui-pass`, `seating-order-filters`, `seating-unseated-grouping`, `site-export`, `whatsapp-rounds`, `games-bingo`, `budget-mobile`, `budget-min-guests`, `error-loading`, `small-fixes`, `wedding-photos` (parked draft). |
+| `docs/*-PRD.md` | Per-feature specs, same shape as the master PRD: `admin-ui-pass`, `seating-order-filters`, `seating-unseated-grouping`, `site-export`, `whatsapp-rounds`, `games-bingo`, `budget-mobile`, `budget-min-guests`, `error-loading`, `small-fixes`, `wedding-photos`. |
 
 `docs/project-explainer.html` still describes the *old* app — historical until regenerated.
 

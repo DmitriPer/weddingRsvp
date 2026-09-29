@@ -16,6 +16,7 @@ const TABS = [
   { href: '/admin', label: strings.admin.tabs.invitees },
   { href: '/admin/seating', label: strings.admin.tabs.seating },
   { href: '/admin/budget', label: strings.admin.tabs.budget },
+  { href: '/admin/photos', label: strings.admin.tabs.photos },
   { href: '/admin/settings', label: strings.admin.tabs.settings },
   // Leaves the /admin shell for its own (docs/games-bingo-PRD.md §3.1).
   { href: '/games', label: strings.admin.tabs.games },

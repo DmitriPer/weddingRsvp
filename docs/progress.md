@@ -421,6 +421,33 @@ Spec: `docs/small-fixes-PRD.md`. No migration.
 - **Bulk-delete confirm** counts every person row, +1s included (`countPeopleRows`).
 - **Phone warning** under the field in the add and edit forms when `normalisePhone` doesn't recognise the number. It still saves.
 
+## 5m. Wedding photos: QR upload into Google Drive, 2026-09-29
+
+Spec: `docs/wedding-photos-PRD.md`.
+
+**⚠️ Needs, before the wedding:**
+- migration `017_wedding_photos.sql`: `wedding_photos`, the one-row `google_drive`, and the key/switch columns on `wedding_config`;
+- the **Google Cloud setup in spec §7**, including `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env.local` and Vercel;
+- a real-phone test.
+
+**Guest side.** `/photos?k=<key>` is public and gated by the key and the switch.
+- The phone resizes each photo (`lib/image-resize.ts`: 3200px, ≤ 4 MB, EXIF and GPS stripped).
+- Each photo is one POST to `/api/photos/upload`, which uploads it into Drive (`lib/google-drive.ts`, plain fetch, scope `drive.file`) and records a `wedding_photos` row.
+- 3 uploads run at a time, with a retry per file. Hebrew by default, with a Русский toggle.
+
+**Admin side.** The "תמונות" tab has:
+- a Drive card: connect, open the folder, disconnect, or reconnect when the live check fails;
+- the QR code (SVG from `qrcode`, server-side) with a print layout;
+- the open switch, which can't open without Drive;
+- "מפתח חדש";
+- a counter.
+
+The connect flow is `/api/google/connect` → `/api/google/callback`, with a state cookie. The refresh token lives only in `google_drive`.
+
+**History:** a first version stored photos in a private Supabase bucket, with a gallery and a ZIP. It was replaced by Drive before it was committed or migrated.
+
+**On the night:** open the switch. Close it afterwards.
+
 ## 6. Known issues
 
 As of 2026-09-29, with the site live:

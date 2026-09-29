@@ -30,9 +30,12 @@ app/
     login/page.tsx                  the only way in; excluded from proxy matcher
     seating/page.tsx                tables, floor plan, who sits where
     budget/page.tsx                 expenses and income + totals
+    photos/page.tsx                 Drive card, QR code, open switch, counter
     settings/page.tsx               wedding details, templates, invitation images
     (no responses/ or stats/ tabs: stats are tiles on the invitees
      page, history is a modal from a guest's row)
+
+  photos/page.tsx                   PUBLIC guest upload page, gated by ?k= (docs/wedding-photos-PRD.md)
 
   games/                            admin-only, own shell (docs/games-bingo-PRD.md)
     layout.tsx                      vertical game list + card fonts (next/font)
@@ -64,6 +67,11 @@ app/
     budget/[id]/route.ts            PATCH · DELETE
     bingo-squares/route.ts          GET · POST
     bingo-squares/[id]/route.ts     PATCH · DELETE
+    photos/key/route.ts             POST   admin — regenerate the QR key
+    photos/upload/route.ts          POST   PUBLIC (QR key) — one photo into Google Drive
+    google/connect/route.ts         GET    admin — start the Drive OAuth (state cookie)
+    google/callback/route.ts        GET    admin — store the token, create/reuse the folder
+    google/disconnect/route.ts      POST   admin — forget the token, close uploads
 
 components/
   guest/
@@ -77,6 +85,7 @@ components/
     wedding-details.tsx             date, time, venue (pre-formatted text)
     action-bar.tsx                  RSVP · navigate · add to calendar
     mark-opened.tsx                 client component; fires the opened call
+    photo-uploader.tsx              QR upload page: resize, 3 parallel uploads, he/ru toggle
 
   admin/
     admin-tabs.tsx                  tab navigation + games link
@@ -100,6 +109,7 @@ components/
     budget-table.tsx                budget lines, edited in place
     budget-totals.tsx               the four budget tiles
     budget-min-guests-field.tsx     committed minimum guest count
+    photo-controls.tsx              Drive card, QR card + print sheet, open switch, new key
 
   games/
     games-nav.tsx                   the vertical game list
@@ -133,6 +143,10 @@ lib/
   budget.ts                         budget arithmetic — the only place
   money.ts                          agorot parse / format
   bingo.ts                          seeded card dealing
+  photos.ts                         upload limits, key/switch gate, rate limit
+  image-resize.ts                   browser: resize on the phone (≤ 4 MB), strips EXIF/GPS
+  photo-upload.ts                   browser: one XHR POST per photo, with progress
+  google-drive.ts                   server-only: OAuth, token cache, folder, multipart upload
   venue.ts                          display venue vs navigation venue
   invitation-image.ts               backdrop URL per language
   calendar.ts                       THE .ics builder
@@ -433,6 +447,7 @@ Callers use `listInvites()`, `submitRsvp()` and the like. They never see a Supab
 | §6.9 wa.me | `wa-send-button.tsx` + `/api/invites/[id]/contacted` |
 | WhatsApp rounds (`docs/whatsapp-rounds-PRD.md`) | `lib/send-kinds.ts` |
 | §6.11 stats | `lib/stats.ts` |
+| Wedding photos (docs/wedding-photos-PRD.md) | `app/photos` + `components/guest/photo-uploader.tsx` · `app/admin/photos` + `photo-controls` · `lib/photos.ts` + `lib/google-drive.ts` · `app/api/photos/*`, `app/api/google/*` |
 | §6.15 OG + opened | `lib/og.ts` + `scripts/build-og-card.ts` + `generateMetadata` in `app/page.tsx` + `mark-opened.tsx` |
 | §6.16 invitation images | `lib/invitation-image.ts` + `/api/config/image` + `invitation-image-form.tsx` |
 | §6.17 seating | `app/admin/seating` + `lib/seating.ts` + `components/admin/seating-*.tsx` |

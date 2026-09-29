@@ -11,6 +11,8 @@
 
 import type {
   Attendee,
+  DriveConnection,
+  WeddingPhoto,
   BingoSquare,
   BudgetItem,
   CreateBingoSquareInput,
@@ -147,4 +149,17 @@ export interface DataStore {
    * holds no business rules, it does what it's told.
    */
   deleteInvitationImage(language: Language, path: string): Promise<void>
+
+  // --- guest photos → Google Drive (docs/wedding-photos-PRD.md) --------------
+  /** The single Drive connection, or null. Holds a credential: server-only. */
+  getDriveConnection(): Promise<DriveConnection | null>
+  saveDriveConnection(input: Omit<DriveConnection, 'connected_at'>): Promise<void>
+  clearDriveConnection(): Promise<void>
+  /** Books a photo that has already reached Drive. */
+  recordPhoto(driveFileId: string, uploaderName: string, sizeBytes: number): Promise<WeddingPhoto>
+  /** Photos recorded in the last `seconds` — the global rate limit. */
+  countRecentPhotos(seconds: number): Promise<number>
+  photoStats(): Promise<{ count: number; bytes: number }>
+  /** A new random QR key; every printed QR code stops working. */
+  regeneratePhotoKey(): Promise<WeddingConfig>
 }

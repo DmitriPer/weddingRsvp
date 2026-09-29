@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { badRequest, fromThrown, ok, readJson, unauthorized } from '@/lib/api'
 import { verifyAdmin } from '@/lib/auth'
-import { getConfig, updateConfig } from '@/lib/data'
+import { getConfig, getDriveConnection, updateConfig } from '@/lib/data'
 import type { WeddingConfig } from '@/lib/types'
 
 const EDITABLE_FIELDS = [
@@ -20,6 +20,7 @@ const EDITABLE_FIELDS = [
   'thank_you_message_template_he',
   'thank_you_message_template_ru',
   'budget_min_guests',
+  'photo_upload_open',
 ] as const
 
 export async function GET() {
@@ -62,6 +63,17 @@ export async function PATCH(request: NextRequest) {
         if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
           return badRequest(`${field} must be a whole number of zero or more`)
         }
+        update[field] = value
+        continue
+      }
+
+      // The photo upload switch (migration 017). The key beside it is NOT in
+      // this allow-list: it is only ever regenerated, via /api/photos/key.
+      if (field === 'photo_upload_open') {
+        if (typeof value !== 'boolean') return badRequest(`${field} must be true or false`)
+        // Opening with no Drive connected would fail every guest's photo on
+        // the night. Refused here, not only hidden in the UI.
+        if (value && !(await getDriveConnection())) return badRequest('Connect Google Drive first')
         update[field] = value
         continue
       }

@@ -18,6 +18,8 @@ import { isUuid } from '@/lib/validation'
 import type {
   Answer,
   Attendee,
+  DriveConnection,
+  WeddingPhoto,
   BingoSquare,
   BudgetItem,
   CreateAttendeeInput,
@@ -649,6 +651,84 @@ export const supabaseStore: DataStore = {
     const db = createAdminClient()
     const { error } = await db.storage.from('assets').remove([path])
     if (error) throw new Error(`delete invitation image: ${error.message}`)
+  },
+
+  /*
+   * Guest photos (docs/wedding-photos-PRD.md). The photos live in Google
+   * Drive; this only keeps the connection and the bookkeeping rows.
+   */
+  async getDriveConnection(): Promise<DriveConnection | null> {
+    const db = createAdminClient()
+    const { data, error } = await db
+      .from('google_drive')
+      .select('refresh_token, folder_id, account_email, connected_at')
+      .eq('id', true)
+      .maybeSingle()
+    if (error) throw new Error(`load drive connection: ${error.message}`)
+    return (data as DriveConnection) ?? null
+  },
+
+  async saveDriveConnection(input): Promise<void> {
+    const db = createAdminClient()
+    const { error } = await db
+      .from('google_drive')
+      .upsert({ id: true, ...input, connected_at: nowIso() }, { onConflict: 'id' })
+    if (error) throw new Error(`save drive connection: ${error.message}`)
+  },
+
+  async clearDriveConnection(): Promise<void> {
+    const db = createAdminClient()
+    const { error } = await db.from('google_drive').delete().eq('id', true)
+    if (error) throw new Error(`clear drive connection: ${error.message}`)
+  },
+
+  async recordPhoto(driveFileId, uploaderName, sizeBytes): Promise<WeddingPhoto> {
+    const db = createAdminClient()
+    return unwrap(
+      await db
+        .from('wedding_photos')
+        .insert({ drive_file_id: driveFileId, uploader_name: uploaderName, size_bytes: sizeBytes })
+        .select()
+        .single(),
+      'record photo'
+    ) as WeddingPhoto
+  },
+
+  async countRecentPhotos(seconds): Promise<number> {
+    const db = createAdminClient()
+    const since = new Date(Date.now() - seconds * 1000).toISOString()
+    const { count, error } = await db
+      .from('wedding_photos')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', since)
+    if (error) throw new Error(`count recent photos: ${error.message}`)
+    return count ?? 0
+  },
+
+  async photoStats(): Promise<{ count: number; bytes: number }> {
+    const db = createAdminClient()
+    // PostgREST caps a response at 1000 rows and has no SUM without enabling
+    // aggregates, so sizes are read a page at a time. A few thousand at most.
+    let bytes = 0
+    let count = 0
+    for (let from = 0; ; from += 1000) {
+      const page = unwrap(
+        await db
+          .from('wedding_photos')
+          .select('size_bytes')
+          .order('id')
+          .range(from, from + 999),
+        'photo stats'
+      ) as { size_bytes: number }[]
+      count += page.length
+      bytes += page.reduce((sum, row) => sum + row.size_bytes, 0)
+      if (page.length < 1000) break
+    }
+    return { count, bytes }
+  },
+
+  async regeneratePhotoKey(): Promise<WeddingConfig> {
+    return this.updateConfig({ photo_upload_key: crypto.randomUUID() })
   },
 }
 

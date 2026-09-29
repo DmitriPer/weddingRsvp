@@ -191,6 +191,11 @@ export interface WeddingConfig {
   /** Migration 016. כמות התחייבות: per-guest expenses bill max(approved, this).
       0 = no minimum. Edited on the budget page. */
   budget_min_guests: number
+  /** Migration 017 (docs/wedding-photos-PRD.md). The QR code's secret; the only
+      gate on the public upload page. Regenerated from admin, never edited. */
+  photo_upload_key: string
+  /** Manual switch: uploads are refused while false. Closed by default. */
+  photo_upload_open: boolean
   updated_at: string
 }
 
@@ -278,6 +283,33 @@ export interface CreateBingoSquareInput {
 }
 
 export type UpdateBingoSquareInput = Partial<CreateBingoSquareInput>
+
+/** One guest photo that reached Google Drive (docs/wedding-photos-PRD.md §6). */
+export interface WeddingPhoto {
+  id: string
+  drive_file_id: string
+  uploader_name: string
+  size_bytes: number
+  created_at: string
+}
+
+/**
+ * The single Drive connection. `refresh_token` is a credential: server-only,
+ * never serialised to a Client Component — use DriveStatus for the browser.
+ */
+export interface DriveConnection {
+  refresh_token: string
+  folder_id: string
+  account_email: string
+  connected_at: string
+}
+
+/** What admin shows about the connection. Safe to send to the browser. */
+export type DriveStatus =
+  | { state: 'disconnected' }
+  | { state: 'connected'; email: string; folderUrl: string }
+  /** The token was revoked or expired; uploads fail until reconnected. */
+  | { state: 'broken'; email: string }
 
 export interface InviteWithPeople extends Invite {
   attendees: Attendee[]
