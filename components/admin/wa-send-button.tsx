@@ -24,12 +24,14 @@
  * one action this screen exists for.
  */
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import { toast } from 'sonner'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import { buildWhatsAppLink } from '@/lib/links'
 import { renderForInvite } from '@/lib/templates'
 import { formatShort } from '@/lib/datetime'
+import { jsonInit, requestJson } from '@/lib/request'
 import { sendBlock, templateFor, type SendKind } from '@/lib/send-kinds'
 import { strings } from '@/lib/strings'
 import type { Invite, WeddingConfig } from '@/lib/types'
@@ -42,10 +44,9 @@ export function WaSendButton({
   invite: Invite
   config: WeddingConfig
   kind?: SendKind
-}) {
-  const router = useRouter()
+}): React.JSX.Element {
   const [asking, setAsking] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const record = useAction()
 
   const label = kind === 'invite' ? 'WhatsApp' : `WhatsApp · ${strings.actions.sendKindShort[kind]}`
 
@@ -72,25 +73,29 @@ export function WaSendButton({
     ? `\n${strings.actions.lastContacted(formatShort(invite.last_contacted_at))}`
     : ''
 
-  async function confirmSent() {
-    setSaving(true)
+  function confirmSent() {
+    if (record.pending) return
     // The server decides what this records (lib/send-kinds.ts): only an
     // invitation or a reminder counts as an attempt.
-    const response = await fetch(`/api/invites/${invite.id}/contacted`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ template: kind }),
-    })
-    const body = await response.json()
-    setSaving(false)
-    setAsking(false)
-
-    if (!body.success) {
-      toast.error(body.error || strings.row.saveFailed)
-      return
-    }
-    toast.success(strings.actions.recorded)
-    router.refresh()
+    //
+    // The prompt closes as a transition inside the action, so it goes away
+    // together with the refresh — the row then already shows the new count
+    // and status, never the stale ones.
+    record.run(
+      async () => {
+        await requestJson(
+          `/api/invites/${invite.id}/contacted`,
+          jsonInit('POST', { template: kind }),
+          strings.row.saveFailed
+        )
+        startTransition(() => setAsking(false))
+      },
+      {
+        success: strings.actions.recorded,
+        failure: strings.row.saveFailed,
+        onError: () => setAsking(false),
+      }
+    )
   }
 
   function declineSent() {
@@ -107,16 +112,18 @@ export function WaSendButton({
         <button
           type="button"
           onClick={confirmSent}
-          disabled={saving}
-          className="rounded bg-accent px-1.5 py-0.5 text-white disabled:opacity-60"
+          disabled={record.pending}
+          aria-busy={record.pending}
+          className="inline-flex items-center gap-1 rounded bg-accent px-1.5 py-0.5 text-white disabled:opacity-60"
         >
+          {record.pending ? <Spinner /> : null}
           {strings.actions.yesSent}
         </button>
         <button
           type="button"
           onClick={declineSent}
-          disabled={saving}
-          className="rounded border border-border px-1.5 py-0.5 hover:bg-surface"
+          disabled={record.pending}
+          className="rounded border border-border px-1.5 py-0.5 hover:bg-surface disabled:opacity-60"
         >
           {strings.actions.notSent}
         </button>

@@ -11,9 +11,13 @@ export const strings = {
     title: 'אישורי הגעה',
     loading: 'טוען…',
     error: 'משהו השתבש',
+    /** Under the error screen: matches the entry in the server logs. */
+    errorCode: (digest: string) => `קוד שגיאה: ${digest}`,
     retry: 'נסו שוב',
     save: 'שמירה',
     saving: 'שומר…',
+    /** Busy label on any delete button (docs/error-loading-PRD.md §4). */
+    deleting: 'מוחק…',
     cancel: 'ביטול',
     close: 'סגירה',
     delete: 'מחיקה',
@@ -35,6 +39,26 @@ export const strings = {
         screen, so it names the actual cause instead of being vague. */
     notConfigured: 'החיבור ל-Supabase לא מוגדר בשרת. יש להגדיר את משתני הסביבה ולפרוס מחדש.',
     signInFailed: 'לא הצלחנו להתחבר לשרת. בדקו את החיבור ונסו שוב.',
+  },
+
+  /**
+   * The guest-facing error and loading screens (docs/error-loading-PRD.md).
+   * Shown in BOTH languages at once: they render when the page itself failed,
+   * so the household — and with it the language — may never have loaded.
+   */
+  fallback: {
+    he: {
+      title: 'משהו השתבש',
+      body: 'נסו שוב בעוד רגע.',
+      retry: 'נסו שוב',
+      loading: 'טוען…',
+    },
+    ru: {
+      title: 'Что-то пошло не так',
+      body: 'Попробуйте ещё раз через минуту.',
+      retry: 'Попробовать снова',
+      loading: 'Загрузка…',
+    },
   },
 
   admin: {
@@ -221,6 +245,9 @@ export const strings = {
 
   /** The seating board (PRD §6.17). */
   seating: {
+    /** Busy labels while people are being seated (docs/error-loading-PRD.md §4.2). */
+    placing: (count: number) => `מושיב ${count}…`,
+    unseating: (count: number) => `מוריד ${count}…`,
     title: 'סידור שולחנות',
     hint: 'בוחרים אנשים מהרשימה ולוחצים על שולחן. לחיצה על אדם שכבר יושב מסירה אותו.',
 

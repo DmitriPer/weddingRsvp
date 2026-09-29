@@ -13,11 +13,16 @@
  * The glyph beside each name is that person's OWN answer, not the tick. A tick
  * only means "coming" once the household has said it is coming, so reading the
  * raw flag would show a ✓ against someone on an invitation that never replied.
+ *
+ * Each person is its own row component with its own action, so a busy row
+ * disables and spins only itself (docs/error-loading-PRD.md §4).
  */
 
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { startTransition, useState } from 'react'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import { answerForPerson } from '@/lib/headcount'
+import { jsonInit, requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
 import type { Answer, Attendee } from '@/lib/types'
 
@@ -29,163 +34,110 @@ const MARKS: Record<'yes' | 'no' | 'undecided' | 'none', { glyph: string; tone: 
   none: { glyph: '○', tone: 'text-muted' },
 }
 
+function patchAttendee(id: string, patch: { name?: string; is_child?: boolean }): Promise<unknown> {
+  return requestJson(`/api/attendees/${id}`, jsonInit('PATCH', patch), strings.row.saveFailed)
+}
+
 export function AttendeeList({
   inviteId,
   answer,
   attendees,
   editable,
-  onChanged,
 }: {
   inviteId: string
   /** The household's answer — needed to read each person's (lib/headcount.ts). */
   answer: Answer | null
   attendees: Attendee[]
   editable: boolean
-  onChanged: () => void
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [newName, setNewName] = useState('')
-  const [newIsChild, setNewIsChild] = useState(false)
-  const [adding, setAdding] = useState(false)
-
-  async function rename(person: Attendee, name: string) {
-    const trimmed = name.trim()
-    if (!trimmed || trimmed === person.name) return
-
-    setBusyId(person.id)
-    const response = await fetch(`/api/attendees/${person.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: trimmed }),
-    })
-    const body = await response.json()
-    setBusyId(null)
-
-    if (!body.success) {
-      toast.error(body.error || strings.row.saveFailed)
-      return
-    }
-    onChanged()
-  }
-
-  async function setIsChild(person: Attendee, isChild: boolean) {
-    setBusyId(person.id)
-    const response = await fetch(`/api/attendees/${person.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_child: isChild }),
-    })
-    const body = await response.json()
-    setBusyId(null)
-    if (!body.success) toast.error(body.error || strings.row.saveFailed)
-    else onChanged()
-  }
-
-  async function remove(person: Attendee) {
-    setBusyId(person.id)
-    const response = await fetch(`/api/attendees/${person.id}`, { method: 'DELETE' })
-    const body = await response.json()
-    setBusyId(null)
-    if (!body.success) toast.error(body.error || strings.row.deleteFailed)
-    else onChanged()
-  }
-
-  async function add() {
-    if (!newName.trim()) return
-    setAdding(true)
-    const response = await fetch('/api/attendees', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invite_id: inviteId, name: newName.trim(), is_child: newIsChild }),
-    })
-    const body = await response.json()
-    setAdding(false)
-    if (!body.success) {
-      toast.error(body.error || strings.row.saveFailed)
-      return
-    }
-    setNewName('')
-    setNewIsChild(false)
-    onChanged()
-  }
-
+}): React.JSX.Element | null {
   if (attendees.length === 0 && !editable) return null
 
   return (
     <div className="mt-2 border-t border-border pt-2">
       <ul className="space-y-1 text-sm">
-        {attendees.map((person) => {
-          const personAnswer = answerForPerson(answer, person) ?? 'none'
-          const mark = MARKS[personAnswer]
-          return (
-          <li key={person.id} className="flex items-center gap-2">
-            <span
-              className={`shrink-0 ${mark.tone}`}
-              title={strings.toolbar.answer[personAnswer]}
-            >
-              {mark.glyph}
-            </span>
-
-            {editable ? (
-              <>
-                <input
-                  defaultValue={person.name}
-                  onBlur={(event) => rename(person, event.target.value)}
-                  disabled={busyId === person.id}
-                  placeholder={person.is_placeholder ? strings.row.renamePlaceholder : undefined}
-                  className={`min-w-0 flex-1 rounded border px-2 py-1 ${
-                    person.is_placeholder ? 'border-warning' : 'border-transparent hover:border-border'
-                  }`}
-                />
-                <select
-                  value={person.is_child ? 'child' : 'adult'}
-                  onChange={(event) => setIsChild(person, event.target.value === 'child')}
-                  disabled={busyId === person.id}
-                  aria-label={strings.inviteForm.adult}
-                  className="rounded border border-border px-1 py-1 text-xs"
-                >
-                  <option value="adult">{strings.inviteForm.adult}</option>
-                  <option value="child">{strings.inviteForm.child}</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => remove(person)}
-                  disabled={busyId === person.id}
-                  aria-label={strings.row.removePerson}
-                  className="px-1 text-muted hover:text-danger"
-                >
-                  ×
-                </button>
-              </>
-            ) : (
-              <span className="min-w-0 flex-1 truncate text-muted">
-                {person.name}
-                {person.is_child ? ` (${strings.inviteForm.child})` : ''}
-                {person.is_placeholder ? ` · ${strings.guests.placeholder}` : ''}
-              </span>
-            )}
-          </li>
-          )
-        })}
+        {attendees.map((person) => (
+          <AttendeeRow key={person.id} person={person} answer={answer} editable={editable} />
+        ))}
       </ul>
 
+      {editable ? <AddAttendee inviteId={inviteId} /> : null}
+    </div>
+  )
+}
+
+function AttendeeRow({
+  person,
+  answer,
+  editable,
+}: {
+  person: Attendee
+  answer: Answer | null
+  editable: boolean
+}) {
+  const action = useAction()
+  // The chosen adult/child value, shown while the change is saving; the prop
+  // still holds the old one until the refresh lands.
+  const [draftIsChild, setDraftIsChild] = useState<boolean | null>(null)
+  const isChild = draftIsChild ?? person.is_child
+  const busy = action.pending
+
+  const personAnswer = answerForPerson(answer, person) ?? 'none'
+  const mark = MARKS[personAnswer]
+
+  function rename(input: HTMLInputElement) {
+    const trimmed = input.value.trim()
+    if (busy || !trimmed || trimmed === person.name) return
+    action.run(() => patchAttendee(person.id, { name: trimmed }), {
+      failure: strings.row.saveFailed,
+      onError: () => {
+        input.value = person.name
+      },
+    })
+  }
+
+  function changeIsChild(next: boolean) {
+    if (busy) return
+    setDraftIsChild(next)
+    action.run(
+      async () => {
+        await patchAttendee(person.id, { is_child: next })
+        // Dropped with the refresh, when the prop already holds the new value.
+        startTransition(() => setDraftIsChild(null))
+      },
+      { failure: strings.row.saveFailed, onError: () => setDraftIsChild(null) }
+    )
+  }
+
+  function remove() {
+    if (busy) return
+    action.run(
+      () => requestJson(`/api/attendees/${person.id}`, jsonInit('DELETE'), strings.row.deleteFailed),
+      { failure: strings.row.deleteFailed }
+    )
+  }
+
+  return (
+    <li className="flex items-center gap-2" aria-busy={busy}>
+      <span className={`shrink-0 ${mark.tone}`} title={strings.toolbar.answer[personAnswer]}>
+        {mark.glyph}
+      </span>
+
       {editable ? (
-        <div className="mt-2 flex items-center gap-2">
+        <>
           <input
-            value={newName}
-            onChange={(event) => setNewName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                add()
-              }
-            }}
-            placeholder={strings.row.addPerson}
-            className="min-w-0 flex-1 rounded-md border border-border px-2 py-1 text-sm"
+            defaultValue={person.name}
+            onBlur={(event) => rename(event.currentTarget)}
+            disabled={busy}
+            placeholder={person.is_placeholder ? strings.row.renamePlaceholder : undefined}
+            className={`min-w-0 flex-1 rounded border px-2 py-1 ${
+              person.is_placeholder ? 'border-warning' : 'border-transparent hover:border-border'
+            }`}
           />
           <select
-            value={newIsChild ? 'child' : 'adult'}
-            onChange={(event) => setNewIsChild(event.target.value === 'child')}
+            value={isChild ? 'child' : 'adult'}
+            onChange={(event) => changeIsChild(event.target.value === 'child')}
+            disabled={busy}
+            aria-label={strings.inviteForm.adult}
             className="rounded border border-border px-1 py-1 text-xs"
           >
             <option value="adult">{strings.inviteForm.adult}</option>
@@ -193,14 +145,87 @@ export function AttendeeList({
           </select>
           <button
             type="button"
-            onClick={add}
-            disabled={adding || !newName.trim()}
-            className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface disabled:opacity-50"
+            onClick={remove}
+            disabled={busy}
+            aria-label={strings.row.removePerson}
+            className="w-5 px-1 text-muted hover:text-danger"
           >
-            +
+            {busy ? <Spinner /> : '×'}
           </button>
-        </div>
-      ) : null}
+        </>
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-muted">
+          {person.name}
+          {person.is_child ? ` (${strings.inviteForm.child})` : ''}
+          {person.is_placeholder ? ` · ${strings.guests.placeholder}` : ''}
+        </span>
+      )}
+    </li>
+  )
+}
+
+function AddAttendee({ inviteId }: { inviteId: string }) {
+  const action = useAction()
+  const [newName, setNewName] = useState('')
+  const [newIsChild, setNewIsChild] = useState(false)
+
+  function add() {
+    // Guards the Enter key too — it used to call add() again mid-request and
+    // create the same person twice.
+    const name = newName.trim()
+    if (action.pending || !name) return
+
+    action.run(
+      async () => {
+        await requestJson(
+          '/api/attendees',
+          jsonInit('POST', { invite_id: inviteId, name, is_child: newIsChild }),
+          strings.row.saveFailed
+        )
+        // Cleared with the refresh, so the name leaves the field as the new
+        // person appears in the list.
+        startTransition(() => {
+          setNewName('')
+          setNewIsChild(false)
+        })
+      },
+      { failure: strings.row.saveFailed }
+    )
+  }
+
+  return (
+    <div className="mt-2 flex items-center gap-2" aria-busy={action.pending}>
+      <input
+        value={newName}
+        onChange={(event) => setNewName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            add()
+          }
+        }}
+        readOnly={action.pending}
+        placeholder={strings.row.addPerson}
+        className="min-w-0 flex-1 rounded-md border border-border px-2 py-1 text-sm"
+      />
+      <select
+        value={newIsChild ? 'child' : 'adult'}
+        onChange={(event) => setNewIsChild(event.target.value === 'child')}
+        disabled={action.pending}
+        className="rounded border border-border px-1 py-1 text-xs"
+      >
+        <option value="adult">{strings.inviteForm.adult}</option>
+        <option value="child">{strings.inviteForm.child}</option>
+      </select>
+      <button
+        type="button"
+        onClick={add}
+        disabled={action.pending || !newName.trim()}
+        aria-label={strings.row.addPerson}
+        className="inline-flex items-center rounded-md border border-border px-2 py-1 text-sm hover:bg-surface disabled:opacity-50"
+      >
+        {action.pending ? <Spinner /> : '+'}
+      </button>
     </div>
   )
 }

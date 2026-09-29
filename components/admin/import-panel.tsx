@@ -13,10 +13,12 @@
  * "go to row 12" rather than "find the household called…".
  */
 
-import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { startTransition, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 
 interface RowProblem {
   row: number
@@ -35,56 +37,68 @@ interface ImportReport {
   peopleCreated?: number
 }
 
-export function ImportPanel() {
-  const router = useRouter()
+/** Throws on any failure, so the caller has one error path (lib/request.ts). */
+function send(chosen: File, confirm: boolean): Promise<ImportReport> {
+  const form = new FormData()
+  form.append('file', chosen)
+  if (confirm) form.append('confirm', 'true')
+
+  return requestJson<ImportReport>(
+    '/api/invites/import',
+    { method: 'POST', body: form },
+    strings.importer.failed
+  )
+}
+
+export function ImportPanel(): React.JSX.Element {
   const fileInput = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
   const [report, setReport] = useState<ImportReport | null>(null)
-  const [busy, setBusy] = useState(false)
+  // Two actions, two pending flags: one flag made the confirm button and the
+  // "checking" label both show while importing.
+  const preview = useAction()
+  const importing = useAction()
+  const busy = preview.pending || importing.pending
 
-  function reset() {
+  function reset(): void {
     setFile(null)
     setReport(null)
     if (fileInput.current) fileInput.current.value = ''
   }
 
-  async function send(chosen: File, confirm: boolean): Promise<ImportReport | null> {
-    const form = new FormData()
-    form.append('file', chosen)
-    if (confirm) form.append('confirm', 'true')
-
-    const response = await fetch('/api/invites/import', { method: 'POST', body: form })
-    const body = await response.json()
-    if (!body.success) {
-      toast.error(body.error || strings.importer.failed)
-      return null
-    }
-    return body.data as ImportReport
-  }
-
-  async function handleChoose(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleChoose(event: React.ChangeEvent<HTMLInputElement>): void {
     const chosen = event.target.files?.[0]
     if (!chosen) return
 
     setFile(chosen)
-    setBusy(true)
-    setReport(await send(chosen, false)) // preview: writes nothing
-    setBusy(false)
+    preview.run(
+      async () => {
+        const result = await send(chosen, false) // preview: writes nothing
+        startTransition(() => setReport(result))
+      },
+      { refresh: false, failure: strings.importer.failed, onError: reset }
+    )
   }
 
-  async function handleConfirm() {
+  function handleConfirm(): void {
     if (!file) return
-    setBusy(true)
-    const result = await send(file, true)
-    setBusy(false)
-
-    if (result?.written) {
-      toast.success(
-        strings.importer.imported(result.invitesCreated ?? 0, result.peopleCreated ?? 0)
-      )
-      reset()
-      router.refresh()
-    }
+    importing.run(
+      async () => {
+        const result = await send(file, true)
+        // Inside the transition, so the report stays on screen (with the
+        // spinner) until the refreshed list has landed, then clears with it.
+        startTransition(() => {
+          if (result.written) reset()
+          else setReport(result)
+        })
+        if (result.written) {
+          toast.success(
+            strings.importer.imported(result.invitesCreated ?? 0, result.peopleCreated ?? 0)
+          )
+        }
+      },
+      { failure: strings.importer.failed }
+    )
   }
 
   return (
@@ -130,7 +144,12 @@ export function ImportPanel() {
           {strings.importer.export}
         </a>
 
-        {busy ? <span className="text-sm text-muted">{strings.importer.checking}</span> : null}
+        {preview.pending ? (
+          <span className="inline-flex items-center gap-1.5 text-sm text-muted">
+            <Spinner />
+            {strings.importer.checking}
+          </span>
+        ) : null}
       </div>
 
       {report ? (
@@ -176,11 +195,13 @@ export function ImportPanel() {
               type="button"
               onClick={handleConfirm}
               disabled={busy || report.ready.length === 0}
-              className="rounded-md bg-accent px-4 py-2 text-white disabled:opacity-60"
+              aria-busy={importing.pending}
+              className="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2 text-white disabled:opacity-60"
             >
+              {importing.pending ? <Spinner /> : null}
               {report.ready.length === 0
                 ? strings.importer.nothingReady
-                : busy
+                : importing.pending
                   ? strings.importer.importing
                   : strings.importer.confirm(report.ready.length)}
             </button>

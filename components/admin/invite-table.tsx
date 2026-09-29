@@ -7,11 +7,12 @@
  * component only decides what the current state is.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { InviteRow } from '@/components/admin/invite-row'
 import { EmptyState } from '@/components/ui/states'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import { countInvited } from '@/lib/headcount'
 import {
   ANSWER_FILTERS,
@@ -32,6 +33,7 @@ import {
   type SortDirection,
   type SortKey,
 } from '@/lib/invite-filters'
+import { jsonInit, requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
 import { SEND_KINDS, type SendKind } from '@/lib/send-kinds'
 import {
@@ -60,7 +62,7 @@ export function InviteTable({
   invites: InviteWithPeople[]
   /** The whole config, not one template: the row picks by household language. */
   config: WeddingConfig
-}) {
+}): React.JSX.Element {
   const [query, setQuery] = useState('')
   /** Empty means every status — see filterByStatus. */
   const [statuses, setStatuses] = useState<InviteStatus[]>([])
@@ -77,12 +79,11 @@ export function InviteTable({
     DEFAULT_SORT_DIRECTION.relation
   )
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [deleting, setDeleting] = useState(false)
+  const bulkDelete = useAction()
   const [exporting, setExporting] = useState(false)
   /** Which message every row's WhatsApp button prepares. Not persisted: a
       refresh always comes back to the invitation, never to a thank-you. */
   const [sendKind, setSendKind] = useState<SendKind>('invite')
-  const router = useRouter()
 
   const visible = useMemo(() => {
     const searched = searchInvites(invites, query)
@@ -174,7 +175,8 @@ export function InviteTable({
     setSelected(allShownSelected ? new Set() : new Set(visible.map((invite) => invite.id)))
   }
 
-  async function handleBulkDelete() {
+  function handleBulkDelete(): void {
+    if (bulkDelete.pending) return
     const chosen = visible.filter((invite) => selected.has(invite.id))
     if (chosen.length === 0) return
 
@@ -183,22 +185,22 @@ export function InviteTable({
     const people = chosen.reduce((sum, invite) => sum + countInvited(invite.attendees), 0)
     if (!window.confirm(strings.bulk.confirm(chosen.length, people))) return
 
-    setDeleting(true)
-    const response = await fetch('/api/invites/bulk', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: chosen.map((invite) => invite.id) }),
-    })
-    const body = await response.json()
-    setDeleting(false)
-
-    if (!body.success) {
-      toast.error(body.error || strings.bulk.deleteFailed)
-      return
-    }
-    toast.success(strings.bulk.deleted(body.data.deleted))
-    setSelected(new Set())
-    router.refresh()
+    // Pending lasts until the refreshed list no longer has these rows; the
+    // selection clears in the same commit, so the button never re-enables
+    // over rows that are already gone.
+    const ids = chosen.map((invite) => invite.id)
+    bulkDelete.run(
+      async () => {
+        const data = await requestJson<{ deleted: number }>(
+          '/api/invites/bulk',
+          jsonInit('DELETE', { ids }),
+          strings.bulk.deleteFailed
+        )
+        toast.success(strings.bulk.deleted(data.deleted))
+        startTransition(() => setSelected(new Set()))
+      },
+      { failure: strings.bulk.deleteFailed }
+    )
   }
 
   return (
@@ -446,8 +448,10 @@ export function InviteTable({
             type="button"
             onClick={exportForSite}
             disabled={exporting}
-            className="rounded-md border border-border px-2 py-1 hover:bg-surface disabled:opacity-60"
+            aria-busy={exporting}
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 hover:bg-surface disabled:opacity-60"
           >
+            {exporting ? <Spinner /> : null}
             {exporting ? strings.toolbar.exporting : strings.toolbar.exportSite}
           </button>
         ) : null}
@@ -465,10 +469,12 @@ export function InviteTable({
             <button
               type="button"
               onClick={handleBulkDelete}
-              disabled={deleting}
-              className="rounded border border-danger px-2 py-1 text-danger hover:bg-surface disabled:opacity-50"
+              disabled={bulkDelete.pending}
+              aria-busy={bulkDelete.pending}
+              className="inline-flex items-center gap-1 rounded border border-danger px-2 py-1 text-danger hover:bg-surface disabled:opacity-50"
             >
-              {strings.bulk.delete(selected.size)}
+              {bulkDelete.pending ? <Spinner /> : null}
+              {bulkDelete.pending ? strings.app.deleting : strings.bulk.delete(selected.size)}
             </button>
           </>
         ) : null}

@@ -8,16 +8,17 @@
  * invite read "0 guests" (lib/headcount.ts summarizeAttendance).
  */
 
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { AttendeeList } from '@/components/admin/attendee-list'
 import { CopyLinkButton } from '@/components/admin/copy-link-button'
 import { HistoryModal } from '@/components/admin/history-modal'
 import { InviteEditForm } from '@/components/admin/invite-edit-form'
 import { WaSendButton } from '@/components/admin/wa-send-button'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import type { SendKind } from '@/lib/send-kinds'
 import { summarizeAttendance } from '@/lib/headcount'
+import { jsonInit, requestJson } from '@/lib/request'
 import { needsPhoneCall } from '@/lib/status'
 import { strings } from '@/lib/strings'
 import type { InviteWithPeople, WeddingConfig } from '@/lib/types'
@@ -63,34 +64,25 @@ export function InviteRow({
   onToggleSelected: (id: string) => void
   /** The toolbar's toggle (PRD §6.21). Off is the normal state of this screen. */
   /** Owned by InviteTable: a row unmounts, so it cannot hold this state. */
-}) {
-  const router = useRouter()
+}): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const remove = useAction()
 
   const flagged = needsPhoneCall(invite.status, invite.contact_attempts)
   const sideRelation = sideRelationLabel(invite)
 
-  function refresh() {
-    router.refresh()
-  }
-
-  async function handleDelete() {
+  function handleDelete() {
+    if (remove.pending) return
     // Cascades to every person and the whole history, with no undo (PRD §6.6).
     if (!window.confirm(strings.row.confirmDelete(invite.name))) return
 
-    setDeleting(true)
-    const response = await fetch(`/api/invites/${invite.id}`, { method: 'DELETE' })
-    const body = await response.json()
-    setDeleting(false)
-
-    if (!body.success) {
-      toast.error(body.error || strings.row.deleteFailed)
-      return
-    }
-    toast.success(strings.row.deleted)
-    refresh()
+    // Pending lasts until the refreshed list no longer has this row, so the
+    // button never re-enables on a row that is already gone.
+    remove.run(
+      () => requestJson(`/api/invites/${invite.id}`, jsonInit('DELETE'), strings.row.deleteFailed),
+      { success: strings.row.deleted, failure: strings.row.deleteFailed }
+    )
   }
 
   return (
@@ -155,17 +147,19 @@ export function InviteRow({
           <button
             type="button"
             onClick={handleDelete}
-            disabled={deleting}
-            className="rounded border border-border px-2 py-1 text-xs text-danger hover:bg-surface disabled:opacity-50"
+            disabled={remove.pending}
+            aria-busy={remove.pending}
+            className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs text-danger hover:bg-surface disabled:opacity-50"
           >
-            {strings.row.delete}
+            {remove.pending ? <Spinner /> : null}
+            {remove.pending ? strings.app.deleting : strings.row.delete}
           </button>
         </div>
       </div>
 
 
       {editing ? (
-        <InviteEditForm invite={invite} onDone={() => setEditing(false)} onSaved={refresh} />
+        <InviteEditForm invite={invite} onDone={() => setEditing(false)} />
       ) : null}
 
       {expanded ? (
@@ -174,7 +168,6 @@ export function InviteRow({
           answer={invite.answer}
           attendees={invite.attendees}
           editable={editing}
-          onChanged={refresh}
         />
       ) : null}
     </li>

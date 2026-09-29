@@ -10,11 +10,12 @@
  */
 
 import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { jsonInit, requestJson } from '@/lib/request'
 import type { BingoSquare, UpdateBingoSquareInput } from '@/lib/types'
 import { BingoBoard } from '@/components/games/bingo-board'
 import { BingoSquareEditor } from '@/components/games/bingo-square-editor'
+import { useAction } from '@/components/ui/use-action'
 import { strings } from '@/lib/strings'
 
 export function BingoGame({
@@ -23,10 +24,13 @@ export function BingoGame({
 }: {
   squares: BingoSquare[]
   initialSeed: number
-}) {
-  const router = useRouter()
+}): React.JSX.Element {
   const [patches, setPatches] = useState<Record<string, UpdateBingoSquareInput>>({})
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
+  // One delete at a time: the row stays disabled, with a spinner, until the
+  // refreshed list no longer contains it.
+  const deletion = useAction()
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const patched = useMemo(() => {
     if (Object.keys(patches).length === 0) return squares
@@ -48,13 +52,7 @@ export function BingoGame({
     markBusy(id, true)
 
     try {
-      const response = await fetch(`/api/bingo-squares/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.bingo.saveFailed)
+      await requestJson(`/api/bingo-squares/${id}`, jsonInit('PATCH', patch), strings.bingo.saveFailed)
     } catch (thrown) {
       setPatches((current) => ({ ...current, [id]: { ...current[id], ...previous } }))
       toast.error(thrown instanceof Error ? thrown.message : strings.bingo.saveFailed)
@@ -63,22 +61,16 @@ export function BingoGame({
     }
   }
 
-  async function remove(square: BingoSquare) {
+  function remove(square: BingoSquare): void {
     if (!window.confirm(strings.bingo.confirmDelete(square.text_he || square.text_ru))) return
 
-    markBusy(square.id, true)
-    try {
-      const response = await fetch(`/api/bingo-squares/${square.id}`, { method: 'DELETE' })
-      const body = await response.json()
-      if (!body.success) throw new Error(body.error || strings.bingo.deleteFailed)
-      toast.success(strings.bingo.deleted)
-      // Which rows exist changed, so the server list is refetched, not patched.
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : strings.bingo.deleteFailed)
-    } finally {
-      markBusy(square.id, false)
-    }
+    setDeletingId(square.id)
+    // Which rows exist changed, so the server list is refetched, not patched.
+    deletion.run(
+      () =>
+        requestJson(`/api/bingo-squares/${square.id}`, jsonInit('DELETE'), strings.bingo.deleteFailed),
+      { success: strings.bingo.deleted, failure: strings.bingo.deleteFailed }
+    )
   }
 
   return (
@@ -86,9 +78,9 @@ export function BingoGame({
       <BingoSquareEditor
         squares={patched}
         busyIds={busyIds}
+        deletingId={deletion.pending ? deletingId : null}
         onSave={save}
         onDelete={remove}
-        onAdded={() => router.refresh()}
       />
       <BingoBoard squares={patched} initialSeed={initialSeed} />
     </div>

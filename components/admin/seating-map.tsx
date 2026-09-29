@@ -15,14 +15,24 @@
  *
  * Positions are saved on release, not on every move: a drag across the floor is
  * hundreds of pointermove events and one intended change.
+ *
+ * The one piece of optimistic state: a dropped table's position is held
+ * locally (`dropped`) until the save and the refresh behind it land, so the
+ * table stays where it was put instead of snapping back to its old spot for
+ * the length of a round trip. A failed save drops the override, and the table
+ * returns to where the database says it is. A table can't be grabbed again
+ * while its position is saving.
  */
 
-import { useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { startTransition, useRef, useState } from 'react'
 import { strings } from '@/lib/strings'
+import { jsonInit, requestJson } from '@/lib/request'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
 import { occupancy, seatablePeople, type TableOccupancy } from '@/lib/seating'
 import type { InviteWithPeople, SeatingTable } from '@/lib/types'
+
+type Point = { x: number; y: number }
 
 /**
  * Where a table sits before anyone has dragged it.
@@ -52,9 +62,10 @@ export function SeatingMap({
 }: {
   invites: InviteWithPeople[]
   tables: SeatingTable[]
-}) {
+}): React.JSX.Element | null {
   const t = strings.seating
-  const router = useRouter()
+  const moving = useAction()
+  const rotating = useAction()
   const floor = useRef<HTMLDivElement>(null)
 
   /** Only while dragging. The saved position is the source of truth otherwise. */
@@ -66,11 +77,19 @@ export function SeatingMap({
    * touched, so grabbing a table by its edge makes it jump before it moves.
    */
   const grab = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  /** Dropped positions still being saved, by table id. See the file header. */
+  const [dropped, setDropped] = useState<Record<string, Point>>({})
+  /** The table whose ⟳ was pressed, for its spinner. */
+  const [rotatingId, setRotatingId] = useState<string | null>(null)
 
   const board = occupancy(tables, seatablePeople(invites))
 
   function positionOf(spot: TableOccupancy, index: number): { x: number; y: number } {
     if (dragging?.id === spot.table.id) return { x: dragging.x, y: dragging.y }
+    // Gated on pending as well: once the action settles the refreshed data is
+    // on screen, so a leftover override can never outlive its save.
+    const saving = moving.pending ? dropped[spot.table.id] : undefined
+    if (saving) return saving
     if (spot.table.pos_x !== null && spot.table.pos_y !== null) {
       return { x: spot.table.pos_x, y: spot.table.pos_y }
     }
@@ -88,7 +107,20 @@ export function SeatingMap({
     }
   }
 
+  function isSavingPosition(id: string): boolean {
+    return moving.pending && id in dropped
+  }
+
+  function forgetDropped(id: string): void {
+    setDropped((current) => {
+      const next = { ...current }
+      delete next[id]
+      return next
+    })
+  }
+
   function startDrag(event: React.PointerEvent, id: string, at: { x: number; y: number }) {
+    if (isSavingPosition(id)) return
     const point = toPercent(event)
     if (!point) return
     grab.current = { x: point.x - at.x, y: point.y - at.y }
@@ -116,43 +148,44 @@ export function SeatingMap({
    * second drag gesture competing with the one that moves the table, for an
    * angle nobody needs to the degree.
    */
-  async function rotate(table: SeatingTable) {
-    try {
-      const response = await fetch(`/api/tables/${table.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rotation: (table.rotation + 45) % 360 }),
-      })
-      if (!response.ok) throw new Error(t.saveFailed)
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
-    }
+  function rotate(table: SeatingTable): void {
+    if (rotating.pending) return
+    setRotatingId(table.id)
+    const rotation = (table.rotation + 45) % 360
+    rotating.run(
+      () => requestJson(`/api/tables/${table.id}`, jsonInit('PATCH', { rotation }), t.saveFailed),
+      { failure: t.saveFailed }
+    )
   }
 
-  async function endDrag(event: React.PointerEvent) {
+  function endDrag(event: React.PointerEvent): void {
     if (!dragging) return
     const moved = dragging
+    // Rounded: a plan does not need six decimal places of a percent, and
+    // whole numbers make the stored value readable in the database.
+    const at = { x: Math.round(moved.x), y: Math.round(moved.y) }
+    // Set together with clearing the drag, so there is no frame in which the
+    // table sits at its old saved position.
+    setDropped((current) => ({ ...current, [moved.id]: at }))
     setDragging(null)
     event.currentTarget.releasePointerCapture(event.pointerId)
+    savePosition(moved.id, at)
+  }
 
-    try {
-      const response = await fetch(`/api/tables/${moved.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          // Rounded: a plan does not need six decimal places of a percent, and
-          // whole numbers make the stored value readable in the database.
-          pos_x: Math.round(moved.x),
-          pos_y: Math.round(moved.y),
-        }),
-      })
-      if (!response.ok) throw new Error(t.saveFailed)
-      router.refresh()
-    } catch (thrown) {
-      toast.error(thrown instanceof Error ? thrown.message : t.saveFailed)
-      router.refresh()
-    }
+  function savePosition(id: string, at: Point): void {
+    moving.run(
+      async () => {
+        await requestJson(
+          `/api/tables/${id}`,
+          jsonInit('PATCH', { pos_x: at.x, pos_y: at.y }),
+          t.saveFailed
+        )
+        // Inside the action, so the override is dropped in the same commit
+        // that brings the saved position from the server.
+        startTransition(() => forgetDropped(id))
+      },
+      { failure: t.saveFailed, onError: () => forgetDropped(id) }
+    )
   }
 
   if (board.length === 0) return null
@@ -171,6 +204,8 @@ export function SeatingMap({
         {board.map((spot, index) => {
           const at = positionOf(spot, index)
           const isDragging = dragging?.id === spot.table.id
+          const isSaving = isSavingPosition(spot.table.id)
+          const isRotating = rotating.pending && rotatingId === spot.table.id
 
           return (
             /*
@@ -185,6 +220,7 @@ export function SeatingMap({
               onPointerMove={moveDrag}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
+              aria-busy={isSaving || isRotating}
               style={{
                 left: `${at.x}%`,
                 top: `${at.y}%`,
@@ -216,6 +252,7 @@ export function SeatingMap({
                 <span className="ltr-nums text-[0.65rem] opacity-70">
                   {t.occupancy(spot.seated, spot.table.capacity)}
                 </span>
+                {isSaving ? <Spinner className="mt-0.5 text-[0.65rem] opacity-70" /> : null}
               </div>
 
               {/* A circle looks the same at every angle, so it gets no control. */}
@@ -224,12 +261,15 @@ export function SeatingMap({
                   type="button"
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={() => rotate(spot.table)}
+                  /* Every click turns from the saved angle, so a second click
+                     before the first lands would be lost: one turn at a time. */
+                  disabled={rotating.pending}
                   aria-label={t.rotateTable}
                   title={t.rotateTable}
                   style={{ rotate: `${-spot.table.rotation}deg` }}
-                  className="absolute -top-2 left-1/2 inline-flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-bloom-ink/40 bg-paper text-xs text-bloom-strong hover:bg-bloom-ink/10 print:hidden"
+                  className="absolute -top-2 left-1/2 inline-flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-bloom-ink/40 bg-paper text-xs text-bloom-strong hover:bg-bloom-ink/10 disabled:opacity-60 print:hidden"
                 >
-                  ⟳
+                  {isRotating ? <Spinner /> : '⟳'}
                 </button>
               ) : null}
             </div>

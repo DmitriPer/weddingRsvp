@@ -10,9 +10,11 @@
  * can add an unnamed "+1"; they never enter names.
  */
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { startTransition, useState } from 'react'
 import { toast } from 'sonner'
+import { Spinner } from '@/components/ui/spinner'
+import { useAction } from '@/components/ui/use-action'
+import { jsonInit, requestJson } from '@/lib/request'
 import { strings } from '@/lib/strings'
 import { LANGUAGES, RELATIONS, SIDES, type Language, type Relation, type Side } from '@/lib/types'
 
@@ -22,10 +24,50 @@ interface PersonDraft {
   isChild: boolean
 }
 
+interface InviteDraft {
+  name: string
+  phone: string | null
+  side: Side | null
+  relation: Relation | null
+  language: Language
+}
+
+interface CreatedInvite {
+  invite: { id: string }
+  duplicatePhoneWith?: string[]
+}
+
 let nextKey = 1
 
-export function AddInviteForm() {
-  const router = useRouter()
+/** POST /api/invites. Returns the new invite's id. */
+async function createInvite(draft: InviteDraft): Promise<string> {
+  const created = await requestJson<CreatedInvite>(
+    '/api/invites',
+    jsonInit('POST', draft),
+    strings.inviteForm.failed
+  )
+
+  // A duplicate phone is a warning, never a block (PRD §6.6) — one household
+  // legitimately has one phone across two invites.
+  const duplicates = created.duplicatePhoneWith ?? []
+  if (duplicates.length) toast.warning(strings.inviteForm.duplicatePhone(duplicates))
+
+  return created.invite.id
+}
+
+/** POST /api/attendees per named person, in the order typed. Blank rows are skipped. */
+async function createPeople(inviteId: string, people: PersonDraft[]): Promise<void> {
+  const named = people.filter((person) => person.name.trim())
+  for (const person of named) {
+    await requestJson(
+      '/api/attendees',
+      jsonInit('POST', { invite_id: inviteId, name: person.name.trim(), is_child: person.isChild }),
+      strings.inviteForm.failed
+    )
+  }
+}
+
+export function AddInviteForm(): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -34,8 +76,8 @@ export function AddInviteForm() {
   // Hebrew unless said otherwise — the default, not a blank (PRD §6.7b).
   const [language, setLanguage] = useState<Language>('he')
   const [people, setPeople] = useState<PersonDraft[]>([])
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const save = useAction()
 
   function reset() {
     setName('')
@@ -45,6 +87,11 @@ export function AddInviteForm() {
     setLanguage('he')
     setPeople([])
     setError(null)
+  }
+
+  function close() {
+    reset()
+    setOpen(false)
   }
 
   function addPerson() {
@@ -59,66 +106,35 @@ export function AddInviteForm() {
     setPeople((current) => current.filter((p) => p.key !== key))
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (save.pending) return
     if (!name.trim()) {
       setError(strings.inviteForm.nameRequired)
       return
     }
-
-    setSaving(true)
     setError(null)
 
-    try {
-      const inviteResponse = await fetch('/api/invites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          phone: phone.trim() || null,
-          side: side || null,
-          relation: relation || null,
-          language,
-        }),
-      })
-      const inviteBody = await inviteResponse.json()
-      if (!inviteBody.success) throw new Error(inviteBody.error)
-
-      const inviteId: string = inviteBody.data.invite.id
-
-      // Named people, in the order typed. Blank rows are simply skipped.
-      const named = people.filter((person) => person.name.trim())
-      for (const person of named) {
-        const personResponse = await fetch('/api/attendees', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            invite_id: inviteId,
-            name: person.name.trim(),
-            is_child: person.isChild,
-          }),
-        })
-        const personBody = await personResponse.json()
-        if (!personBody.success) throw new Error(personBody.error)
-      }
-
-      toast.success(strings.inviteForm.created)
-
-      // A duplicate phone is a warning, never a block (PRD §6.6) — one household
-      // legitimately has one phone across two invites.
-      const duplicates: string[] = inviteBody.data.duplicatePhoneWith ?? []
-      if (duplicates.length) {
-        toast.warning(strings.inviteForm.duplicatePhone(duplicates))
-      }
-
-      reset()
-      setOpen(false)
-      router.refresh()
-    } catch (thrown) {
-      setError(thrown instanceof Error ? thrown.message : strings.inviteForm.failed)
-    } finally {
-      setSaving(false)
+    const draft: InviteDraft = {
+      name: name.trim(),
+      phone: phone.trim() || null,
+      side: side || null,
+      relation: relation || null,
+      language,
     }
+
+    // Invite first — attendees reference its id. The form stays open, spinner
+    // on, until the refreshed list shows the new row: the close is a
+    // transition inside the action, so it commits together with the refresh
+    // rather than leaving a gap where the form is gone and the row isn't there.
+    save.run(
+      async () => {
+        const inviteId = await createInvite(draft)
+        await createPeople(inviteId, people)
+        startTransition(close)
+      },
+      { success: strings.inviteForm.created, failure: strings.inviteForm.failed }
+    )
   }
 
   if (!open) {
@@ -270,18 +286,18 @@ export function AddInviteForm() {
       <div className="flex gap-2">
         <button
           type="submit"
-          disabled={saving}
-          className="rounded-md bg-accent px-4 py-2 text-white disabled:opacity-60"
+          disabled={save.pending}
+          aria-busy={save.pending}
+          className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-white disabled:opacity-60"
         >
-          {saving ? strings.app.saving : strings.app.save}
+          {save.pending ? <Spinner /> : null}
+          {save.pending ? strings.app.saving : strings.app.save}
         </button>
         <button
           type="button"
-          onClick={() => {
-            reset()
-            setOpen(false)
-          }}
-          className="rounded-md border border-border px-4 py-2 hover:bg-surface"
+          onClick={close}
+          disabled={save.pending}
+          className="rounded-md border border-border px-4 py-2 hover:bg-surface disabled:opacity-60"
         >
           {strings.app.cancel}
         </button>
