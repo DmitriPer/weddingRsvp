@@ -684,16 +684,32 @@ export const supabaseStore: DataStore = {
     if (error) throw new Error(`clear drive connection: ${error.message}`)
   },
 
-  async recordPhoto(driveFileId, uploaderName, sizeBytes): Promise<WeddingPhoto> {
+  async reservePhoto(uploaderName, sizeBytes): Promise<WeddingPhoto> {
     const db = createAdminClient()
     return unwrap(
       await db
         .from('wedding_photos')
-        .insert({ drive_file_id: driveFileId, uploader_name: uploaderName, size_bytes: sizeBytes })
+        .insert({ uploader_name: uploaderName, size_bytes: sizeBytes })
         .select()
         .single(),
-      'record photo'
+      'reserve photo'
     ) as WeddingPhoto
+  },
+
+  async attachDriveFile(id, driveFileId, sizeBytes): Promise<void> {
+    const db = createAdminClient()
+    const { error } = await db
+      .from('wedding_photos')
+      .update({ drive_file_id: driveFileId, size_bytes: sizeBytes })
+      .eq('id', id)
+    if (error) throw new Error(`attach drive file: ${error.message}`)
+  },
+
+  async releasePhoto(id): Promise<void> {
+    const db = createAdminClient()
+    // Only an unfinished reservation — never a photo that reached Drive.
+    const { error } = await db.from('wedding_photos').delete().eq('id', id).is('drive_file_id', null)
+    if (error) throw new Error(`release photo: ${error.message}`)
   },
 
   async countRecentPhotos(seconds): Promise<number> {
@@ -718,6 +734,8 @@ export const supabaseStore: DataStore = {
         await db
           .from('wedding_photos')
           .select('size_bytes')
+          // Only photos that reached Drive; a reservation mid-upload isn't one.
+          .not('drive_file_id', 'is', null)
           .order('id')
           .range(from, from + 999),
         'photo stats'

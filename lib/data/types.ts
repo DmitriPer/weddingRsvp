@@ -155,8 +155,14 @@ export interface DataStore {
   getDriveConnection(): Promise<DriveConnection | null>
   saveDriveConnection(input: Omit<DriveConnection, 'connected_at'>): Promise<void>
   clearDriveConnection(): Promise<void>
-  /** Books a photo that has already reached Drive. */
-  recordPhoto(driveFileId: string, uploaderName: string, sizeBytes: number): Promise<WeddingPhoto>
+  /**
+   * Reserves a row BEFORE the upload, so the photo's running number exists
+   * for its Drive file name. Then attachDriveFile on success, releasePhoto on
+   * failure (docs/wedding-photos-PRD.md §5).
+   */
+  reservePhoto(uploaderName: string, sizeBytes: number): Promise<WeddingPhoto>
+  attachDriveFile(id: string, driveFileId: string, sizeBytes: number): Promise<void>
+  releasePhoto(id: string): Promise<void>
   /** Photos recorded in the last `seconds` — the global rate limit. */
   countRecentPhotos(seconds: number): Promise<number>
   photoStats(): Promise<{ count: number; bytes: number }>

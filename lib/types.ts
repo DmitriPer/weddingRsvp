@@ -296,7 +296,10 @@ export type UpdateBingoSquareInput = Partial<CreateBingoSquareInput>
 /** One guest photo that reached Google Drive (docs/wedding-photos-PRD.md §6). */
 export interface WeddingPhoto {
   id: string
-  drive_file_id: string
+  /** Migration 019: the running number in the Drive file name. */
+  photo_number: number
+  /** Null only while the reserved photo is still uploading (migration 019). */
+  drive_file_id: string | null
   uploader_name: string
   size_bytes: number
   created_at: string

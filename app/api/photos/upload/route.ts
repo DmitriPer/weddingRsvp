@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { badRequest, fromThrown, gone, ok, tooMany } from '@/lib/api'
-import { countRecentPhotos, getConfig, getDriveConnection, recordPhoto } from '@/lib/data'
+import { attachDriveFile, countRecentPhotos, getConfig, getDriveConnection, releasePhoto, reservePhoto } from '@/lib/data'
 import { accessToken, DriveRevokedError, uploadJpeg } from '@/lib/google-drive'
 import { isRateLimited, MAX_NAME_LENGTH, MAX_UPLOAD_BYTES, RATE_WINDOW_SECONDS, uploadGate } from '@/lib/photos'
-import { formatFileStamp } from '@/lib/datetime'
+import { driveFileName } from '@/lib/photos'
 
 /**
  * PUBLIC — one guest photo, into Google Drive (docs/wedding-photos-PRD.md §5).
@@ -42,14 +42,23 @@ export async function POST(request: NextRequest) {
     const uploaderName = typeof rawName === 'string' ? rawName.trim().slice(0, MAX_NAME_LENGTH) : ''
     const bytes = new Uint8Array(await file.arrayBuffer())
 
-    const driveFile = await uploadJpeg(
-      await accessToken(connection.refresh_token),
-      connection.folder_id,
-      driveFileName(uploaderName),
-      uploaderName,
-      bytes
-    )
-    await recordPhoto(driveFile.id, uploaderName, driveFile.size)
+    // The row comes FIRST: its running number is part of the Drive file name
+    // ("דנה · 17.jpg"). If the upload then fails, the reservation is released
+    // so the counter never counts a photo that isn't in Drive.
+    const reserved = await reservePhoto(uploaderName, bytes.length)
+    try {
+      const driveFile = await uploadJpeg(
+        await accessToken(connection.refresh_token),
+        connection.folder_id,
+        driveFileName(uploaderName, reserved.photo_number),
+        uploaderName,
+        bytes
+      )
+      await attachDriveFile(reserved.id, driveFile.id, driveFile.size)
+    } catch (thrown) {
+      await releasePhoto(reserved.id).catch(() => {})
+      throw thrown
+    }
     return ok({ uploaded: true })
   } catch (thrown) {
     // Admin sees "reconnect" on the photos tab; the guest sees "not ready".
@@ -63,15 +72,4 @@ export async function POST(request: NextRequest) {
 
 function notReady(): NextResponse {
   return NextResponse.json({ success: false, error: 'Photo uploads are not ready' }, { status: 503 })
-}
-
-/**
- * "2026-10-08 21-14-03 · דנה.jpg". The random suffix keeps two photos from the
- * same second apart; Drive would allow duplicate names, but a person sorting
- * the folder shouldn't have to wonder.
- */
-function driveFileName(uploaderName: string): string {
-  const safe = uploaderName.replace(/[\\/:*?"<>|]/g, '').trim()
-  const suffix = crypto.randomUUID().slice(0, 4)
-  return safe ? `${formatFileStamp()} · ${safe} · ${suffix}.jpg` : `${formatFileStamp()} · ${suffix}.jpg`
 }

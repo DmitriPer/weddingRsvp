@@ -458,6 +458,23 @@ Per-guest expenses now cost the price × max(adults, minimum), plus the child pr
 
 The admin sets each person's age group (מבוגר / ילד 3–7 / תינוק 0–3); the guest form is unchanged. `Headcount` gained `infants`, the 0–3 subset of `kids`, and the dashboard and the minimum field show the three groups.
 
+## 5o. Bingo printing: exact A5, two per A4 landscape, double-sided, 2026-09-30
+
+Spec: `docs/games-bingo-PRD.md` §3.3, §3.6.
+
+**The A5 print never fitted:** the page was only a *minimum* of 21 cm tall, and the content ran to ~22.4 cm.
+- The card is now an **exact 148×210 mm A5 page** on screen, with its content at 94% `zoom`.
+- It prints **two side by side on A4 landscape**, with no rotation or scaling.
+- **Always both languages:** `buildDuplexPages` (`lib/bingo.ts`) puts Hebrew on the front and mirrors the Russian back, so it lines up when printed **flip on short edge**.
+
+**Don't retry rotating the card for print.** Chrome paginates and clips a transformed element by its un-rotated box, so a rotated portrait card was split across pages and cut off at the sides.
+
+## 5p. Photo file names: name and running number, 2026-09-30
+
+**⚠️ Needs migration `019_photo_number.sql`.** It adds `wedding_photos.photo_number` (identity, which also numbers existing rows) and makes `drive_file_id` nullable while an upload is in flight.
+
+Drive files are now named `דנה · 17.jpg`, or `17.jpg` with no name, and have no date. `/api/photos/upload` reserves the row first (`reservePhoto`) so the number exists, uploads, then `attachDriveFile`s; a failure calls `releasePhoto`. `photoStats` counts only rows with a Drive file.
+
 ## 6. Known issues
 
 As of 2026-09-29, with the site live:

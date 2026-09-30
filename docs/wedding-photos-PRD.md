@@ -62,7 +62,10 @@ Guests take photos at the wedding and the couple never sees most of them. A **QR
   4. checks Drive is connected (503);
   5. uploads a Drive multipart to the folder, then records a `wedding_photos` row.
 - **Why the photo goes through our server** instead of straight from the phone to Drive: the Google token must stay on the server, and a resized photo fits a serverless body (~4.5 MB) easily.
-- **File names:** `2026-10-08 21-14-03 · דנה · a1b2.jpg`, in Israel time. The uploader's name is also in the Drive file description.
+- **File names (revised 2026-09-30):** `דנה · 17.jpg`, or `17.jpg` when the guest left no name. There is no date: Drive shows when each file was created, and the number keeps upload order. The uploader's name is also in the Drive file description.
+  - The number is the row's **running number** (`wedding_photos.photo_number`, migration 019).
+  - The route **reserves the row first** so the number exists for the name, uploads, then attaches `drive_file_id`. A failed upload releases the reservation.
+  - The counter and the MB total count only rows that reached Drive.
 - **The rate limit is global,** 600 photos a minute. Every guest shares one key, so a per-key limit would throttle the whole room; this one only stops a script.
 
 ## 6. Data model
