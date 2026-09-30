@@ -3,25 +3,26 @@
 /**
  * The bingo controls and the printable cards (docs/games-bingo-PRD.md §3.3).
  *
- * Count, language and seed are page state only — nothing here is saved. The
- * deal is derived, not stored: same squares + count + seed always produce the
- * same cards, so the server render and the client render agree, and switching
- * language re-filters the same deal instead of reshuffling it (lib/bingo.ts).
+ * Count and seed are page state only — nothing here is saved. The deal is
+ * derived, not stored: same squares + count + seed always produce the same
+ * cards, so the server render and the client render agree (lib/bingo.ts).
+ *
+ * ALWAYS BOTH LANGUAGES, for double-sided printing: each sheet prints Hebrew on
+ * the front and the same cards in Russian on the back, two per A4 side
+ * (docs/games-bingo-PRD.md §3.6). There is no language choice any more.
  */
 
 import { useMemo, useState } from 'react'
 import {
-  BINGO_MODES,
   DEFAULT_CARDS,
   MAX_CARDS,
   MIN_CARDS,
   SQUARES_PER_CARD,
-  buildCards,
+  buildDuplexPages,
   clampCardCount,
   countUsable,
   dealOrders,
   newSeed,
-  type BingoMode,
 } from '@/lib/bingo'
 import type { BingoSquare } from '@/lib/types'
 import { EmptyState } from '@/components/ui/states'
@@ -45,12 +46,15 @@ export function BingoBoard({
   // The field keeps what is typed (even an empty box mid-edit); the clamped
   // number is derived, so clearing the box to type "40" doesn't snap to 20.
   const [countInput, setCountInput] = useState(String(DEFAULT_CARDS))
-  const [mode, setMode] = useState<BingoMode>('he')
 
   const count = clampCardCount(Number(countInput))
   const orders = useMemo(() => dealOrders(squares, count, seed), [squares, count, seed])
-  const cards = useMemo(() => buildCards(orders, mode), [orders, mode])
-  const usable = countUsable(squares, mode)
+  // Always both languages, laid out for double-sided printing: Hebrew front,
+  // the same card in Russian on the back (lib/bingo.ts buildDuplexPages).
+  const pages = useMemo(() => buildDuplexPages(orders), [orders])
+  const cardCount = pages.filter((page) => page.side === 'front').flatMap((page) => page.slots).filter(Boolean).length
+  const sheetCount = pages.length / 2
+  const usable = countUsable(squares, 'both')
 
   return (
     <section className="space-y-4">
@@ -68,21 +72,6 @@ export function BingoBoard({
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-xs text-muted">
-          {strings.bingo.language}
-          <select
-            value={mode}
-            onChange={(event) => setMode(event.target.value as BingoMode)}
-            className={`rounded border border-border bg-background px-2 py-2 text-foreground md:py-1 ${INPUT_TEXT}`}
-          >
-            {BINGO_MODES.map((value) => (
-              <option key={value} value={value}>
-                {strings.bingo.languages[value]}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <button
           type="button"
           onClick={() => setSeed(newSeed())}
@@ -93,13 +82,16 @@ export function BingoBoard({
         <button
           type="button"
           onClick={() => window.print()}
-          disabled={cards.length === 0}
+          disabled={cardCount === 0}
           className={`rounded-md border border-border text-sm hover:bg-background disabled:opacity-50 ${BUTTON_SIZE}`}
         >
           {strings.bingo.print}
         </button>
 
-        <p className="w-full text-sm text-muted sm:ms-auto sm:w-auto">{strings.bingo.printCount(cards.length)}</p>
+        <div className="w-full text-sm text-muted sm:ms-auto sm:w-auto">
+          <p>{strings.bingo.printCount(cardCount, sheetCount)}</p>
+          <p className="text-xs">{strings.bingo.duplexHint}</p>
+        </div>
       </div>
 
       {usable > 0 && usable < SQUARES_PER_CARD ? (
@@ -108,12 +100,23 @@ export function BingoBoard({
         </p>
       ) : null}
 
-      {cards.length === 0 ? (
+      {cardCount === 0 ? (
         <EmptyState title={strings.bingo.noCards} hint={strings.bingo.noCardsHint} />
       ) : (
         <div id="bingo-cards" className={`${styles.sheet} scroll-mt-4`}>
-          {cards.map((card) => (
-            <BingoCard key={card.key} language={card.language} squares={card.squares} />
+          {pages.map((page) => (
+            // One printed side of a sheet: two cards, top and bottom (bingo-card.module.css).
+            <div key={page.key} className={styles.printPage}>
+              <p className={styles.pageLabel}>{strings.bingo.pageLabel(page.sheet, page.side)}</p>
+              {page.slots.map((card, index) =>
+                card ? (
+                  <BingoCard key={card.key} language={card.language} squares={card.squares} />
+                ) : (
+                  // Keeps the back aligned with the front on an odd count.
+                  <div key={`empty-${index}`} className={`${styles.page} ${styles.emptySlot}`} aria-hidden />
+                )
+              )}
+            </div>
           ))}
         </div>
       )}

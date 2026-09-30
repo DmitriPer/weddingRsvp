@@ -63,3 +63,18 @@ export function isRateLimited(recentCount: number, requested: number): boolean {
 export function formatMegabytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+/**
+ * A photo's name in Drive: "דנה · 17.jpg", or "17.jpg" when the guest left no
+ * name (docs/wedding-photos-PRD.md §5). The number is the photo's running
+ * number from the database (migration 019), so every name is unique and the
+ * folder can be matched back to its row. No date: Drive shows when each file
+ * was created, and the number already keeps upload order.
+ *
+ * Characters Windows forbids in file names are dropped, so a downloaded
+ * folder unzips anywhere.
+ */
+export function driveFileName(uploaderName: string, photoNumber: number): string {
+  const safe = uploaderName.replace(/[\\/:*?"<>|]/g, '').trim()
+  return safe ? `${safe} · ${photoNumber}.jpg` : `${photoNumber}.jpg`
+}
