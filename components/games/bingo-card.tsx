@@ -47,9 +47,12 @@ export function BingoCard({
         <div className={styles.grid}>
           {cells.map((square, index) =>
             square === null ? (
-              <div key="free" className={`${styles.cell} ${styles.free}`}>
-                <span className={styles.freeLabel}>{strings.bingo.card.free}</span>
-                <span className={styles.freeRule} />
+              // The free centre square: a heart instead of the word "Free".
+              // Named for screen readers; the drawing itself is decorative.
+              <div key="free" className={`${styles.cell} ${styles.free}`} role="img" aria-label={strings.bingo.card.free}>
+                <svg className={styles.freeHeart} viewBox="0 0 24 24" aria-hidden>
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
               </div>
             ) : (
               // Index, not id: a square can repeat on one card when the list is short.

@@ -40,14 +40,13 @@ Login only, the same two locks as `/admin` (CLAUDE.md "Defense in depth"):
 
 | Control | Behaviour |
 |---|---|
-| Card count | 1–80, default 20 |
-| Language | Hebrew / Russian / both |
+| Card count | 1–80, default 20. Each card prints in both languages (§3.6) |
 | חלוקה חדשה | Reshuffles all cards |
 | הדפסה | `window.print()` |
 
 - Controls are page state only; they reset on reload.
-- **Changing language does not reshuffle.** Only the shuffle button does. (The original reshuffled silently.)
-- **"Both"**: every Hebrew card has a Russian twin with **the same squares in the same positions**, so a table can be handed a matching pair. Possible because squares are paired rows.
+- **Only the shuffle button reshuffles.**
+- **Always both languages** (since 2026-09-30). Every Hebrew card has a Russian twin with **the same squares in the same positions**, printed on its back (§3.6). This is possible because squares are paired rows. The language selector was removed.
 
 ### 3.4 Card rules
 
@@ -63,9 +62,30 @@ Login only, the same two locks as `/admin` (CLAUDE.md "Defense in depth"):
 - Both texts trimmed; a square needs at least one non-empty side.
 - Text edits appear on the cards at once without reshuffling; adding or deleting a square reshuffles.
 
-### 3.6 Print
+### 3.6 Print (revised 2026-09-30)
 
-Unchanged from the original: A5 page, 0.7cm margin, one card per page, cut lines. Controls, editor and navigation are hidden in print.
+**The card is an exact A5 sheet** (148×210 mm) on screen and on paper, so the screen shows what prints. **Printing is A4 landscape, two cards side by side** (A5 is exactly half of A4), with no rotation or scaling. It is double-sided and always in both languages; the language selector from §3.3 is gone.
+
+- **Each sheet:**
+  - front: Hebrew cards A and B side by side;
+  - back: the Russian twins **in mirrored order** (B, A).
+  - Printed two-sided with **flip on short edge** (the sheet turns over like a book page), every Hebrew card has its Russian twin behind it, with the same squares in the same spots.
+- **An odd count** leaves the second slot empty on both sides, mirrored on the back.
+- **Only squares with text in both languages** are used.
+- **Print settings:** `@page bingo` is A4 landscape with 0 margin. Each card's own 5 mm paper border absorbs a printer's unprintable edge. Print at **100% scale**. A dashed line down the middle is the cut.
+- **The card's content** (123×206 mm at full size) is drawn at 94% (`zoom`) to fit inside the A5 page's 5 mm padding.
+- **Design changes (2026-09-30), both Dmitri's:**
+  - the free centre square shows a **white heart** instead of "Free" (still named "Free" for screen readers);
+  - the page is **white**, replacing the `#f4f2ec` tint that printed as a grey frame.
+- **Chrome's "Background graphics" must be on** when printing, or the green heart square and the coloured dots print blank.
+- The controls show "N כרטיסים · M דפי A4 דו-צדדיים" and the print instructions; each page is labelled on screen.
+
+**History:**
+- The original A5 layout didn't fit its own page: the page was a *minimum* of 21 cm tall and its content ran to ~22.4 cm.
+- Two attempts that rotated the card onto A4 portrait failed in print:
+  - Chrome paginates and clips by the un-rotated box;
+  - a side-by-side restyle was rejected because it changed the design.
+- Dmitri's direction settled it: make the card exactly A5 on screen, and print two per A4 landscape.
 
 ### 3.7 Mobile (added 2026-09-29)
 

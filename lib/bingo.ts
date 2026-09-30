@@ -107,3 +107,53 @@ export function buildCards(orders: readonly BingoSquare[][], mode: BingoMode): B
     return languages.map((language) => ({ key: `${index}-${language}`, language, squares }))
   })
 }
+
+/** Cards per printed page: two A5 cards side by side on A4 landscape (docs/games-bingo-PRD.md §3.6). */
+export const CARDS_PER_PAGE = 2
+
+/** One printed side of a sheet. An empty slot keeps the back aligned with the front. */
+export interface PrintPage {
+  key: string
+  side: 'front' | 'back'
+  /** 1-based sheet number, for the on-screen label. */
+  sheet: number
+  slots: (BingoCard | null)[]
+}
+
+/**
+ * Pages for DOUBLE-SIDED printing: Hebrew on the front, the same card in
+ * Russian on the back (docs/games-bingo-PRD.md §3.6).
+ *
+ * Each sheet is two pages — front: Hebrew cards A and B side by side; back:
+ * Russian B and A, IN MIRRORED ORDER. The sheet is A4 landscape printed "flip
+ * on short edge", which turns it over like a book page: what was on one side
+ * of the front is on the other side of the back. Mirroring puts every Russian
+ * card exactly behind its Hebrew twin — same squares, same spots (one deal,
+ * filtered for squares that have both languages).
+ *
+ * An odd count leaves the last sheet's second slot empty on BOTH sides (so
+ * mirrored on the back), and the lone card still has its twin behind it.
+ */
+export function buildDuplexPages(orders: readonly BingoSquare[][]): PrintPage[] {
+  const filled = orders
+    .map((order, index) => ({ index, squares: fillCard(order, 'both') }))
+    .filter((card) => card.squares.length > 0)
+
+  const pages: PrintPage[] = []
+  for (let start = 0; start < filled.length; start += CARDS_PER_PAGE) {
+    const group = filled.slice(start, start + CARDS_PER_PAGE)
+    const sheet = start / CARDS_PER_PAGE + 1
+    for (const [side, language] of [['front', 'he'], ['back', 'ru']] as const) {
+      const slots: (BingoCard | null)[] = group.map((card) => ({
+        key: `${card.index}-${language}`,
+        language,
+        squares: card.squares,
+      }))
+      while (slots.length < CARDS_PER_PAGE) slots.push(null)
+      // The back mirrors the front: flipped on the short edge, left becomes right.
+      if (side === 'back') slots.reverse()
+      pages.push({ key: `${sheet}-${side}`, side, sheet, slots })
+    }
+  }
+  return pages
+}

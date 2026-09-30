@@ -542,18 +542,22 @@ export const strings = {
     shuffle: '🔀 חלוקה חדשה',
     print: '🖨️ הדפסה',
     /** Under the controls, so the page count on the print dialog is no surprise. */
-    printCount: (cards: number) => `${cards} כרטיסים להדפסה`,
+    /** Every card prints twice: Hebrew on the front, Russian on the back. */
+    printCount: (cards: number, sheets: number) => `${cards} כרטיסים · ${sheets} דפי A4 דו-צדדיים`,
+    duplexHint: 'בהדפסה: A4 לרוחב, קנה מידה 100%, דו-צדדי עם היפוך בצד הקצר. עברית מלפנים, רוסית מאחור. חותכים באמצע.',
+    pageLabel: (sheet: number, side: 'front' | 'back') =>
+      `דף ${sheet} · ${side === 'front' ? 'צד קדמי (עברית)' : 'צד אחורי (רוסית)'}`,
 
     /** Fewer usable squares than a card holds: squares repeat on each card. */
     tooFew: (usable: number) =>
-      `יש רק ${usable} משבצות בשפה הזו, וכרטיס צריך 24 — משבצות יחזרו על עצמן.`,
-    noCards: 'אין משבצות בשפה הזו, אז אין כרטיסים להציג.',
+      `יש רק ${usable} משבצות עם טקסט בעברית וברוסית, וכרטיס צריך 24 — משבצות יחזרו על עצמן.`,
+    noCards: 'אין משבצות עם טקסט בשתי השפות, אז אין כרטיסים להציג.',
     noCardsHint: 'הוסיפו משבצות ברשימה למעלה.',
 
     editorTitle: '✏️ עריכת רשימת המשבצות',
     /** Phone only: the stacked list is long, and the edit's result is below it. */
     jumpToCards: '↓ לכרטיסים',
-    editorHint: 'משבצת = שורה, בעברית וברוסית. משבצת בלי טקסט ברוסית לא תופיע בכרטיסים ברוסית. שינויי טקסט מופיעים מיד; הוספה או מחיקה מערבבת מחדש.',
+    editorHint: 'משבצת = שורה, בעברית וברוסית. כל כרטיס מודפס בשתי השפות, אז משבצת צריכה טקסט בשתיהן כדי להופיע. שינויי טקסט מופיעים מיד; הוספה או מחיקה מערבבת מחדש.',
     textHe: 'עברית',
     textRu: 'רוסית',
     placeholderHe: 'למשל: לרקוד עם הכלה',

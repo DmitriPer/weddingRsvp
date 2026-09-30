@@ -13,7 +13,9 @@
   --green: #3b7126;
   --green-soft: #4c7a39;
   --border: #cbdcbe;
-  --paper: #f4f2ec;
+  /* White, not the original #f4f2ec tint: a printed card should be plain white
+     paper, and the tint showed as a grey frame around it (2026-09-30). */
+  --paper: #fff;
   --pink: #e0567b;
   --gold: #f0b429;
   --blue: #5b93d6;
@@ -27,15 +29,25 @@
   border-radius: 8px;
 }
 
-/* ---------- Page / card ---------- */
+/* ---------- Page / card ----------
+ *
+ * The page IS an A5 sheet: exactly 148 × 210 mm, on screen and on paper, so
+ * what the screen shows is what prints (docs/games-bingo-PRD.md §3.6).
+ *
+ * The original page was 14.8 cm wide but only a MINIMUM of 21 cm tall, and
+ * its content ran to ~22.4 cm — which is why it never fitted an A5 page. The
+ * card inside is 123 × 206 mm at full size; with 5 mm page padding it gets
+ * 138 × 200 mm, so it is drawn at 94% (`zoom`, which — unlike a transform —
+ * shrinks the layout too, so nothing overflows): ~116 × 194 mm. */
 .page {
   background: var(--paper);
-  width: 14.8cm;
-  min-height: 21cm;
-  padding: 0.9cm;
+  width: 148mm;
+  height: 210mm;
+  padding: 5mm;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
+  align-items: center;
 }
 
 .card {
@@ -45,6 +57,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  zoom: 0.94;
   font-family: var(--font-hebrew), sans-serif;
   color: var(--green);
 }
@@ -149,18 +162,11 @@
   gap: 6px;
 }
 
-.freeLabel {
-  font-family: var(--font-hebrew), sans-serif;
-  font-size: 14px;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-
-.freeRule {
-  width: 24px;
-  height: 1px;
-  background: #9bbe8a;
+/* The heart in the free centre square, replacing the word "Free" (2026-09-30). */
+.freeHeart {
+  width: 36px;
+  height: 36px;
+  fill: #fff;
 }
 
 .photo {
@@ -240,32 +246,107 @@
   }
 }
 
+/* ---------- Print pages (docs/games-bingo-PRD.md §3.6) ----------
+ *
+ * One .printPage = one printed side of an A4 sheet, LANDSCAPE: two A5 cards
+ * side by side (A5 is exactly half of A4). No rotation, no scaling in print —
+ * the cards print at the size they are on screen.
+ *
+ * The board orders them for DOUBLE-SIDED printing (lib/bingo.ts
+ * buildDuplexPages): Hebrew front, Russian back, the back's order mirrored so
+ * each card has its twin behind it when the sheet is flipped on the short edge.
+ *
+ * On screen a printPage is the two cards side by side (wrapping on narrow
+ * screens) under a small label. */
+.printPage {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 26px;
+}
+
+.pageLabel {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: #6b7a5f;
+  text-align: center;
+}
+
+/* Only there to keep the back aligned on an odd count; nothing to show on screen. */
+.emptySlot {
+  display: none;
+}
+
 /*
- * A NAMED page, so only bingo sheets print on A5. A plain `@page { size: A5 }`
- * would be global and would also shrink the seating printout.
+ * A NAMED page, so only bingo sheets print A4 landscape with no margin; the
+ * seating printout keeps its own setup. No margin because the two A5 cards
+ * fill the sheet exactly — each card's own 5 mm paper-coloured border is what
+ * a printer's unprintable edge will trim, never the card itself.
  */
 @page bingo {
-  size: A5;
-  margin: 0.7cm;
+  size: A4 landscape;
+  margin: 0;
 }
 
 @media print {
+  /*
+   * The WHOLE document prints on the bingo page type while cards are on it.
+   * Otherwise anything after the cards — even an empty, zero-height element
+   * like the toast region — is on the default page type, and a change of page
+   * type forces a new page: a blank last sheet. `page` isn't inherited, but a
+   * box with `page: auto` uses its container's, so setting it on <body> covers
+   * every element. Scoped with :has() to documents that contain a card sheet,
+   * so no other screen's printing is touched.
+   */
+  :global(body):has(.sheet) {
+    page: bingo;
+  }
+
   .sheet {
+    display: block;
     padding: 0;
-    gap: 0;
     background: #fff;
     border-radius: 0;
   }
 
-  .page {
+  .printPage {
     page: bingo;
-    box-shadow: none;
-    width: auto;
-    min-height: auto;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    width: 297mm;
+    /* 1 mm under A4's 210 so a rounding error can never spill a blank page. */
+    height: 209mm;
+    overflow: hidden;
     break-after: page;
   }
 
-  .page:last-child {
+  .printPage:last-child {
     break-after: auto;
+  }
+
+  .pageLabel {
+    display: none;
+  }
+
+  .page {
+    width: 148.5mm;
+    height: 209mm;
+    box-shadow: none;
+  }
+
+  /* The cut line down the middle. */
+  .page + .page {
+    border-inline-start: 1px dashed #b7c4aa;
+  }
+
+  .emptySlot {
+    display: block;
+    background: #fff;
+  }
+
+  .card {
+    box-shadow: none;
   }
 }
