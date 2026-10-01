@@ -475,16 +475,20 @@ Spec: `docs/games-bingo-PRD.md` §3.3, §3.6.
 
 Drive files are now named `דנה · 17.jpg`, or `17.jpg` with no name, and have no date. `/api/photos/upload` reserves the row first (`reservePhoto`) so the number exists, uploads, then `attachDriveFile`s; a failure calls `releasePhoto`. `photoStats` counts only rows with a Drive file.
 
-## 5q. Admin answer and phone calls, 2026-10-01
+## 5q. Per-person answers and phone calls, 2026-10-01
 
-**⚠️ Needs migration `020_history_source.sql`** before the code is deployed. It adds `response_history.source` (`'guest'` / `'admin'`, default `'guest'`).
+**⚠️ Needs migrations `020_history_source.sql` and `021_person_answer.sql`, in that order, before the code is deployed.** 020 adds `response_history.source`. 021 adds `attendees.answer` and `response_history.person_name`, and **backfills `attendees.answer` on every existing person row** from the old derived rule. The backfill only fills nulls; verify it with the queries at the bottom of the file.
 
 Spec: `docs/admin-answer-and-calls-PRD.md`.
 - "Needs a phone call" now turns on at **2** attempts, not 5 (`lib/status.ts`).
 - Flagged rows with a phone get a `tel:` button. It records nothing.
-- "עדכון תשובה" on each row records yes / undecided / no, with people ticked for a yes, through `POST /api/invites/[id]/answer`. This route has no deadline check.
+- **Each person has their own answer.** In the expanded people list, the mark next to each name is a selector: coming / maybe / not coming. It saves through `POST /api/attendees/[id]/answer`, which has no deadline check.
 
-**One write path for answers.** `submitRsvp`'s body is now `recordAnswer` in `lib/data/supabase`. The guest path and `setAnswerAsAdmin` both call it, so status, history, seats and placeholders follow the same rules. The only differences: the admin path keeps existing +1s on a yes (`extras: 'keep'`), and its history row says `source: 'admin'`.
+**The household answer is now derived** (`householdAnswer` in `lib/headcount.ts`): anyone yes → yes, else anyone maybe → undecided, else anyone no → no. It is still stored on `invites.answer`, recalculated by `setPersonAnswer`, so filters and stats read it unchanged. `is_attending` is kept equal to `answer = 'yes'` on every write, so headcount and budget are unchanged too.
+
+**`answerForPerson(person)` now just reads `person.answer`.** It no longer takes the household's answer. The awaiting / undecided / declined counts are per person. The guest form is unchanged: a submission overwrites every person's answer from the ticks.
+
+*(A household-level "עדכון תשובה" form was built first, the same day, and replaced. The need was per person.)*
 
 ## 6. Known issues
 

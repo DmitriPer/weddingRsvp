@@ -10,7 +10,7 @@
  */
 
 import type {
-  AdminAnswer,
+  Answer,
   Attendee,
   DriveConnection,
   WeddingPhoto,
@@ -105,11 +105,11 @@ export interface DataStore {
   // --- the guest's answer --------------------------------------------------
   submitRsvp(submission: RsvpSubmission): Promise<RsvpResult | null>
   /**
-   * The admin records an answer after a phone call. Same effects as the guest's
-   * (status, history, seats) with history marked 'admin', and no deadline. The
-   * input must already be fitted to this household (lib/validation fitAdminAnswer).
+   * The admin sets ONE person's answer after a phone call. Recalculates the
+   * household's answer from its people and writes history marked 'admin' with
+   * the person's name. No deadline. Null for an unknown person.
    */
-  setAnswerAsAdmin(invite: InviteWithPeople, input: AdminAnswer): Promise<RsvpResult>
+  setPersonAnswer(personId: string, answer: Answer): Promise<RsvpResult | null>
   listHistory(inviteId: string): Promise<ResponseHistoryEntry[]>
 
   // --- seating -------------------------------------------------------------

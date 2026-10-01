@@ -109,6 +109,7 @@ export function HistoryModal({ inviteId, name }: { inviteId: string; name: strin
                     <p className="mt-1 text-xs text-muted">
                       #{entries.length - index}
                       {entry.source === 'admin' ? ` · ${strings.admin.setByAdmin}` : null}
+                      {entry.person_name ? ` · ${entry.person_name}` : null}
                     </p>
                   </li>
                 ))}

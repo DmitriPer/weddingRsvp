@@ -9,7 +9,7 @@ import 'server-only'
  */
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { countAttending } from '@/lib/headcount'
+import { countAttending, householdAnswer } from '@/lib/headcount'
 import { statusAfterContact, statusAfterOpen, statusAfterSubmit } from '@/lib/status'
 import { planPlaceholders, placeholderIds } from '@/lib/placeholders'
 import { nowIso } from '@/lib/datetime'
@@ -346,18 +346,39 @@ export const supabaseStore: DataStore = {
     const invite = await this.getInviteByToken(submission.token)
     if (!invite) return null
 
-    return recordAnswer(invite, {
-      answer: submission.answer,
-      attendingIds: submission.attendingIds,
-      extras: { adults: submission.extraAdults, kids: submission.extraKids },
-      source: 'guest',
-    })
+    // Every person's own answer is overwritten from the form: the guest answers
+    // for the whole household (docs/admin-answer-and-calls-PRD.md §5).
+    if (submission.answer === 'yes') {
+      await applyTicks(invite, submission.attendingIds)
+      await applyPlaceholderPlan(invite, submission.extraAdults, submission.extraKids)
+    } else {
+      // 'no' and 'undecided' both leave nobody attending: see parseRsvpSubmission.
+      await clearEverything(invite, submission.answer)
+    }
+
+    return saveHouseholdAnswer(invite, submission.answer, { source: 'guest', personName: null })
   },
 
-  async setAnswerAsAdmin(invite, input): Promise<RsvpResult> {
-    // No extra counts: the admin keeps existing +1s as they are
-    // (docs/admin-answer-and-calls-PRD.md §6).
-    return recordAnswer(invite, { ...input, extras: 'keep', source: 'admin' })
+  async setPersonAnswer(personId, answer): Promise<RsvpResult | null> {
+    if (!isUuid(personId)) return null
+    const db = createAdminClient()
+
+    const { data: person, error } = await db
+      .from('attendees')
+      .update({ answer, is_attending: answer === 'yes', ...seatClearing(answer) })
+      .eq('id', personId)
+      .select('invite_id, name')
+      .maybeSingle()
+    if (error) throw new Error(`save person answer: ${error.message}`)
+    if (!person) return null
+
+    // Re-read with the change applied: the household answer is derived from it.
+    const invite = await this.getInvite(person.invite_id)
+    if (!invite) return null
+
+    // Never null here: this person has just answered.
+    const household = householdAnswer(invite.attendees) ?? answer
+    return saveHouseholdAnswer(invite, household, { source: 'admin', personName: person.name })
   },
 
   async listHistory(inviteId): Promise<ResponseHistoryEntry[]> {
@@ -717,34 +738,17 @@ export const supabaseStore: DataStore = {
 // Each does one thing, so submitRsvp reads as a sequence rather than a wall.
 
 /**
- * Writes an answer, from the guest's form or from the admin after a phone call.
- * ONE path for both, so the two cannot drift: same ticks, same seat rules, same
- * status move, same history row. Only `source` and the +1 handling differ.
- *
- * `extras: 'keep'` leaves existing placeholders untouched on a 'yes' (the
- * admin path). On 'no' or 'undecided' they go either way — nobody is coming.
+ * The household half of any answer: the history row and the invite's own
+ * answer, status and timestamps. Shared by the guest's submission and the
+ * admin's per-person change, so both move status and write history the same
+ * way. The people must already be written; this re-reads them for the snapshot.
  */
-async function recordAnswer(
+async function saveHouseholdAnswer(
   invite: InviteWithPeople,
-  input: {
-    answer: Answer
-    attendingIds: string[]
-    extras: { adults: number; kids: number } | 'keep'
-    source: HistorySource
-  }
+  answer: Answer,
+  meta: { source: HistorySource; personName: string | null }
 ): Promise<RsvpResult> {
   const db = createAdminClient()
-  const coming = input.answer === 'yes'
-
-  if (coming) {
-    await applyTicks(invite, input.attendingIds)
-    if (input.extras !== 'keep') {
-      await applyPlaceholderPlan(invite, input.extras.adults, input.extras.kids)
-    }
-  } else {
-    // 'no' and 'undecided' both leave nobody attending: see parseRsvpSubmission.
-    await clearEverything(invite, input.answer)
-  }
 
   /*
    * The legacy boolean, written alongside `answer` so migration 010 stays
@@ -752,7 +756,7 @@ async function recordAnswer(
    * to be, which is the whole reason `answer` exists. A future migration could
    * drop the column (011 turned out to be table shape); this line goes with it.
    */
-  const legacyAttending = input.answer === 'undecided' ? null : coming
+  const legacyAttending = answer === 'undecided' ? null : answer === 'yes'
 
   // Re-read: the rows just changed, and the snapshot must match what was stored.
   const attendees = await fetchAttendees(invite.id)
@@ -761,12 +765,13 @@ async function recordAnswer(
 
   const historyResult = await db.from('response_history').insert({
     invite_id: invite.id,
-    answer: input.answer,
+    answer,
     attending: legacyAttending,
     adult_count: adults,
     kid_count: kids,
     submitted_at: timestamp,
-    source: input.source,
+    source: meta.source,
+    person_name: meta.personName,
   })
   if (historyResult.error) throw new Error(`append history: ${historyResult.error.message}`)
 
@@ -774,7 +779,7 @@ async function recordAnswer(
     await db
       .from('invites')
       .update({
-        answer: input.answer,
+        answer,
         attending: legacyAttending,
         status: statusAfterSubmit(invite.status),
         updated_at: timestamp,
@@ -799,7 +804,10 @@ async function applyTicks(invite: InviteWithPeople, tickedIds: string[]): Promis
   const shouldNot = named.filter((p) => !ticked.has(p.id)).map((p) => p.id)
 
   if (shouldAttend.length) {
-    const { error } = await db.from('attendees').update({ is_attending: true }).in('id', shouldAttend)
+    const { error } = await db
+      .from('attendees')
+      .update({ is_attending: true, answer: 'yes' })
+      .in('id', shouldAttend)
     if (error) throw new Error(`tick people: ${error.message}`)
   }
   if (shouldNot.length) {
@@ -807,7 +815,7 @@ async function applyTicks(invite: InviteWithPeople, tickedIds: string[]): Promis
     // give up their table (lib/seating.ts losesSeat).
     const { error } = await db
       .from('attendees')
-      .update({ is_attending: false, ...seatClearing('no') })
+      .update({ is_attending: false, answer: 'no', ...seatClearing('no') })
       .in('id', shouldNot)
     if (error) throw new Error(`untick people: ${error.message}`)
   }
@@ -832,6 +840,7 @@ async function applyPlaceholderPlan(
         name: person.name,
         is_child: person.is_child,
         is_attending: true,
+        answer: 'yes',
         is_placeholder: true,
       }))
     )
@@ -862,7 +871,7 @@ async function clearEverything(invite: InviteWithPeople, answer: Answer): Promis
 
   const { error } = await db
     .from('attendees')
-    .update({ is_attending: false, ...seatClearing(answer) })
+    .update({ is_attending: false, answer, ...seatClearing(answer) })
     .eq('invite_id', invite.id)
   if (error) throw new Error(`clear attendance: ${error.message}`)
 }

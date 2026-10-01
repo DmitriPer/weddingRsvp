@@ -50,24 +50,33 @@ export function countAttendingAnswered(answer: Answer | null, attendees: Attende
 }
 
 /**
- * What a SINGLE PERSON's attendance is, which is not the same as their
- * household's answer.
+ * What a SINGLE PERSON answered (migration 021). `null` = not answered yet.
  *
- * A household that answers 'yes' can still leave someone out: נטלי answered
- * yes for three people and unticked one, so two are coming and one is not.
- * Reading the household's answer for each of its people reports that person as
- * coming — which is how a name reached a seating list after being explicitly
- * removed from it.
+ * Stored per person since 2026-10-01, because one household can hold all three
+ * answers after a phone call: mom coming, dad a maybe. Before that it was
+ * derived from the household's answer and the tick, and the migration backfilled
+ * it by that same rule, so older households read exactly as they did.
  *
- * Returns null for a household that has not answered, so callers can label it
- * the same way they label the invitation.
+ * A person's answer is not the household's: נטלי answered yes for three people
+ * and unticked one, and reading the household's answer for each of them is how
+ * a removed name once reached a seating list.
  */
-export function answerForPerson(answer: Answer | null, person: Attendee): Answer | null {
-  if (answer === null) return null
-  // 'no' and 'undecided' apply to everyone on the invitation; only 'yes'
-  // distinguishes between them, and the tick is what distinguishes.
-  if (answer !== 'yes') return answer
-  return person.is_attending ? 'yes' : 'no'
+export function answerForPerson(person: Attendee): Answer | null {
+  return person.answer ?? null
+}
+
+/**
+ * The household's answer, calculated from its people after an admin changes one
+ * (docs/admin-answer-and-calls-PRD.md §5). Anyone coming makes the household a
+ * yes; else anyone unsure makes it undecided; else anyone declining makes it a
+ * no. People still unset count neither way. `null` when nobody has answered.
+ */
+export function householdAnswer(attendees: Attendee[]): Answer | null {
+  const answers = new Set(attendees.map(answerForPerson))
+  if (answers.has('yes')) return 'yes'
+  if (answers.has('undecided')) return 'undecided'
+  if (answers.has('no')) return 'no'
+  return null
 }
 
 /**
@@ -85,7 +94,7 @@ export type AttendanceSummary =
   | { kind: 'awaiting'; invited: number }
   | { kind: 'undecided'; invited: number }
   | { kind: 'declined'; invited: number }
-  | { kind: 'coming'; coming: number; invited: number }
+  | { kind: 'coming'; coming: number; invited: number; undecided: number }
 
 export function summarizeAttendance(
   answer: Answer | null,
@@ -96,7 +105,13 @@ export function summarizeAttendance(
   if (answer === null) return { kind: 'awaiting', invited }
   if (answer === 'undecided') return { kind: 'undecided', invited }
   if (answer === 'no') return { kind: 'declined', invited }
-  return { kind: 'coming', coming: countAttending(attendees).total, invited }
+  return {
+    kind: 'coming',
+    coming: countAttending(attendees).total,
+    invited,
+    // A household that is a yes overall can still hold a maybe (migration 021).
+    undecided: countUndecided(attendees),
+  }
 }
 
 /**
@@ -124,39 +139,34 @@ export function countPeopleRows(attendees: Attendee[]): number {
 }
 
 /**
- * People who answered no. Placeholders are excluded: an unnamed "+1" only
- * exists while it is coming, and declining deletes them outright.
- *
- * Nobody has declined until the invitation itself has answered — before that
- * `is_attending` is merely its `false` default, not a decision.
+ * People who answered no, by their own answer. Placeholders are excluded: an
+ * unnamed "+1" is somebody coming, and a household's no deletes them.
  */
-export function countDeclined(answer: Answer | null, attendees: Attendee[]): number {
-  // Undecided declines nobody: the household has answered, but not about who.
-  if (answer === null || answer === 'undecided') return 0
-  return attendees.filter((person) => !person.is_attending && !person.is_placeholder).length
+export function countDeclined(attendees: Attendee[]): number {
+  return attendees.filter((person) => answerForPerson(person) === 'no' && !person.is_placeholder)
+    .length
 }
 
 /**
- * People whose answer is still unknown — everyone on an invitation that has not
- * replied. Nobody on an ANSWERED invitation is awaiting: they are either coming
- * or they are not.
+ * People whose answer is still unknown. Per person: after a phone call one
+ * person can be answered while the rest of the household is not.
  *
  * This is the number that says how much the caterer count could still move.
  */
-export function countAwaiting(answer: Answer | null, attendees: Attendee[]): number {
-  return answer === null ? attendees.length : 0
+export function countAwaiting(attendees: Attendee[]): number {
+  return attendees.filter((person) => answerForPerson(person) === null).length
 }
 
 /**
- * People on an invitation that answered 'undecided'.
+ * People who answered 'undecided'.
  *
  * Counted apart from `countAwaiting` rather than added to it. Both are people
- * whose seat is unsettled, but they are reached differently — one household has
- * never been asked, the other has answered and needs a nudge — and a single
- * number that quietly means both is the kind that gets acted on wrongly.
+ * whose seat is unsettled, but they are reached differently — one has never
+ * answered, the other has and needs a nudge — and a single number that quietly
+ * means both is the kind that gets acted on wrongly.
  */
-export function countUndecided(answer: Answer | null, attendees: Attendee[]): number {
-  return answer === 'undecided' ? attendees.length : 0
+export function countUndecided(attendees: Attendee[]): number {
+  return attendees.filter((person) => answerForPerson(person) === 'undecided').length
 }
 
 /** Guest-added "+1"s among those coming — people who were never on the list. */

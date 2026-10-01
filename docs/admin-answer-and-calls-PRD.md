@@ -1,7 +1,7 @@
 # Admin Answer & Phone Calls
 
 **Owner:** Dmitri
-**Status:** built 2026-10-01 (branch feat/admin-answer-calls). Needs migration 020 run before deploy.
+**Status:** built 2026-10-01 (branch feat/admin-answer-calls). Needs migrations 020 and 021 run before deploy.
 **From:** live use. Guests who don't answer on WhatsApp get a phone call, and the answer they give on the phone had nowhere to go.
 
 ## 1. Mission
@@ -9,7 +9,7 @@
 Close the loop for the follow-up call:
 1. Flag a silent household for a call **sooner**.
 2. Let the admin **dial it from the row**.
-3. Let the admin **record the answer** given on the phone, the same way a guest's own answer is recorded.
+3. Let the admin **record each person's answer** from the phone call: coming, maybe or not coming. One household can hold all three.
 
 ## 2. Scope boundaries
 
@@ -17,15 +17,13 @@ Close the loop for the follow-up call:
 |---|---|
 | Lower the call threshold from 5 to 2 | Any automated, scheduled or bulk calling or messaging (hard rule) |
 | A `tel:` button on flagged rows | Logging calls or counting them as contact attempts |
-| Admin sets yes / undecided / no from the invitee row | Admin adding unnamed +1s from the answer control (see §6) |
-| Admin picks which people are coming for "yes" | Changes to the guest page or `/api/rsvp` |
-| History marks admin-set answers | Styling beyond what's needed to fit the controls in |
+| A per-person answer (yes / maybe / no), set by the admin | Per-person answers on the guest page; its form is unchanged |
+| The household answer derived from its people | Changes to `/api/rsvp`'s request shape |
+| History names the person and marks admin changes | Styling beyond what's needed to fit the selector in |
 
 ## 3. Phone call flag
 
 **Rule** (`lib/status.ts`): `FOLLOW_UP_ATTEMPT_THRESHOLD` goes from **5 to 2**. Nothing else changes: the flag applies only to households that are invited and still silent (`pending` / `opened`).
-
-The master PRD §6.10 ("5 attempts") is updated to say 2.
 
 Undecided households are **not** flagged. They answered, and the flag is about silence.
 
@@ -34,76 +32,92 @@ Undecided households are **not** flagged. They answered, and the flag is about s
 - Shown **only on flagged rows**, and only when the row has a phone number. On those rows it works as a to-do list.
 - It is a plain `tel:` link with the stored number, which is already normalised to `+972…` (`lib/phone.ts`).
 - Tapping it **records nothing**. It does not touch `contact_attempts`, `last_contacted_at` or `status`, because nothing tells the app whether the call actually connected.
-- It sits beside the WhatsApp button.
 
-## 5. Admin sets the answer
+## 5. Per-person answer
 
-### Behaviour
+### The control
 
-- A control on each invitee row sets the household's answer: **coming / maybe / not coming**.
-- **Coming:** the admin ticks which of the household's existing people are attending. At least one person must be ticked, the same rule the guest form follows.
-- **Maybe / not coming:** nobody is attending. This is the same clearing the guest path does, including the seat rules in `docs/small-fixes-PRD.md` §1.
-- +1 placeholder rows are **kept on a yes** and **deleted on maybe / not coming**, exactly as in the guest path (see §6).
-- It is **the same as a guest answer** in every effect:
-  - status goes to `submitted`, or to `edited` if the household already answered (`statusAfterSubmit`)
-  - a `response_history` row is appended, with its count snapshot
-  - `responded_at` is set if empty
-  - stats and the headcount pick it up, since they are derived
-- **The RSVP deadline does not apply** to the admin. Late phone confirmations still need recording. The guest route keeps enforcing it.
-- The pending state follows the UI convention: `use-action` + `requestJson` + `Spinner` (`docs/error-loading-PRD.md`).
+In the expanded people list on each invitee row, the mark next to each name (✓ / ? / ✕ / ○) is a **selector**: טרם ענו (only shown while unset) / מגיעים / עדיין לא יודעים / לא מגיעים. Changing it saves **that person only**. +1 placeholders have one too.
+
+There is no household-level control. *(A first version had one, "עדכון תשובה"; it was replaced the same day because the need is per person.)*
+
+### What a change does
+
+1. The person's `answer` is set, and `is_attending` is set in the same update (`answer = 'yes'`).
+2. "Not coming" clears their table; "maybe" keeps it (`lib/seating.ts` `losesSeat`, unchanged).
+3. The **household answer is recalculated** from all its people (`householdAnswer` in `lib/headcount.ts`):
+
+   | People | Household |
+   |---|---|
+   | anyone coming | yes |
+   | else anyone maybe | undecided |
+   | else anyone not coming | no |
+   | nobody answered | — (unchanged) |
+
+   People still unset don't count either way. If one person says "not coming" and the others haven't answered, the household reads **not coming** and counts 0 until someone says yes.
+4. Status moves to `submitted`, or to `edited` if the household had already answered (`statusAfterSubmit`). `responded_at` is set if empty.
+5. A `response_history` row is appended: the household snapshot, `source = 'admin'`, and `person_name`.
+
+**The RSVP deadline does not apply.** Late phone confirmations still need recording; the guest route keeps enforcing it.
 
 ### API
 
-A new admin route, `POST /api/invites/[id]/answer`, with body `{ answer, attendingIds }`.
-- It re-checks the admin session itself (lock #2). `/api/invites/*` is under the admin area, not the public RSVP route.
-- It checks the shape with `parseAdminAnswer`, loads the invite (404 if unknown), then `fitAdminAnswer` narrows the ticks to this household's named people and refuses a yes with nobody coming (400).
+`POST /api/attendees/[id]/answer`, body `{ answer: 'yes' | 'no' | 'undecided' }`. Admin-only (lock #2): 401 without a session, 400 on a bad answer, 404 on an unknown person.
 
-### Data layer
+### The guest page
 
-`submitRsvp`'s body moved into a shared helper, `recordAnswer(invite, { answer, attendingIds, extras, source })`. The guest path finds the invite by token and passes its extra counts. The admin path, `setAnswerAsAdmin(invite, input)`, passes `extras: 'keep'`, which skips the placeholder plan. One code path writes answers, so the two cannot drift apart.
+Unchanged on screen. When a guest submits, every person's `answer` is **overwritten** from the form:
+- household yes → ticked people `yes`, unticked `no`, +1s `yes`
+- household no / maybe → everyone `no` / `undecided`, and +1s deleted, as before
+
+A guest whose household holds a per-person "maybe" sees that person unticked; submitting makes them `no`. That's acceptable, because the guest is answering for the household.
 
 ## 6. Data model
 
-Migration `020_history_source.sql`:
+Migration `020_history_source.sql` (already in the branch): `response_history.source`, `'guest'` / `'admin'`, default `'guest'`.
 
-```sql
-alter table response_history
-  add column source text not null default 'guest'
-  check (source in ('guest', 'admin'));
-```
+Migration `021_person_answer.sql`:
+- `attendees.answer text null`, check `in ('yes', 'no', 'undecided')`. `null` = not answered yet.
+- **Backfill**, one statement, only rows still `null`, derived from today's rule (`answerForPerson` as it was):
+  - household unanswered → `null`
+  - household yes → `yes` if ticked, else `no`
+  - household no / undecided → the same
+- `response_history.person_name text null`. Null for guest submissions and for older rows.
 
-- Existing rows become `guest`, which is true: before this feature only guests could answer.
-- `ResponseHistoryEntry` gains `source: 'guest' | 'admin'`.
-- The history modal labels admin entries **"עודכן ע״י מנהל"** ("updated by admin").
-- **The migration ships before the code.** Verify it with `information_schema`, not the SQL editor's "Success" (`docs/progress.md` §5).
+**The backfill writes to every existing person row on the real database.** It changes only the new column, is derived entirely from data already there, and is re-runnable because it only touches nulls. Run it deliberately, then verify:
+- no row has `answer = 'yes'` with `is_attending = false`
+- the per-answer counts match the dashboard from before the migration
 
-**Placeholders:** they are managed by count, not by tick, and are always attending. The admin control never adds them. On "coming" the existing ones are kept and shown read-only ("+N אורחים לא מזוהים"); on "maybe" or "not coming" they are deleted, as the guest path does. To add a +1, use the existing attendee editor.
+**`is_attending` stays.** It is kept equal to `answer = 'yes'` on every write, so headcount, budget and the guest form need no change. **`invites.answer` stays stored**, recalculated on every per-person change, so filters, stats and send kinds need no change.
 
-*(The first draft said placeholders were "left as they are" for every answer. That contradicted the guest path, which deletes them when nobody is coming; corrected while planning, 2026-10-01.)*
+### Readers that switch to the person's own answer
+
+- `answerForPerson(person)` returns `person.answer`. Its callers are the seating board, the site export and the people list.
+- `countDeclined`, `countAwaiting`, `countUndecided` count people by their own answer (`lib/stats.ts`).
+- The row summary shows a mixed household as "2 מגיעים מתוך 3 · 1 עדיין לא יודעים".
 
 ## 7. Explicitly deferred
 
 - Call outcome logging ("no answer", "call back later").
 - Flagging undecided households for a call.
-- A per-household or configurable threshold. It stays one constant.
+- Per-person answers on the guest page.
+- Recalculating the household answer when a person is **added or deleted** in the editor. Only answer changes recalculate it.
 
 ## 8. Open questions
 
 None. Resolved 2026-10-01:
-- Threshold: 2.
-- Call button: on flagged rows only.
-- Answer control: on the admin invitee row, not the guest page.
-- "Coming": the admin picks people.
-- Effects: identical to a guest answer, with history marked admin.
+- Threshold: 2. Call button: flagged rows only.
+- Per person: yes / maybe / no each; admin only; in the expanded people list; replaces the household form.
+- Partial answers: the household counts as answered, and the rest stay awaiting.
+- History: a row per change, naming the person.
 - Deadline: the admin bypasses it.
-- +1s: not added from the answer control; kept on yes, cleared on maybe / no.
 
 ## 9. Definition of done
 
-- Migration 020 is applied and verified via `information_schema`.
-- The threshold rule is checked directly: 1 attempt → no flag; 2 attempts, pending → flag; 2 attempts, submitted → no flag.
+- Migrations 020 and 021 are applied and verified via `information_schema`, plus the backfill checks in §6.
+- The rules are checked directly: threshold (1 → no flag, 2 pending → flag, 2 submitted → no flag), and `householdAnswer` for each row of the table in §5.
 - The call button appears only on flagged rows that have a phone, and its `href` is `tel:+972…`.
-- The admin answer route returns 401 without a session.
-- The write path is verified on **one real row** and restored immediately: set the answer, check status, history (`source = 'admin'`) and headcount, then put the answer back. The extra history rows that leaves behind are expected, since history is append-only. Get Dmitri's OK before doing this.
+- `POST /api/attendees/[id]/answer` returns 401 without a session.
+- The write path is verified on **one real person** and restored immediately, with Dmitri's OK at the time. It leaves two history rows behind, since history is append-only.
 - `npx tsc --noEmit && npm run lint && npm run build` pass.
-- `docs/progress.md`, `CLAUDE.md`'s PRD list and master PRD §6.10 are updated.
+- `docs/progress.md` and `docs/architecture.md` are updated.

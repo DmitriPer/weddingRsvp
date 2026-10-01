@@ -201,8 +201,9 @@ export const strings = {
       /** Answered, and does not know yet — not the same as not having answered. */
       undecided: (invited: number) => `${invited} מוזמנים · עדיין לא יודעים`,
       declined: (invited: number) => `${invited} מוזמנים · לא מגיעים`,
-      coming: (coming: number, invited: number) =>
-        coming === invited ? `${coming} מגיעים` : `${coming} מגיעים מתוך ${invited}`,
+      coming: (coming: number, invited: number, undecided: number) =>
+        (coming === invited ? `${coming} מגיעים` : `${coming} מגיעים מתוך ${invited}`) +
+        (undecided > 0 ? ` · ${undecided} עדיין לא יודעים` : ''),
     },
   },
 
@@ -222,12 +223,8 @@ export const strings = {
     notAttending: 'לא מגיע',
     /** tel: link on rows flagged "needs a phone call". Records nothing. */
     call: 'התקשרות',
-    /** docs/admin-answer-and-calls-PRD.md §5 */
-    setAnswer: 'עדכון תשובה',
-    setAnswerTitle: 'מה ענו?',
-    whoIsComing: 'מי מגיע?',
-    unnamedGuests: (count: number) => (count === 1 ? '+ אורח לא מזוהה' : `+ ${count} אורחים לא מזוהים`),
-    answerNeedsPerson: 'צריך לסמן לפחות אדם אחד, או לבחור "לא מגיעים"',
+    /** The per-person answer selector (docs/admin-answer-and-calls-PRD.md §5). */
+    personAnswer: (name: string) => `התשובה של ${name}`,
     answerSaved: 'התשובה נשמרה',
     answerFailed: 'שמירת התשובה נכשלה',
   },

@@ -7,12 +7,11 @@
  * PATCH clears is_placeholder, which is what makes them seatable by name
  * (PRD §5.3).
  *
- * `is_attending` is NOT editable here. That is the guest's answer, and the
- * admin overwriting it would make the headcount a claim rather than a record.
- *
- * The glyph beside each name is that person's OWN answer, not the tick. A tick
- * only means "coming" once the household has said it is coming, so reading the
- * raw flag would show a ✓ against someone on an invitation that never replied.
+ * The mark beside each name is that person's OWN answer (migration 021), and
+ * it is a selector: after a phone call the admin records each person as
+ * coming, maybe or not coming (docs/admin-answer-and-calls-PRD.md §5). Always
+ * available, not only while editing — it records an answer, not a list change.
+ * The tick itself is never edited directly; the answer drives it.
  *
  * Each person is its own row component with its own action, so a busy row
  * disables and spins only itself (docs/error-loading-PRD.md §4).
@@ -26,6 +25,9 @@ import { jsonInit, requestJson } from '@/lib/request'
 import { AGE_GROUPS, ageGroupOf, type AgeGroup } from '@/lib/age-group'
 import { strings } from '@/lib/strings'
 import type { Answer, Attendee } from '@/lib/types'
+
+/** Selector order: a scale, with the middle answer in the middle (as on the guest form). */
+const ANSWER_ORDER: readonly Answer[] = ['yes', 'undecided', 'no']
 
 /** Glyph and tone per answer, so the list reads at a glance. */
 const MARKS: Record<'yes' | 'no' | 'undecided' | 'none', { glyph: string; tone: string }> = {
@@ -68,13 +70,10 @@ function patchAttendee(id: string, patch: { name?: string; age_group?: AgeGroup 
 
 export function AttendeeList({
   inviteId,
-  answer,
   attendees,
   editable,
 }: {
   inviteId: string
-  /** The household's answer — needed to read each person's (lib/headcount.ts). */
-  answer: Answer | null
   attendees: Attendee[]
   editable: boolean
 }): React.JSX.Element | null {
@@ -84,7 +83,7 @@ export function AttendeeList({
     <div className="mt-2 border-t border-border pt-2">
       <ul className="space-y-1 text-sm">
         {attendees.map((person) => (
-          <AttendeeRow key={person.id} person={person} answer={answer} editable={editable} />
+          <AttendeeRow key={person.id} person={person} editable={editable} />
         ))}
       </ul>
 
@@ -93,15 +92,7 @@ export function AttendeeList({
   )
 }
 
-function AttendeeRow({
-  person,
-  answer,
-  editable,
-}: {
-  person: Attendee
-  answer: Answer | null
-  editable: boolean
-}) {
+function AttendeeRow({ person, editable }: { person: Attendee; editable: boolean }) {
   const action = useAction()
   // The chosen age group, shown while the change is saving; the prop still
   // holds the old one until the refresh lands.
@@ -109,8 +100,30 @@ function AttendeeRow({
   const group = draftGroup ?? ageGroupOf(person)
   const busy = action.pending
 
-  const personAnswer = answerForPerson(answer, person) ?? 'none'
+  // The chosen answer, shown while it saves — same pattern as draftGroup.
+  const [draftAnswer, setDraftAnswer] = useState<Answer | null>(null)
+  const personAnswer = draftAnswer ?? answerForPerson(person) ?? 'none'
   const mark = MARKS[personAnswer]
+
+  function changeAnswer(next: Answer) {
+    if (busy) return
+    setDraftAnswer(next)
+    action.run(
+      async () => {
+        await requestJson(
+          `/api/attendees/${person.id}/answer`,
+          jsonInit('POST', { answer: next }),
+          strings.row.answerFailed
+        )
+        startTransition(() => setDraftAnswer(null))
+      },
+      {
+        success: strings.row.answerSaved,
+        failure: strings.row.answerFailed,
+        onError: () => setDraftAnswer(null),
+      }
+    )
+  }
 
   function rename(input: HTMLInputElement) {
     const trimmed = input.value.trim()
@@ -146,9 +159,27 @@ function AttendeeRow({
 
   return (
     <li className="flex items-center gap-2" aria-busy={busy}>
-      <span className={`shrink-0 ${mark.tone}`} title={strings.toolbar.answer[personAnswer]}>
-        {mark.glyph}
-      </span>
+      {/* The glyph alone is too easy to misread as a status icon rather than a
+          control, so each option carries its word too. "טרם ענו" is offered
+          only while it is the value: an answer cannot be taken back. */}
+      <select
+        value={personAnswer}
+        onChange={(event) => changeAnswer(event.target.value as Answer)}
+        disabled={busy}
+        aria-label={strings.row.personAnswer(person.name)}
+        className={`shrink-0 rounded border border-border px-1 py-1 text-xs ${mark.tone}`}
+      >
+        {personAnswer === 'none' ? (
+          <option value="none" disabled>
+            {MARKS.none.glyph} {strings.toolbar.answer.none}
+          </option>
+        ) : null}
+        {ANSWER_ORDER.map((value) => (
+          <option key={value} value={value}>
+            {MARKS[value].glyph} {strings.toolbar.answer[value]}
+          </option>
+        ))}
+      </select>
 
       {editable ? (
         <>

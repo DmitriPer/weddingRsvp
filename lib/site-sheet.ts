@@ -101,7 +101,7 @@ function localPhone(phone: string | null): string {
  */
 function siteRows(invite: InviteWithPeople): (string | number)[][] {
   const coming = invite.attendees.filter(
-    (person) => answerForPerson(invite.answer, person) === 'yes'
+    (person) => answerForPerson(person) === 'yes'
   )
   const named = coming.filter((person) => !person.is_placeholder)
   const plusOnes = coming.length - named.length
