@@ -73,6 +73,8 @@ export const strings = {
     history: 'היסטוריה',
     historyTitle: 'היסטוריית תשובות',
     noHistory: 'אין עדיין תשובות',
+    /** On a history entry the admin recorded (migration 020). */
+    setByAdmin: 'עודכן ע״י מנהל',
   },
 
   /** The settings tab (PRD §6.5) — wedding details and the three templates. */
@@ -218,6 +220,16 @@ export const strings = {
     renamePlaceholder: 'מי זה?',
     attending: 'מגיע',
     notAttending: 'לא מגיע',
+    /** tel: link on rows flagged "needs a phone call". Records nothing. */
+    call: 'התקשרות',
+    /** docs/admin-answer-and-calls-PRD.md §5 */
+    setAnswer: 'עדכון תשובה',
+    setAnswerTitle: 'מה ענו?',
+    whoIsComing: 'מי מגיע?',
+    unnamedGuests: (count: number) => (count === 1 ? '+ אורח לא מזוהה' : `+ ${count} אורחים לא מזוהים`),
+    answerNeedsPerson: 'צריך לסמן לפחות אדם אחד, או לבחור "לא מגיעים"',
+    answerSaved: 'התשובה נשמרה',
+    answerFailed: 'שמירת התשובה נכשלה',
   },
 
   inviteForm: {

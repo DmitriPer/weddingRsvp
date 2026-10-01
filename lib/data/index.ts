@@ -41,6 +41,7 @@ export const updateAttendee = store.updateAttendee.bind(store)
 export const deleteAttendee = store.deleteAttendee.bind(store)
 
 export const submitRsvp = store.submitRsvp.bind(store)
+export const setAnswerAsAdmin = store.setAnswerAsAdmin.bind(store)
 export const listHistory = store.listHistory.bind(store)
 
 export const listTables = store.listTables.bind(store)

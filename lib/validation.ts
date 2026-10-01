@@ -12,7 +12,9 @@ import {
   LANGUAGES,
   RELATIONS,
   SIDES,
+  type AdminAnswer,
   type Answer,
+  type Attendee,
   type BudgetKind,
   type BudgetPricing,
   type CreateAttendeeInput,
@@ -492,6 +494,42 @@ export function parseRsvpSubmission(body: unknown): Parsed<RsvpSubmission> {
     extraAdults: extraAdults.value,
     extraKids: extraKids.value,
   })
+}
+
+/**
+ * The admin's answer after a phone call (docs/admin-answer-and-calls-PRD.md §5).
+ * Shape only; whether the ids belong to the household is fitAdminAnswer's job,
+ * once the route has loaded it.
+ */
+export function parseAdminAnswer(body: unknown): Parsed<AdminAnswer> {
+  if (!isRecord(body)) return fail('Invalid request body')
+  if (!ANSWERS.includes(body.answer as Answer)) return fail('An answer is required')
+  const answer = body.answer as Answer
+
+  // Same rule as the guest's: only 'yes' carries people (parseRsvpSubmission).
+  if (answer !== 'yes') return pass({ answer, attendingIds: [] })
+
+  const attendingIds = stringArray(body.attendingIds, 'Attending ids')
+  if (!attendingIds.ok) return attendingIds
+  return pass({ answer, attendingIds: attendingIds.value })
+}
+
+/**
+ * Narrows the ticked ids to this household's NAMED people — placeholders are
+ * managed by count, never by tick — and refuses a 'yes' that leaves nobody
+ * coming. Existing +1s count as coming: the admin path keeps them.
+ */
+export function fitAdminAnswer(input: AdminAnswer, attendees: Attendee[]): Parsed<AdminAnswer> {
+  if (input.answer !== 'yes') return pass(input)
+
+  const named = new Set(attendees.filter((p) => !p.is_placeholder).map((p) => p.id))
+  const attendingIds = input.attendingIds.filter((id) => named.has(id))
+  const hasPlaceholders = attendees.some((p) => p.is_placeholder)
+
+  if (attendingIds.length === 0 && !hasPlaceholders) {
+    return fail('Choose at least one guest, or record that they are not coming')
+  }
+  return pass({ answer: 'yes', attendingIds })
 }
 
 export function parseStatusFilter(value: string | null): InviteStatus | null {

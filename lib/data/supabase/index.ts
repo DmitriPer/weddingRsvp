@@ -19,6 +19,7 @@ import type {
   Answer,
   Attendee,
   DriveConnection,
+  HistorySource,
   WeddingPhoto,
   BingoSquare,
   BudgetItem,
@@ -342,61 +343,21 @@ export const supabaseStore: DataStore = {
   },
 
   async submitRsvp(submission: RsvpSubmission): Promise<RsvpResult | null> {
-    const db = createAdminClient()
-
     const invite = await this.getInviteByToken(submission.token)
     if (!invite) return null
 
-    const coming = submission.answer === 'yes'
-
-    if (coming) {
-      await applyTicks(invite, submission.attendingIds)
-      await applyPlaceholderPlan(invite, submission.extraAdults, submission.extraKids)
-    } else {
-      // 'no' and 'undecided' both leave nobody attending: see parseRsvpSubmission.
-      await clearEverything(invite, submission.answer)
-    }
-
-    /*
-     * The legacy boolean, written alongside `answer` so migration 010 stays
-     * reversible for the two answers it can express. 'undecided' has no boolean
-     * to be, which is the whole reason `answer` exists. A future migration could
-     * drop the column (011 turned out to be table shape); this line goes with it.
-     */
-    const legacyAttending = submission.answer === 'undecided' ? null : coming
-
-    // Re-read: the rows just changed, and the snapshot must match what was stored.
-    const attendees = await fetchAttendees(invite.id)
-    const { adults, kids } = countAttending(attendees)
-    const timestamp = nowIso()
-
-    const historyResult = await db.from('response_history').insert({
-      invite_id: invite.id,
+    return recordAnswer(invite, {
       answer: submission.answer,
-      attending: legacyAttending,
-      adult_count: adults,
-      kid_count: kids,
-      submitted_at: timestamp,
+      attendingIds: submission.attendingIds,
+      extras: { adults: submission.extraAdults, kids: submission.extraKids },
+      source: 'guest',
     })
-    if (historyResult.error) throw new Error(`append history: ${historyResult.error.message}`)
+  },
 
-    const updated = unwrap(
-      await db
-        .from('invites')
-        .update({
-          answer: submission.answer,
-          attending: legacyAttending,
-          status: statusAfterSubmit(invite.status),
-          updated_at: timestamp,
-          responded_at: invite.responded_at ?? timestamp,
-        })
-        .eq('id', invite.id)
-        .select()
-        .single(),
-      'save answer'
-    ) as Invite
-
-    return { invite: { ...updated, attendees }, adults, kids }
+  async setAnswerAsAdmin(invite, input): Promise<RsvpResult> {
+    // No extra counts: the admin keeps existing +1s as they are
+    // (docs/admin-answer-and-calls-PRD.md §6).
+    return recordAnswer(invite, { ...input, extras: 'keep', source: 'admin' })
   },
 
   async listHistory(inviteId): Promise<ResponseHistoryEntry[]> {
@@ -754,6 +715,79 @@ export const supabaseStore: DataStore = {
 
 // --- submitRsvp helpers ------------------------------------------------------
 // Each does one thing, so submitRsvp reads as a sequence rather than a wall.
+
+/**
+ * Writes an answer, from the guest's form or from the admin after a phone call.
+ * ONE path for both, so the two cannot drift: same ticks, same seat rules, same
+ * status move, same history row. Only `source` and the +1 handling differ.
+ *
+ * `extras: 'keep'` leaves existing placeholders untouched on a 'yes' (the
+ * admin path). On 'no' or 'undecided' they go either way — nobody is coming.
+ */
+async function recordAnswer(
+  invite: InviteWithPeople,
+  input: {
+    answer: Answer
+    attendingIds: string[]
+    extras: { adults: number; kids: number } | 'keep'
+    source: HistorySource
+  }
+): Promise<RsvpResult> {
+  const db = createAdminClient()
+  const coming = input.answer === 'yes'
+
+  if (coming) {
+    await applyTicks(invite, input.attendingIds)
+    if (input.extras !== 'keep') {
+      await applyPlaceholderPlan(invite, input.extras.adults, input.extras.kids)
+    }
+  } else {
+    // 'no' and 'undecided' both leave nobody attending: see parseRsvpSubmission.
+    await clearEverything(invite, input.answer)
+  }
+
+  /*
+   * The legacy boolean, written alongside `answer` so migration 010 stays
+   * reversible for the two answers it can express. 'undecided' has no boolean
+   * to be, which is the whole reason `answer` exists. A future migration could
+   * drop the column (011 turned out to be table shape); this line goes with it.
+   */
+  const legacyAttending = input.answer === 'undecided' ? null : coming
+
+  // Re-read: the rows just changed, and the snapshot must match what was stored.
+  const attendees = await fetchAttendees(invite.id)
+  const { adults, kids } = countAttending(attendees)
+  const timestamp = nowIso()
+
+  const historyResult = await db.from('response_history').insert({
+    invite_id: invite.id,
+    answer: input.answer,
+    attending: legacyAttending,
+    adult_count: adults,
+    kid_count: kids,
+    submitted_at: timestamp,
+    source: input.source,
+  })
+  if (historyResult.error) throw new Error(`append history: ${historyResult.error.message}`)
+
+  const updated = unwrap(
+    await db
+      .from('invites')
+      .update({
+        answer: input.answer,
+        attending: legacyAttending,
+        status: statusAfterSubmit(invite.status),
+        updated_at: timestamp,
+        responded_at: invite.responded_at ?? timestamp,
+      })
+      .eq('id', invite.id)
+      .select()
+      .single(),
+    'save answer'
+  ) as Invite
+
+  return { invite: { ...updated, attendees }, adults, kids }
+}
 
 async function applyTicks(invite: InviteWithPeople, tickedIds: string[]): Promise<void> {
   const db = createAdminClient()
