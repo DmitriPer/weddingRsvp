@@ -9,6 +9,7 @@
  */
 
 import { useState } from 'react'
+import { AnswerForm } from '@/components/admin/answer-form'
 import { AttendeeList } from '@/components/admin/attendee-list'
 import { CopyLinkButton } from '@/components/admin/copy-link-button'
 import { HistoryModal } from '@/components/admin/history-modal'
@@ -67,6 +68,7 @@ export function InviteRow({
 }): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [answering, setAnswering] = useState(false)
   const remove = useAction()
 
   const flagged = needsPhoneCall(invite.status, invite.contact_attempts)
@@ -132,8 +134,26 @@ export function InviteRow({
             instead of across the screen from the name. */}
         <div className="flex basis-full flex-wrap justify-start gap-1 md:basis-auto md:flex-1">
           <WaSendButton invite={invite} config={config} kind={sendKind} />
+          {/* Only on flagged rows, so it reads as a to-do. Opens the dialer and
+              records nothing: the app cannot know whether the call connected. */}
+          {flagged && invite.phone ? (
+            <a
+              href={`tel:${invite.phone}`}
+              className="rounded border border-border px-2 py-1 text-xs text-warning hover:bg-surface"
+            >
+              {strings.row.call}
+            </a>
+          ) : null}
           <CopyLinkButton token={invite.token} language={invite.language} />
           <HistoryModal inviteId={invite.id} name={invite.name} />
+          <button
+            type="button"
+            onClick={() => setAnswering((value) => !value)}
+            aria-expanded={answering}
+            className="rounded border border-border px-2 py-1 text-xs hover:bg-surface"
+          >
+            {strings.row.setAnswer}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -157,6 +177,8 @@ export function InviteRow({
         </div>
       </div>
 
+
+      {answering ? <AnswerForm invite={invite} onDone={() => setAnswering(false)} /> : null}
 
       {editing ? (
         <InviteEditForm invite={invite} onDone={() => setEditing(false)} />

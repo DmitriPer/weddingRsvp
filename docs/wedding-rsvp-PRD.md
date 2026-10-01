@@ -315,7 +315,9 @@ Sending a WhatsApp is the **only** thing that marks a guest contacted: it increm
 
 This matters because an inflated `contact_attempts` corrupts the follow-up flag below — the list would claim people were contacted five times when they were never messaged at all — and would move an invite to `pending` while it is still unsent.
 
-Invites reaching **5 attempts with still no response** get a "needs a phone call" badge. The app counts and flags; the couple decides whether to send again.
+Invites reaching **2 attempts with still no response** get a "needs a phone call" badge, and a `tel:` button on the row. The app counts and flags; the couple decides whether to send again or call. The answer given on the phone is recorded from the row, and history marks it as admin-set (`docs/admin-answer-and-calls-PRD.md`).
+
+*(The threshold was 5 until 2026-10-01.)*
 
 ### 6.11 Stats — on the invitees screen, not a tab
 Five tiles at the **top of the invitees list**, not a separate page:

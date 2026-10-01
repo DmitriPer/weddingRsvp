@@ -1,6 +1,6 @@
 # Progress & Handoff
 
-**Last updated:** 2026-09-29 · branch `main` · pushed to `DmitriPer/weddingRsvp` · **live, real guest data**
+**Last updated:** 2026-10-01 · branch `feat/admin-answer-calls` · pushed to `DmitriPer/weddingRsvp` · **live, real guest data**
 
 The purpose of this file is that a different machine, or a different session, can pick this up with no gaps. **Update it whenever a phase lands** — if it drifts from reality it is worse than not existing.
 
@@ -474,6 +474,17 @@ Spec: `docs/games-bingo-PRD.md` §3.3, §3.6.
 **⚠️ Needs migration `019_photo_number.sql`.** It adds `wedding_photos.photo_number` (identity, which also numbers existing rows) and makes `drive_file_id` nullable while an upload is in flight.
 
 Drive files are now named `דנה · 17.jpg`, or `17.jpg` with no name, and have no date. `/api/photos/upload` reserves the row first (`reservePhoto`) so the number exists, uploads, then `attachDriveFile`s; a failure calls `releasePhoto`. `photoStats` counts only rows with a Drive file.
+
+## 5q. Admin answer and phone calls, 2026-10-01
+
+**⚠️ Needs migration `020_history_source.sql`** before the code is deployed. It adds `response_history.source` (`'guest'` / `'admin'`, default `'guest'`).
+
+Spec: `docs/admin-answer-and-calls-PRD.md`.
+- "Needs a phone call" now turns on at **2** attempts, not 5 (`lib/status.ts`).
+- Flagged rows with a phone get a `tel:` button. It records nothing.
+- "עדכון תשובה" on each row records yes / undecided / no, with people ticked for a yes, through `POST /api/invites/[id]/answer`. This route has no deadline check.
+
+**One write path for answers.** `submitRsvp`'s body is now `recordAnswer` in `lib/data/supabase`. The guest path and `setAnswerAsAdmin` both call it, so status, history, seats and placeholders follow the same rules. The only differences: the admin path keeps existing +1s on a yes (`extras: 'keep'`), and its history row says `source: 'admin'`.
 
 ## 6. Known issues
 

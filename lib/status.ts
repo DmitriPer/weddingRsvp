@@ -62,9 +62,10 @@ export function isAwaitingResponse(status: InviteStatus): boolean {
   return status === 'pending' || status === 'opened'
 }
 
-export const FOLLOW_UP_ATTEMPT_THRESHOLD = 5
+/** Lowered from 5 on 2026-10-01: a call is the faster way to an answer. */
+export const FOLLOW_UP_ATTEMPT_THRESHOLD = 2
 
-/** "Needs a phone call": contacted 5+ times with still no answer. */
+/** "Needs a phone call": contacted 2+ times with still no answer. */
 export function needsPhoneCall(status: InviteStatus, contactAttempts: number): boolean {
   return isAwaitingResponse(status) && contactAttempts >= FOLLOW_UP_ATTEMPT_THRESHOLD
 }

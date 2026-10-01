@@ -26,6 +26,13 @@ export type Relation = 'family' | 'friend' | 'work' | 'invited_by_family'
 export type Answer = 'yes' | 'no' | 'undecided'
 export const ANSWERS: readonly Answer[] = ['yes', 'no', 'undecided'] as const
 
+/**
+ * Who recorded an answer (migration 020). The admin records one after a phone
+ * call (docs/admin-answer-and-calls-PRD.md); it is written exactly like a
+ * guest's, so history is the only place the difference is kept.
+ */
+export type HistorySource = 'guest' | 'admin'
+
 export const INVITE_STATUSES: readonly InviteStatus[] = [
   'added',
   'pending',
@@ -161,6 +168,8 @@ export interface ResponseHistoryEntry {
   adult_count: number
   kid_count: number
   submitted_at: string
+  /** Who recorded it. Every row before migration 020 is 'guest'. */
+  source: HistorySource
 }
 
 export interface WeddingConfig {
@@ -402,6 +411,17 @@ export interface RsvpSubmission {
   /** Unnamed guests to add. Empty unless the answer is 'yes'. */
   extraAdults: number
   extraKids: number
+}
+
+/**
+ * What the admin records after a phone call (POST /api/invites/[id]/answer).
+ * No extra counts: existing +1s are kept as they are, and new ones are added
+ * in the attendee editor (docs/admin-answer-and-calls-PRD.md §6).
+ */
+export interface AdminAnswer {
+  answer: Answer
+  /** Named attendee ids marked coming. Empty unless the answer is 'yes'. */
+  attendingIds: string[]
 }
 
 /**

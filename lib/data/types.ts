@@ -10,6 +10,7 @@
  */
 
 import type {
+  AdminAnswer,
   Attendee,
   DriveConnection,
   WeddingPhoto,
@@ -103,6 +104,12 @@ export interface DataStore {
 
   // --- the guest's answer --------------------------------------------------
   submitRsvp(submission: RsvpSubmission): Promise<RsvpResult | null>
+  /**
+   * The admin records an answer after a phone call. Same effects as the guest's
+   * (status, history, seats) with history marked 'admin', and no deadline. The
+   * input must already be fitted to this household (lib/validation fitAdminAnswer).
+   */
+  setAnswerAsAdmin(invite: InviteWithPeople, input: AdminAnswer): Promise<RsvpResult>
   listHistory(inviteId: string): Promise<ResponseHistoryEntry[]>
 
   // --- seating -------------------------------------------------------------
