@@ -74,7 +74,7 @@ export function seatablePeople(invites: InviteWithPeople[]): SeatablePerson[] {
 
   for (const invite of invites) {
     for (const person of invite.attendees) {
-      const answer = answerForPerson(invite.answer, person)
+      const answer = answerForPerson(person)
       if (answer !== 'yes' && answer !== 'undecided') continue
 
       people.push({

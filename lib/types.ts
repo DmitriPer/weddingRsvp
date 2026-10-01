@@ -103,6 +103,11 @@ export interface Attendee {
   /** Migration 018: a child aged 0–3 — free, still takes a chair. Implies is_child. */
   is_infant: boolean
   is_attending: boolean
+  /**
+   * This person's own answer (migration 021). `null` = not answered yet.
+   * `is_attending` above is kept equal to `answer === 'yes'` by every write.
+   */
+  answer: Answer | null
   /** A guest-added "+1". The admin can rename it, which clears this flag. */
   is_placeholder: boolean
   /** null = unseated */
@@ -170,6 +175,8 @@ export interface ResponseHistoryEntry {
   submitted_at: string
   /** Who recorded it. Every row before migration 020 is 'guest'. */
   source: HistorySource
+  /** The person an admin change was about (migration 021). Null for a guest's submission. */
+  person_name: string | null
 }
 
 export interface WeddingConfig {
@@ -411,17 +418,6 @@ export interface RsvpSubmission {
   /** Unnamed guests to add. Empty unless the answer is 'yes'. */
   extraAdults: number
   extraKids: number
-}
-
-/**
- * What the admin records after a phone call (POST /api/invites/[id]/answer).
- * No extra counts: existing +1s are kept as they are, and new ones are added
- * in the attendee editor (docs/admin-answer-and-calls-PRD.md §6).
- */
-export interface AdminAnswer {
-  answer: Answer
-  /** Named attendee ids marked coming. Empty unless the answer is 'yes'. */
-  attendingIds: string[]
 }
 
 /**

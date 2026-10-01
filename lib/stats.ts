@@ -47,16 +47,16 @@ export function computeStats(invites: InviteWithPeople[]): Stats {
     totalInvitedPeople += countInvited(invite.attendees)
     totalExtras += countExtras(invite.attendees)
 
-    totalAwaitingPeople += countAwaiting(invite.answer, invite.attendees)
+    totalAwaitingPeople += countAwaiting(invite.attendees)
     if (invite.answer === null) totalAwaitingInvites += 1
 
-    totalUndecidedPeople += countUndecided(invite.answer, invite.attendees)
+    totalUndecidedPeople += countUndecided(invite.attendees)
     if (invite.answer === 'undecided') totalUndecidedInvites += 1
 
     if (invite.answer === 'yes') totalAttendingInvites += 1
     if (invite.answer === 'no') totalDeclined += 1
 
-    totalDeclinedPeople += countDeclined(invite.answer, invite.attendees)
+    totalDeclinedPeople += countDeclined(invite.attendees)
   }
 
   // Answered invitations only: a tick without an answer is not a seat.

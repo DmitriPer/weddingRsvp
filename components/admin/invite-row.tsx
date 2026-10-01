@@ -9,7 +9,6 @@
  */
 
 import { useState } from 'react'
-import { AnswerForm } from '@/components/admin/answer-form'
 import { AttendeeList } from '@/components/admin/attendee-list'
 import { CopyLinkButton } from '@/components/admin/copy-link-button'
 import { HistoryModal } from '@/components/admin/history-modal'
@@ -46,7 +45,7 @@ function attendanceLabel(invite: InviteWithPeople): string {
     case 'declined':
       return labels.declined(summary.invited)
     case 'coming':
-      return labels.coming(summary.coming, summary.invited)
+      return labels.coming(summary.coming, summary.invited, summary.undecided)
   }
 }
 
@@ -68,7 +67,6 @@ export function InviteRow({
 }): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [answering, setAnswering] = useState(false)
   const remove = useAction()
 
   const flagged = needsPhoneCall(invite.status, invite.contact_attempts)
@@ -148,14 +146,6 @@ export function InviteRow({
           <HistoryModal inviteId={invite.id} name={invite.name} />
           <button
             type="button"
-            onClick={() => setAnswering((value) => !value)}
-            aria-expanded={answering}
-            className="rounded border border-border px-2 py-1 text-xs hover:bg-surface"
-          >
-            {strings.row.setAnswer}
-          </button>
-          <button
-            type="button"
             onClick={() => {
               setEditing((value) => !value)
               setExpanded(true)
@@ -178,8 +168,6 @@ export function InviteRow({
       </div>
 
 
-      {answering ? <AnswerForm invite={invite} onDone={() => setAnswering(false)} /> : null}
-
       {editing ? (
         <InviteEditForm invite={invite} onDone={() => setEditing(false)} />
       ) : null}
@@ -187,7 +175,6 @@ export function InviteRow({
       {expanded ? (
         <AttendeeList
           inviteId={invite.id}
-          answer={invite.answer}
           attendees={invite.attendees}
           editable={editing}
         />

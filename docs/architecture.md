@@ -50,7 +50,6 @@ app/
     invites/[id]/route.ts           GET · PATCH · DELETE
     invites/[id]/opened/route.ts    POST   client-side "opened" marking (guest, no auth)
     invites/[id]/contacted/route.ts POST   confirmed wa.me send → attempts, timestamp, status
-    invites/[id]/answer/route.ts    POST   admin records an answer (after a call) — no deadline, history source 'admin'
     invites/bulk/route.ts           DELETE multi-select delete
     invites/import/route.ts         POST   .xlsx in — preview, then confirm=true writes
     invites/export/route.ts         GET    .xlsx out, import format
@@ -58,6 +57,7 @@ app/
     invites/template/route.ts       GET    empty import template
     attendees/route.ts              POST   create
     attendees/[id]/route.ts         PATCH · DELETE   (rename, adult/child, table_id)
+    attendees/[id]/answer/route.ts  POST   one person's answer (admin, after a call) — no deadline
     tables/route.ts                 GET · POST
     tables/[id]/route.ts            PATCH · DELETE
     tables/export/route.ts          GET    seating plan .xlsx
@@ -446,7 +446,7 @@ Callers use `listInvites()`, `submitRsvp()` and the like. They never see a Supab
 | §6.7 import / export | `lib/import-format.ts` · `lib/import-parse.ts` · `lib/spreadsheet.ts` + `/api/invites/{import,export,template}` |
 | Site export (`docs/site-export-PRD.md`) | `lib/site-sheet.ts` + `/api/invites/export/site` |
 | §6.9 wa.me | `wa-send-button.tsx` + `/api/invites/[id]/contacted` |
-| Admin answer & calls (`docs/admin-answer-and-calls-PRD.md`) | `answer-form.tsx` + `/api/invites/[id]/answer` · `recordAnswer` in `lib/data` · `fitAdminAnswer` in `lib/validation.ts` |
+| Per-person answers & calls (`docs/admin-answer-and-calls-PRD.md`) | selector in `attendee-list.tsx` + `/api/attendees/[id]/answer` · `setPersonAnswer` / `saveHouseholdAnswer` in `lib/data` · `householdAnswer` in `lib/headcount.ts` |
 | WhatsApp rounds (`docs/whatsapp-rounds-PRD.md`) | `lib/send-kinds.ts` |
 | §6.11 stats | `lib/stats.ts` |
 | Wedding photos (docs/wedding-photos-PRD.md) | `app/photos` + `components/guest/photo-uploader.tsx` · `app/admin/photos` + `photo-controls` · `lib/photos.ts` + `lib/google-drive.ts` · `app/api/photos/*`, `app/api/google/*` |
